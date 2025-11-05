@@ -502,9 +502,13 @@ export default function TodayScreen() {
                     }
                   })
                 }>
-                  <View style={styles.modalDragHandle}>
+                  <TouchableOpacity 
+                    style={styles.modalDragHandle}
+                    onPress={closeAddModal}
+                    activeOpacity={1}
+                  >
                     <View style={styles.modalDragBar} />
-                  </View>
+                  </TouchableOpacity>
                 </GestureDetector>
                 <Text style={styles.modalTitle}>Добавить напиток</Text>
                 <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из предложенных или добавьте свой</Text>
@@ -560,9 +564,13 @@ export default function TodayScreen() {
                       }
                     })
                   }>
-                    <View style={styles.modalDragHandle}>
+                    <TouchableOpacity 
+                      style={styles.modalDragHandle}
+                      onPress={closeCustomModal}
+                      activeOpacity={1}
+                    >
                       <View style={styles.modalDragBar} />
-                    </View>
+                    </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled">
                     <Text style={styles.modalTitle}>Новый напиток</Text>
@@ -759,7 +767,9 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: colors.backgroundCard,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     ...Platform.select({
@@ -780,6 +790,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 0,
     paddingBottom: 12,
+    minHeight: 40,
   },
   modalDragBar: {
     width: 60,
