@@ -1,12 +1,147 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
+import { MaterialIcons } from '@expo/vector-icons';
 import { getAllDrinks, getDrinksByDate, removeDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO } from '../utils/date';
 import { formatTotalVolume } from '../utils/units';
 import { colors } from '../theme/colors';
+
+// Компонент для свайп-удаления записи
+function SwipeableListItem({ item, onRemove }: { item: Drink; onRemove: (id: string) => void }) {
+  const translateX = useSharedValue(0);
+  const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
+  const isFirstGesture = useSharedValue(true);
+  const screenWidth = Dimensions.get('window').width;
+  const fifthWidth = screenWidth / 5;
+  const [showTrash, setShowTrash] = useState(false);
+  
+  const handleRemove = () => {
+    onRemove(item.id);
+  };
+  
+  const handleShowTrash = (show: boolean) => {
+    setShowTrash(show);
+  };
+  
+  const startX = useSharedValue(0);
+  
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
+    .onStart(() => {
+      startX.value = translateX.value;
+      isFirstGesture.value = Math.abs(translateX.value) < 1;
+    })
+    .onUpdate((e) => {
+      const newValue = startX.value + e.translationX;
+      
+      if (isFirstGesture.value) {
+        if (newValue < 0) {
+          const maxSwipe = -fifthWidth;
+          translateX.value = Math.max(maxSwipe, newValue);
+          
+          if (Math.abs(newValue) > fifthWidth) {
+            swipeState.value = 1;
+            runOnJS(handleShowTrash)(true);
+          }
+        } else {
+          translateX.value = 0;
+        }
+      } else {
+        if (newValue < 0) {
+          const maxSwipe = -screenWidth * 0.8;
+          translateX.value = Math.max(maxSwipe, newValue);
+        } else if (newValue > 0) {
+          translateX.value = Math.min(0, newValue);
+          if (newValue > -fifthWidth / 2) {
+            swipeState.value = 0;
+            runOnJS(handleShowTrash)(false);
+          }
+        }
+      }
+    })
+    .onEnd((e) => {
+      if (isFirstGesture.value) {
+        const finalValue = startX.value + e.translationX;
+        const clampedValue = Math.max(-fifthWidth, finalValue);
+        
+        if (Math.abs(clampedValue) < fifthWidth) {
+          translateX.value = withTiming(0, { duration: 200 });
+          swipeState.value = 0;
+          runOnJS(handleShowTrash)(false);
+        } else {
+          translateX.value = withTiming(-fifthWidth, { duration: 200 });
+          swipeState.value = 1;
+          runOnJS(handleShowTrash)(true);
+        }
+        isFirstGesture.value = false;
+      } else {
+        const currentPos = startX.value + e.translationX;
+        
+        if (e.translationX < -30 || currentPos < -fifthWidth * 1.5) {
+          translateX.value = withTiming(-screenWidth, { duration: 200 }, () => {
+            runOnJS(handleRemove)();
+          });
+        } else if (e.translationX > 20 || currentPos > -fifthWidth * 0.5) {
+          translateX.value = withTiming(0, { duration: 200 });
+          swipeState.value = 0;
+          runOnJS(handleShowTrash)(false);
+          isFirstGesture.value = true;
+        } else {
+          translateX.value = withTiming(-fifthWidth, { duration: 200 });
+        }
+      }
+    });
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+    };
+  });
+
+  const deleteButtonStyle = useAnimatedStyle(() => {
+    const gap = 8;
+    const width = Math.max(0, -translateX.value - gap);
+    return {
+      width: width,
+    };
+  });
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <View style={styles.swipeContainer}>
+        <Animated.View style={[styles.deleteButtonContainer, deleteButtonStyle]}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => {
+              translateX.value = withTiming(-screenWidth, { duration: 200 }, () => {
+                handleRemove();
+              });
+            }}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="delete-sweep" size={28} color={colors.error} />
+          </TouchableOpacity>
+        </Animated.View>
+        
+        <Animated.View style={[styles.listItem, animatedStyle]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.itemTitle}>{item.name}</Text>
+            <Text style={styles.itemSub}>
+              {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
+              {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
+    </GestureDetector>
+  );
+}
 
 export default function CalendarScreen() {
   const [all, setAll] = useState<Drink[]>([]);
@@ -15,7 +150,25 @@ export default function CalendarScreen() {
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
-  const [listHeight, setListHeight] = useState<number | null>(null);
+  const insets = useSafeAreaInsets();
+  const [headerHeight, setHeaderHeight] = useState<number>(0);
+  const [weekRowHeight, setWeekRowHeight] = useState<number>(0);
+  const hasMeasuredHeaderRef = useRef<boolean>(false);
+  const hasMeasuredWeekRowRef = useRef<boolean>(false);
+  
+  // Вычисляем высоту списка на основе измеренных высот header и weekRow
+  const listHeight = useMemo(() => {
+    if (headerHeight === 0 || weekRowHeight === 0) {
+      return null;
+    }
+    // Высота = экран - SafeArea insets - paddingTop (12px) - header - marginBottom (8px) - weekRow - marginBottom (6px) - таб-бар (49px)
+    const paddingTop = 12;
+    const marginAfterHeader = 8;
+    const marginAfterWeekRow = 6;
+    const tabBarHeight = 49; // Стандартная высота таб-бара React Navigation
+    const calculatedHeight = screenHeight - insets.top - insets.bottom - paddingTop - headerHeight - marginAfterHeader - weekRowHeight - marginAfterWeekRow - tabBarHeight;
+    return Math.max(300, calculatedHeight);
+  }, [screenHeight, insets.top, insets.bottom, headerHeight, weekRowHeight]);
 
   const loadAll = useCallback(async () => {
     const list = await getAllDrinks();
@@ -24,7 +177,11 @@ export default function CalendarScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Загружаем данные асинхронно, не блокируя UI
       loadAll();
+      return () => {
+        // Cleanup при размонтировании
+      };
     }, [loadAll])
   );
 
@@ -36,31 +193,56 @@ export default function CalendarScreen() {
     return map;
   }, [all]);
 
-  // Подготовим список месяцев для горизонтального слайдера (±24 месяца от текущего)
+  // Подготовим список месяцев: 2 года назад до текущего месяца (текущий - последний)
   const base = useMemo(() => new Date(), []);
   const months: Date[] = useMemo(() => {
     const arr: Date[] = [];
-    for (let i = -24; i <= 24; i++) {
+    for (let i = -24; i <= 0; i++) {
       arr.push(new Date(base.getFullYear(), base.getMonth() + i, 1));
     }
     return arr;
   }, [base]);
-  const initialIndex = 24; // текущий месяц по центру массива
+  const initialIndex = months.length - 1; // текущий месяц - последний в массиве
   const [visibleIndex, setVisibleIndex] = useState(initialIndex);
+
+  // Форматтер вынесен наружу, чтобы не создавать его при каждом рендере
+  const dateFormatter = useMemo(() => 
+    new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }),
+    []
+  );
 
   const monthLabel = useMemo(() => {
     const d = months[visibleIndex] ?? base;
-    const formatter = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
-    return formatter.format(d);
-  }, [months, visibleIndex, base]);
+    return dateFormatter.format(d);
+  }, [months, visibleIndex, base, dateFormatter]);
 
   useEffect(() => {
-    if (listRef.current && listHeight != null) {
-      try {
-        listRef.current.scrollToIndex({ index: initialIndex, animated: false });
-      } catch {}
+    if (listRef.current && listHeight > 0) {
+      // Ждем полного рендеринга FlatList перед скроллом
+      // Используем несколько попыток для надежности
+      let attempts = 0;
+      const maxAttempts = 10;
+      const tryScroll = () => {
+        attempts++;
+        try {
+          listRef.current?.scrollToIndex({ 
+            index: initialIndex, 
+            animated: false,
+            viewOffset: 0,
+            viewPosition: 0,
+          });
+        } catch (error) {
+          if (attempts < maxAttempts) {
+            // Повторяем попытку через небольшую задержку
+            setTimeout(tryScroll, 50);
+          }
+        }
+      };
+      // Первая попытка после небольшой задержки, чтобы FlatList успел отрендериться
+      const timeoutId = setTimeout(tryScroll, 200);
+      return () => clearTimeout(timeoutId);
     }
-  }, [listHeight]);
+  }, [listHeight, initialIndex, months.length]);
 
   const onMomentumEndHorizontal = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -68,13 +250,6 @@ export default function CalendarScreen() {
     if (idx !== visibleIndex) setVisibleIndex(idx);
   };
 
-  // Высота области месяца, чтобы один месяц занимал экран
-  const monthListHeight = useMemo(() => {
-    if (listHeight != null) return listHeight;
-    // fallback до измерения
-    const headerSpace = 12 + 28 + 6 + 22 + 12;
-    return Math.max(320, screenHeight - headerSpace);
-  }, [listHeight, screenHeight]);
 
   const openDay = async (date: Date) => {
     const iso = formatISO(date);
@@ -84,21 +259,12 @@ export default function CalendarScreen() {
   };
 
   const deleteEntry = async (id: string) => {
-    Alert.alert('Удалить запись?', 'Это действие нельзя отменить', [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Удалить',
-        style: 'destructive',
-        onPress: async () => {
-          await removeDrink(id);
-          if (selectedDate) {
-            const list = await getDrinksByDate(selectedDate);
-            setDayList(list);
-          }
-          await loadAll();
-        },
-      },
-    ]);
+    await removeDrink(id);
+    if (selectedDate) {
+      const list = await getDrinksByDate(selectedDate);
+      setDayList(list);
+    }
+    await loadAll();
   };
 
   const dayTotalUnits = useMemo(() => dayList.reduce((s, d) => s + d.standardUnits, 0), [dayList]);
@@ -106,39 +272,73 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
+      <View 
+        style={styles.headerRow}
+        onLayout={(e) => {
+          const height = e.nativeEvent.layout.height;
+          if (!hasMeasuredHeaderRef.current && height > 0) {
+            hasMeasuredHeaderRef.current = true;
+            setHeaderHeight(height);
+          }
+        }}
+      >
         <Text style={styles.month}>{monthLabel}</Text>
       </View>
 
-      <View style={styles.weekRow}>
+      <View 
+        style={styles.weekRow}
+        onLayout={(e) => {
+          const height = e.nativeEvent.layout.height;
+          if (!hasMeasuredWeekRowRef.current && height > 0) {
+            hasMeasuredWeekRowRef.current = true;
+            setWeekRowHeight(height);
+          }
+        }}
+      >
         {WEEKDAY_SHORT_RU.map((w) => (
           <Text key={w} style={styles.weekCell}>{w}</Text>
         ))}
       </View>
 
-      <View style={{ flex: 1 }} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
+      <View style={{ height: listHeight ?? 0, width: screenWidth }}>
+      {listHeight !== null && listHeight > 0 ? (
       <FlatList
         ref={listRef}
         data={months}
         horizontal={false}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        style={{ height: monthListHeight, width: screenWidth }}
-        initialScrollIndex={initialIndex}
-        getItemLayout={(_, index) => ({ length: monthListHeight, offset: monthListHeight * index, index })}
+        style={{ height: listHeight, width: screenWidth }}
+        contentContainerStyle={{ height: listHeight * months.length }}
+        getItemLayout={listHeight > 0 ? (_, index) => ({ 
+          length: listHeight, 
+          offset: listHeight * index, 
+          index 
+        }) : undefined}
+        keyExtractor={(item, index) => `month-${item.getFullYear()}-${item.getMonth()}-${index}`}
+        removeClippedSubviews={false}
+        windowSize={3}
+        maxToRenderPerBatch={3}
+        updateCellsBatchingPeriod={50}
         onMomentumScrollEnd={(e) => {
           const y = e.nativeEvent.contentOffset.y;
-          const idx = Math.round(y / monthListHeight);
-          if (idx !== visibleIndex) setVisibleIndex(idx);
+          const idx = Math.round(y / listHeight);
+          if (idx !== visibleIndex) {
+            setVisibleIndex(idx);
+          }
         }}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
+          if (!listHeight || listHeight <= 0) {
+            return <View style={{ height: 300, width: screenWidth }} />;
+          }
           const matrix = buildMonthMatrix(item);
           // Высота ячейки — 6 рядов по высоте месяца
-          const cellHeight = monthListHeight / 6;
+          // Используем Math.floor чтобы избежать дробных значений, которые могут вызывать проблемы с рендерингом
+          const cellHeight = Math.floor(listHeight / 6);
           const cellWidth = Math.floor(screenWidth / 7);
           const monthWidth = cellWidth * 7;
           return (
-            <View style={{ height: monthListHeight, width: monthWidth, alignSelf: 'center' }}>
+            <View style={{ height: listHeight, width: monthWidth, alignSelf: 'center' }}>
               <View style={styles.grid}>
                 {matrix.map((d, idx) => {
                   const iso = formatISO(d);
@@ -156,10 +356,12 @@ export default function CalendarScreen() {
                       ]}
                       onPress={() => openDay(d)}
                     >
-                      <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
-                      {total > 0 && (
-                        <View style={styles.badge}><Text style={styles.badgeText}>{total.toFixed(1)}</Text></View>
-                      )}
+                      <View style={styles.cellContent}>
+                        <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
+                        {total > 0 && (
+                          <View style={styles.badge}><Text style={styles.badgeText}>{total.toFixed(1)}</Text></View>
+                        )}
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -168,6 +370,7 @@ export default function CalendarScreen() {
           );
         }}
       />
+      ) : null}
       </View>
 
       <Modal visible={!!selectedDate} animationType="slide" transparent>
@@ -182,15 +385,12 @@ export default function CalendarScreen() {
               data={dayList}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <View style={styles.listItem}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemTitle}>{item.name}</Text>
-                    <Text style={styles.itemSub}>{formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед{item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}.</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => deleteEntry(item.id)} style={styles.deleteBtn}><Text style={styles.deleteText}>Удалить</Text></TouchableOpacity>
-                </View>
+                <SwipeableListItem
+                  item={item}
+                  onRemove={deleteEntry}
+                />
               )}
-              ListEmptyComponent={<Text style={{ color: '#666' }}>Нет записей</Text>}
+              ListEmptyComponent={<Text style={{ color: colors.textSecondary }}>Нет записей</Text>}
             />
           </View>
         </View>
@@ -204,7 +404,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 12,
     paddingHorizontal: 0,
-    paddingBottom: 12,
+    paddingBottom: 0,
     backgroundColor: colors.background,
   },
   headerRow: {
@@ -246,8 +446,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingHorizontal: 4,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     borderColor: colors.border,
+  },
+  cellContent: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
   },
   cellEmpty: {
     padding: 8,
@@ -269,14 +474,14 @@ const styles = StyleSheet.create({
   },
   badge: {
     marginTop: 6,
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     backgroundColor: colors.primaryLight,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   badgeText: {
-    color: colors.primary,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -317,38 +522,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+  swipeContainer: {
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  deleteButtonContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  deleteButton: {
+    backgroundColor: '#991b1b',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingLeft: 16,
+    paddingRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    width: '100%',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: -2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundCard,
     borderRadius: 12,
-    borderBottomWidth: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: -2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   itemTitle: {
     fontSize: 17,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: 4,
   },
   itemSub: {
     color: colors.textSecondary,
-    marginTop: 4,
     fontSize: 14,
-  },
-  deleteBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.errorLight,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.error,
-  },
-  deleteText: {
-    color: colors.error,
-    fontWeight: '600',
-    fontSize: 13,
+    marginTop: 2,
   },
 });
 
