@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PresetButton from '../components/PresetButton';
 import { suggestedPresets, getUserPresets, addPreset, removePreset } from '../storage/presets';
 import { PresetDrink } from '../types/preset';
@@ -15,6 +16,17 @@ import { colors } from '../theme/colors';
 
 const getBeverageColor = (type: PresetDrink['beverageType']) => {
   return colors[type] || colors.other;
+};
+
+const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
+  const labels: Record<PresetDrink['beverageType'], string> = {
+    beer: 'Пиво',
+    wine: 'Вино',
+    spirit: 'Крепкий',
+    cocktail: 'Коктейль',
+    other: 'Другое',
+  };
+  return labels[type] || labels.other;
 };
 
 // Компонент для свайп-удаления записи
@@ -264,6 +276,18 @@ export default function TodayScreen() {
     closeAddModal();
   };
 
+  // Фильтруем предложенные напитки - исключаем те, что уже в избранном
+  const availableSuggestedPresets = useMemo(() => {
+    return suggestedPresets.filter((suggested) => {
+      // Проверяем, нет ли уже такого напитка в избранном (по объему, крепости и типу)
+      return !userPresets.some((userPreset) => 
+        userPreset.volumeMl === suggested.volumeMl &&
+        userPreset.abvPercent === suggested.abvPercent &&
+        userPreset.beverageType === suggested.beverageType
+      );
+    });
+  }, [userPresets]);
+
   const saveCustomPreset = async () => {
     const volume = parseFloat(newVolume);
     const abv = parseFloat(newAbv);
@@ -301,17 +325,24 @@ export default function TodayScreen() {
     await reloadToday();
   };
 
-  const [editMode, setEditMode] = useState(false);
   const [presetsCollapsed, setPresetsCollapsed] = useState(false);
+  const [deletingPresetId, setDeletingPresetId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
-  const handleLongPress = () => {
-    setEditMode(true);
+  const handleLongPress = (presetId: string) => {
+    if (deletingPresetId === presetId) {
+      // Если уже в режиме удаления - удаляем
+      onRemovePreset(presetId);
+    } else {
+      // Иначе показываем режим удаления
+      setDeletingPresetId(presetId);
+    }
   };
 
   const onRemovePreset = async (id: string) => {
     const updated = await removePreset(id);
     setUserPresets(updated);
-    setEditMode(false);
+    setDeletingPresetId(null);
   };
 
   return (
@@ -331,43 +362,46 @@ export default function TodayScreen() {
       {!presetsCollapsed && (
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => editMode && setEditMode(false)}
+          onPress={() => deletingPresetId && setDeletingPresetId(null)}
           style={{ flex: 0 }}
         >
           <ScrollView contentContainerStyle={styles.presetList}>
         {userPresets.map((p) => {
           const beverageColor = getBeverageColor(p.beverageType);
+          const isDeleting = deletingPresetId === p.id;
           return (
             <View key={p.id} style={{ position: 'relative' }}>
               <TouchableOpacity
                 style={[
                   styles.presetButton,
                   { backgroundColor: beverageColor.light },
-                  editMode && styles.presetButtonEditMode,
+                  isDeleting && styles.presetButtonDeleting,
                 ]}
-                onPress={() => !editMode && openQtyModal(p)}
-                onLongPress={handleLongPress}
+                onPress={() => {
+                  if (isDeleting) {
+                    onRemovePreset(p.id);
+                  } else {
+                    openQtyModal(p);
+                  }
+                }}
+                onLongPress={() => handleLongPress(p.id)}
                 delayLongPress={500}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetText, { color: beverageColor.text }]}>{p.name}</Text>
+                <Text style={[styles.presetText, { color: beverageColor.text, opacity: isDeleting ? 0.3 : 1 }]}>{p.name}</Text>
+                {isDeleting && (
+                  <View style={styles.deleteIconContainer}>
+                    <MaterialIcons name="cancel" size={40} color={colors.error} />
+                  </View>
+                )}
               </TouchableOpacity>
-              {editMode && (
-                <TouchableOpacity
-                  style={styles.removeFav}
-                  onPress={() => onRemovePreset(p.id)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.removeFavText}>×</Text>
-                </TouchableOpacity>
-              )}
             </View>
           );
         })}
         <TouchableOpacity
           style={styles.addFavButtonRect}
           onPress={() => {
-            setEditMode(false);
+            setDeletingPresetId(null);
             openAddModal();
           }}
           accessibilityLabel="Добавить напиток"
@@ -380,7 +414,7 @@ export default function TodayScreen() {
 
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => editMode && setEditMode(false)}
+        onPress={() => deletingPresetId && setDeletingPresetId(null)}
       >
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Сегодняшние записи</Text>
@@ -405,7 +439,7 @@ export default function TodayScreen() {
           );
         }}
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей за сегодня</Text>}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
       />
 
       {/* Модалка количества единиц перед добавлением */}
@@ -441,10 +475,10 @@ export default function TodayScreen() {
               </View>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={closeQtyModal}>
-                  <Text>Отмена</Text>
+                  <Text style={styles.cancelBtnText}>Отмена</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.saveBtn} onPress={confirmAddWithQty}>
-                  <Text style={{ color: '#fff' }}>Добавить</Text>
+                  <Text style={styles.saveBtnText}>Добавить</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -454,14 +488,29 @@ export default function TodayScreen() {
 
       {/* Модалка выбора напитка для добавления */}
       <Modal visible={addModalVisible} animationType="slide" transparent>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={closeAddModal}>
           <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Добавить напиток</Text>
-              <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из предложенных или добавьте свой</Text>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalCard}>
+                <GestureDetector gesture={Gesture.Pan()
+                  .activeOffsetY([10, 100])
+                  .failOffsetX([-50, 50])
+                  .onEnd((e) => {
+                    // Свайп вниз закрывает модальное окно
+                    if (e.translationY > 50) {
+                      runOnJS(closeAddModal)();
+                    }
+                  })
+                }>
+                  <View style={styles.modalDragHandle}>
+                    <View style={styles.modalDragBar} />
+                  </View>
+                </GestureDetector>
+                <Text style={styles.modalTitle}>Добавить напиток</Text>
+                <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из предложенных или добавьте свой</Text>
               
               <ScrollView style={{ maxHeight: 300 }}>
-                {suggestedPresets.map((preset) => (
+                {availableSuggestedPresets.map((preset) => (
                   <TouchableOpacity
                     key={preset.id}
                     style={styles.suggestedItem}
@@ -472,35 +521,51 @@ export default function TodayScreen() {
                 ))}
                 
                 <TouchableOpacity
-                  style={[styles.suggestedItem, styles.customItem]}
+                  style={styles.addCustomButton}
                   onPress={openCustomModal}
                 >
-                  <Text style={[styles.suggestedText, styles.customText]}>+ Добавить свой напиток</Text>
+                  <Text style={styles.addCustomButtonText}>+ Добавить свой напиток</Text>
                 </TouchableOpacity>
               </ScrollView>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={closeAddModal}>
-                  <Text>Отмена</Text>
+                  <Text style={styles.cancelBtnText}>Отмена</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
       {/* Модалка добавления своего напитка */}
       <Modal visible={customModalVisible} animationType="slide" transparent>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
               style={styles.kav}
             >
-              <View style={styles.modalCard}>
-                <ScrollView keyboardShouldPersistTaps="handled">
-                  <Text style={styles.modalTitle}>Новый напиток</Text>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalCard}>
+                  <GestureDetector gesture={Gesture.Pan()
+                    .activeOffsetY([10, 100])
+                    .failOffsetX([-50, 50])
+                    .onEnd((e) => {
+                      // Свайп вниз закрывает модальное окно
+                      if (e.translationY > 50) {
+                        runOnJS(closeCustomModal)();
+                      }
+                    })
+                  }>
+                    <View style={styles.modalDragHandle}>
+                      <View style={styles.modalDragBar} />
+                    </View>
+                  </GestureDetector>
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    <Text style={styles.modalTitle}>Новый напиток</Text>
                   <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                     Объём и крепость будут автоматически добавлены в название
                   </Text>
@@ -523,7 +588,7 @@ export default function TodayScreen() {
                           style={[styles.typeChip, newType === t && styles.typeChipActive]}
                           onPress={() => setNewType(t)}
                         >
-                          <Text style={styles.typeChipText}>{t}</Text>
+                          <Text style={styles.typeChipText}>{getBeverageTypeLabel(t)}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -552,16 +617,17 @@ export default function TodayScreen() {
                       onSubmitEditing={Keyboard.dismiss}
                     />
                   </View>
-                  <View style={styles.modalActions}>
+                  <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
                     <TouchableOpacity style={styles.cancelBtn} onPress={closeCustomModal}>
-                      <Text>Отмена</Text>
+                      <Text style={styles.cancelBtnText}>Отмена</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.saveBtn} onPress={saveCustomPreset}>
-                      <Text style={{ color: '#fff' }}>Сохранить</Text>
+                      <Text style={styles.saveBtnText}>Сохранить</Text>
                     </TouchableOpacity>
                   </View>
-                </ScrollView>
-              </View>
+                    </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
@@ -629,6 +695,22 @@ const styles = StyleSheet.create({
   presetButtonEditMode: {
     opacity: 0.6,
   },
+  presetButtonDeleting: {
+    borderWidth: 2,
+    borderColor: colors.error,
+    borderStyle: 'dashed',
+  },
+  deleteIconContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+  },
   presetText: {
     fontSize: 14,
     fontWeight: '600',
@@ -666,34 +748,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  removeFav: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.error,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  removeFavText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    lineHeight: 20,
-  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -719,6 +773,20 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
     }),
+  },
+  modalDragHandle: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 12,
+  },
+  modalDragBar: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textTertiary,
+    alignSelf: 'center',
   },
   modalTitle: {
     fontSize: 22,
@@ -773,23 +841,34 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     marginTop: 16,
+    gap: 10,
   },
   cancelBtn: {
     paddingVertical: 12,
     paddingHorizontal: 20,
-    marginRight: 10,
+    flex: 1,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
   saveBtn: {
     paddingVertical: 12,
     paddingHorizontal: 20,
+    flex: 1,
     borderRadius: 12,
     backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: colors.primary,
@@ -801,6 +880,11 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   swipeContainer: {
     marginBottom: 8,
@@ -923,16 +1007,32 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
   },
-  customItem: {
-    backgroundColor: colors.primaryDark,
-    borderBottomWidth: 0,
+  addCustomButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     marginTop: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.primary,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  customText: {
+  addCustomButtonText: {
     color: colors.primaryLight,
+    fontSize: 16,
     fontWeight: '700',
   },
 });
