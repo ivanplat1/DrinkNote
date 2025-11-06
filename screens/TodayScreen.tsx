@@ -2,13 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, Entypo } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PresetButton from '../components/PresetButton';
-import { suggestedPresets, getUserPresets, addPreset, removePreset } from '../storage/presets';
+import { suggestedPresets, getUserPresets, addPreset, removePreset, updatePreset } from '../storage/presets';
 import { PresetDrink } from '../types/preset';
-import { addDrink, addOrMergeDrink, getDrinksByDate, removeDrink } from '../storage/drinks';
+import { addDrink, addOrMergeDrink, getDrinksByDate, removeDrink, updateDrink } from '../storage/drinks';
 import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/units';
 import { Drink } from '../types/drink';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,11 +29,12 @@ const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
 };
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, beverageColor, onRemove }: { item: Drink; beverageColor: any; onRemove: (id: string) => void }) {
+function SwipeableListItem({ item, beverageColor, onRemove, onEdit }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onEdit?: (item: Drink) => void }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true); // Отслеживаем, первый ли это жест
   const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
   const fifthWidth = screenWidth / 5; // 1/5 экрана
   const [showTrash, setShowTrash] = useState(false);
   
@@ -163,7 +163,7 @@ function SwipeableListItem({ item, beverageColor, onRemove }: { item: Drink; bev
             style={styles.deleteButton}
             onPress={() => {
               translateX.value = withTiming(-screenWidth, { duration: 200 }, () => {
-                handleRemove();
+                runOnJS(handleRemove)();
               });
             }}
             activeOpacity={0.7}
@@ -174,13 +174,24 @@ function SwipeableListItem({ item, beverageColor, onRemove }: { item: Drink; bev
         
         {/* Карточка записи */}
         <Animated.View style={[styles.listItem, animatedStyle]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.itemTitle}>{item.name}</Text>
-            <Text style={styles.itemSub}>
-              {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
-              {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
-            </Text>
-          </View>
+          <TouchableOpacity 
+            style={{ flex: 1 }}
+            onPress={() => onEdit && onEdit(item)}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.itemTitle}>{item.name}</Text>
+                {onEdit && (
+                  <Ionicons name="pencil" size={18} color={colors.textTertiary} style={{ marginLeft: 8 }} />
+                )}
+              </View>
+              <Text style={styles.itemSub}>
+                {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
+                {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </GestureDetector>
@@ -191,6 +202,16 @@ export default function TodayScreen() {
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingDrink, setEditingDrink] = useState<Drink | null>(null);
+  const [newQuantity, setNewQuantity] = useState('1');
+  const [editPresetModalVisible, setEditPresetModalVisible] = useState(false);
+  const [editingPreset, setEditingPreset] = useState<PresetDrink | null>(null);
+  const [presetName, setPresetName] = useState('');
+  const [presetType, setPresetType] = useState<PresetDrink['beverageType']>('beer');
+  const [presetVolume, setPresetVolume] = useState('500');
+  const [presetAbv, setPresetAbv] = useState('5');
+  // Переменные для модалки добавления кастомного пресета
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
   const [newVolume, setNewVolume] = useState('500');
@@ -289,8 +310,11 @@ export default function TodayScreen() {
   }, [userPresets]);
 
   const saveCustomPreset = async () => {
-    const volume = parseFloat(newVolume);
-    const abv = parseFloat(newAbv);
+    // Нормализуем запятую на точку перед парсингом
+    const normalizedVolume = newVolume.replace(',', '.');
+    const normalizedAbv = newAbv.replace(',', '.');
+    const volume = parseFloat(normalizedVolume);
+    const abv = parseFloat(normalizedAbv);
     if (!newName || isNaN(volume) || isNaN(abv)) {
       Alert.alert('Ошибка', 'Заполните название, объём и крепость');
       return;
@@ -325,8 +349,91 @@ export default function TodayScreen() {
     await reloadToday();
   };
 
+  const openEditModal = (drink: Drink) => {
+    setEditingDrink(drink);
+    setNewQuantity((drink.quantity || 1).toString());
+    setEditModalVisible(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalVisible(false);
+    setEditingDrink(null);
+    setNewQuantity('1');
+  };
+
+  const saveEditedDrink = async () => {
+    if (!editingDrink) return;
+    
+    const quantity = Math.max(1, Math.floor(Number(newQuantity.replace(',', '.')) || 1));
+    
+    if (isNaN(quantity) || quantity < 1) {
+      Alert.alert('Ошибка', 'Введите корректное количество');
+      return;
+    }
+
+    // Пересчитываем стандартные единицы с новым количеством
+    const baseUnits = calculateStandardUnits(editingDrink.volumeMl, editingDrink.abvPercent);
+    const totalUnits = Math.round(baseUnits * quantity * 100) / 100;
+
+    await updateDrink(editingDrink.id, {
+      ...editingDrink,
+      quantity: quantity,
+      standardUnits: totalUnits,
+    });
+    
+    await reloadToday();
+    closeEditModal();
+  };
+
+  const openEditPresetModal = (preset: PresetDrink) => {
+    setEditingPreset(preset);
+    // Извлекаем название без объема и процентов
+    const nameMatch = preset.name.match(/^(.+?)\s+\d+\s*(мл|л)\s*\(\d+%\)$/);
+    setPresetName(nameMatch ? nameMatch[1].trim() : preset.name);
+    setPresetType(preset.beverageType);
+    setPresetVolume(preset.volumeMl.toString());
+    setPresetAbv(preset.abvPercent.toString());
+    setEditPresetModalVisible(true);
+    setDeletingPresetId(null);
+  };
+
+  const closeEditPresetModal = () => {
+    setEditPresetModalVisible(false);
+    setEditingPreset(null);
+    setPresetName('');
+    setPresetType('beer');
+    setPresetVolume('500');
+    setPresetAbv('5');
+  };
+
+  const saveEditedPreset = async () => {
+    if (!editingPreset) return;
+    
+    const normalizedVolume = presetVolume.replace(',', '.');
+    const normalizedAbv = presetAbv.replace(',', '.');
+    const volume = parseFloat(normalizedVolume);
+    const abv = parseFloat(normalizedAbv);
+    
+    if (!presetName || isNaN(volume) || isNaN(abv)) {
+      Alert.alert('Ошибка', 'Заполните название, объём и крепость');
+      return;
+    }
+
+    await updatePreset(editingPreset.id, {
+      name: presetName,
+      beverageType: presetType,
+      volumeMl: volume,
+      abvPercent: abv,
+    });
+    
+    const updated = await getUserPresets();
+    setUserPresets(updated);
+    closeEditPresetModal();
+  };
+
   const [presetsCollapsed, setPresetsCollapsed] = useState(false);
   const [deletingPresetId, setDeletingPresetId] = useState<string | null>(null);
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const handleLongPress = (presetId: string) => {
@@ -334,8 +441,9 @@ export default function TodayScreen() {
       // Если уже в режиме удаления - удаляем
       onRemovePreset(presetId);
     } else {
-      // Иначе показываем режим удаления
+      // Показываем режим редактирования/удаления
       setDeletingPresetId(presetId);
+      setEditingPresetId(presetId);
     }
   };
 
@@ -343,6 +451,7 @@ export default function TodayScreen() {
     const updated = await removePreset(id);
     setUserPresets(updated);
     setDeletingPresetId(null);
+    setEditingPresetId(null);
   };
 
   return (
@@ -362,12 +471,16 @@ export default function TodayScreen() {
       {!presetsCollapsed && (
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => deletingPresetId && setDeletingPresetId(null)}
+          onPress={() => {
+            setDeletingPresetId(null);
+            setEditingPresetId(null);
+          }}
           style={{ flex: 0 }}
         >
           <ScrollView contentContainerStyle={styles.presetList}>
         {userPresets.map((p) => {
           const beverageColor = getBeverageColor(p.beverageType);
+          const isEditing = editingPresetId === p.id;
           const isDeleting = deletingPresetId === p.id;
           return (
             <View key={p.id} style={{ position: 'relative' }}>
@@ -375,11 +488,11 @@ export default function TodayScreen() {
                 style={[
                   styles.presetButton,
                   { backgroundColor: beverageColor.light },
-                  isDeleting && styles.presetButtonDeleting,
+                  isEditing && styles.presetButtonDeleting,
                 ]}
                 onPress={() => {
-                  if (isDeleting) {
-                    onRemovePreset(p.id);
+                  if (isEditing) {
+                    // Ничего не делаем при нажатии в режиме редактирования
                   } else {
                     openQtyModal(p);
                   }
@@ -388,10 +501,28 @@ export default function TodayScreen() {
                 delayLongPress={500}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetText, { color: beverageColor.text, opacity: isDeleting ? 0.3 : 1 }]}>{p.name}</Text>
-                {isDeleting && (
-                  <View style={styles.deleteIconContainer}>
-                    <MaterialIcons name="cancel" size={40} color={colors.error} />
+                <Text style={[styles.presetText, { color: beverageColor.text, opacity: isEditing ? 0.3 : 1 }]}>{p.name}</Text>
+                {isEditing && (
+                  <View style={styles.editIconContainer}>
+                    <View style={styles.editButtonsRow}>
+                      <TouchableOpacity
+                        style={styles.editActionButtonNoBg}
+                        onPress={() => {
+                          const preset = userPresets.find(pr => pr.id === p.id);
+                          if (preset) {
+                            openEditPresetModal(preset);
+                          }
+                        }}
+                      >
+                        <Entypo name="pencil" size={24} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.editActionButtonNoBg}
+                        onPress={() => onRemovePreset(p.id)}
+                      >
+                        <Entypo name="circle-with-cross" size={24} color={colors.error} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
               </TouchableOpacity>
@@ -402,11 +533,12 @@ export default function TodayScreen() {
           style={styles.addFavButtonRect}
           onPress={() => {
             setDeletingPresetId(null);
+            setEditingPresetId(null);
             openAddModal();
           }}
           accessibilityLabel="Добавить напиток"
         >
-          <Text style={styles.addFavRectText}>+</Text>
+          <Entypo name="circle-with-plus" size={20} color={colors.primaryLight} />
         </TouchableOpacity>
         </ScrollView>
       </TouchableOpacity>
@@ -435,6 +567,7 @@ export default function TodayScreen() {
               item={item}
               beverageColor={beverageColor}
               onRemove={onRemoveDrink}
+              onEdit={openEditModal}
             />
           );
         }}
@@ -605,9 +738,13 @@ export default function TodayScreen() {
                     <TextInput
                       placeholder="Объём, мл"
                       placeholderTextColor={colors.textTertiary}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                       value={newVolume}
-                      onChangeText={setNewVolume}
+                      onChangeText={(text) => {
+                        // Заменяем запятую на точку для корректного парсинга
+                        const normalized = text.replace(',', '.');
+                        setNewVolume(normalized);
+                      }}
                       style={[styles.input, { flex: 1, marginRight: 8 }]}
                       returnKeyType="done"
                       blurOnSubmit
@@ -616,9 +753,13 @@ export default function TodayScreen() {
                     <TextInput
                       placeholder="Крепость, %"
                       placeholderTextColor={colors.textTertiary}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                       value={newAbv}
-                      onChangeText={setNewAbv}
+                      onChangeText={(text) => {
+                        // Заменяем запятую на точку для корректного парсинга
+                        const normalized = text.replace(',', '.');
+                        setNewAbv(normalized);
+                      }}
                       style={[styles.input, { flex: 1 }]}
                       returnKeyType="done"
                       blurOnSubmit
@@ -634,6 +775,196 @@ export default function TodayScreen() {
                     </TouchableOpacity>
                   </View>
                     </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Модалка редактирования записи */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <TouchableWithoutFeedback onPress={closeEditModal}>
+          <View style={styles.modalBackdrop}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              style={styles.kav}
+            >
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalCard}>
+                  <GestureDetector gesture={Gesture.Pan()
+                    .activeOffsetY([10, 100])
+                    .failOffsetX([-50, 50])
+                    .onEnd((e) => {
+                      if (e.translationY > 50) {
+                        runOnJS(closeEditModal)();
+                      }
+                    })
+                  }>
+                    <TouchableOpacity 
+                      style={styles.modalDragHandle}
+                      onPress={closeEditModal}
+                      activeOpacity={1}
+                    >
+                      <View style={styles.modalDragBar} />
+                    </TouchableOpacity>
+                  </GestureDetector>
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    <Text style={styles.modalTitle}>Изменить количество</Text>
+                    <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
+                      {editingDrink?.name} · {formatTotalVolume(editingDrink?.volumeMl || 0, 1)} · {editingDrink?.abvPercent}%
+                    </Text>
+                    <View style={styles.quantityRow}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => {
+                          const current = parseInt(newQuantity) || 1;
+                          if (current > 1) {
+                            setNewQuantity((current - 1).toString());
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Entypo name="circle-with-minus" size={28} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TextInput
+                        placeholder="Количество"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="number-pad"
+                        value={newQuantity}
+                        onChangeText={(text) => {
+                          const normalized = text.replace(',', '.').replace(/[^0-9]/g, '');
+                          setNewQuantity(normalized);
+                        }}
+                        style={[styles.input, styles.quantityInput]}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => {
+                          const current = parseInt(newQuantity) || 1;
+                          setNewQuantity((current + 1).toString());
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Entypo name="circle-with-plus" size={28} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
+                      <TouchableOpacity style={styles.cancelBtn} onPress={closeEditModal}>
+                        <Text style={styles.cancelBtnText}>Отмена</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.saveBtn} onPress={saveEditedDrink}>
+                        <Text style={styles.saveBtnText}>Сохранить</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Модалка редактирования пресета */}
+      <Modal visible={editPresetModalVisible} animationType="slide" transparent>
+        <TouchableWithoutFeedback onPress={closeEditPresetModal}>
+          <View style={styles.modalBackdrop}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              style={styles.kav}
+            >
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalCard}>
+                  <GestureDetector gesture={Gesture.Pan()
+                    .activeOffsetY([10, 100])
+                    .failOffsetX([-50, 50])
+                    .onEnd((e) => {
+                      if (e.translationY > 50) {
+                        runOnJS(closeEditPresetModal)();
+                      }
+                    })
+                  }>
+                    <TouchableOpacity 
+                      style={styles.modalDragHandle}
+                      onPress={closeEditPresetModal}
+                      activeOpacity={1}
+                    >
+                      <View style={styles.modalDragBar} />
+                    </TouchableOpacity>
+                  </GestureDetector>
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    <Text style={styles.modalTitle}>Редактировать напиток</Text>
+                    <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
+                      Измените данные напитка
+                    </Text>
+                    <TextInput
+                      placeholder="Название"
+                      placeholderTextColor={colors.textTertiary}
+                      value={presetName}
+                      onChangeText={setPresetName}
+                      style={styles.input}
+                      returnKeyType="done"
+                      blurOnSubmit
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Тип:</Text>
+                      <View style={styles.typeRow}>
+                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
+                          <TouchableOpacity
+                            key={t}
+                            style={[styles.typeChip, presetType === t && styles.typeChipActive]}
+                            onPress={() => setPresetType(t)}
+                          >
+                            <Text style={styles.typeChipText}>{getBeverageTypeLabel(t)}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                    <View style={styles.row}>
+                      <TextInput
+                        placeholder="Объём, мл"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={presetVolume}
+                        onChangeText={(text) => {
+                          const normalized = text.replace(',', '.');
+                          setPresetVolume(normalized);
+                        }}
+                        style={[styles.input, { flex: 1, marginRight: 8 }]}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
+                      <TextInput
+                        placeholder="Крепость, %"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={presetAbv}
+                        onChangeText={(text) => {
+                          const normalized = text.replace(',', '.');
+                          setPresetAbv(normalized);
+                        }}
+                        style={[styles.input, { flex: 1 }]}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
+                    </View>
+                    <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
+                      <TouchableOpacity style={styles.cancelBtn} onPress={closeEditPresetModal}>
+                        <Text style={styles.cancelBtnText}>Отмена</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.saveBtn} onPress={saveEditedPreset}>
+                        <Text style={styles.saveBtnText}>Сохранить</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
                 </View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
@@ -705,7 +1036,7 @@ const styles = StyleSheet.create({
   },
   presetButtonDeleting: {
     borderWidth: 2,
-    borderColor: colors.error,
+    borderColor: colors.primary,
     borderStyle: 'dashed',
   },
   deleteIconContainer: {
@@ -718,6 +1049,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 12,
+  },
+  editIconContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+  },
+  editButtonsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+  },
+  editActionButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.backgroundCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  editActionButtonNoBg: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   presetText: {
     fontSize: 14,
@@ -767,6 +1139,8 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: colors.backgroundCard,
+    minHeight: '33%',
+    maxHeight: '90%',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 20,
@@ -850,6 +1224,24 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text,
   },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  quantityButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityInput: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+  },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -900,6 +1292,7 @@ const styles = StyleSheet.create({
   swipeContainer: {
     marginBottom: 8,
     overflow: 'hidden',
+    borderRadius: 12,
   },
   deleteButtonContainer: {
     position: 'absolute',

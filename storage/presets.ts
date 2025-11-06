@@ -51,4 +51,27 @@ export async function removePreset(id: string): Promise<PresetDrink[]> {
   return next;
 }
 
+export async function updatePreset(id: string, preset: Omit<PresetDrink, 'id'>): Promise<PresetDrink[]> {
+  const current = await getUserPresets();
+  // Автоматически добавляем объем и % в название
+  let finalName = preset.name.trim();
+  const volumeStr = formatTotalVolume(preset.volumeMl, 1);
+  const abvStr = `${preset.abvPercent}%`;
+  
+  // Проверяем, есть ли уже объем и % в названии (примерные паттерны)
+  const hasVolume = /\d+\s*(мл|л)/i.test(finalName);
+  const hasAbv = /\d+%/.test(finalName);
+  
+  // Если нет обоих - добавляем в конец
+  if (!hasVolume || !hasAbv) {
+    finalName = `${finalName} ${volumeStr} (${abvStr})`;
+  }
+  
+  const next = current.map((p) => 
+    p.id === id ? { ...preset, name: finalName, id } : p
+  );
+  await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next));
+  return next;
+}
+
 

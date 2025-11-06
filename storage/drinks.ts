@@ -64,4 +64,32 @@ export async function removeDrink(id: string): Promise<Drink[]> {
   return next;
 }
 
+export async function updateDrink(id: string, updated: Partial<Drink>): Promise<Drink[]> {
+  const current = await getAllDrinks();
+  const idx = current.findIndex((d) => d.id === id);
+  if (idx < 0) return current;
+  
+  const existing = current[idx];
+  const updatedDrink: Drink = {
+    ...existing,
+    ...updated,
+    id: existing.id, // Сохраняем оригинальный ID
+    dateISO: updated.dateISO ?? existing.dateISO, // Сохраняем дату если не указана
+  };
+  
+  // Пересчитываем стандартные единицы если изменились объём или крепость
+  if (updated.volumeMl !== undefined || updated.abvPercent !== undefined) {
+    const volumeMl = updated.volumeMl ?? existing.volumeMl;
+    const abvPercent = updated.abvPercent ?? existing.abvPercent;
+    const quantity = updated.quantity ?? existing.quantity ?? 1;
+    const baseUnits = (volumeMl * (abvPercent / 100) * 0.789) / 10;
+    updatedDrink.standardUnits = Math.round(baseUnits * quantity * 100) / 100;
+  }
+  
+  const next = [...current];
+  next[idx] = updatedDrink;
+  await AsyncStorage.setItem(DRINKS_KEY, JSON.stringify(next));
+  return next;
+}
+
 

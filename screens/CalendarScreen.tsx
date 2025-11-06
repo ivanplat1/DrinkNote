@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert, Platform, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
 import { getAllDrinks, getDrinksByDate, removeDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
-import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO } from '../utils/date';
+import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst } from '../utils/date';
 import { formatTotalVolume } from '../utils/units';
 import { colors } from '../theme/colors';
 
@@ -120,7 +120,7 @@ function SwipeableListItem({ item, onRemove }: { item: Drink; onRemove: (id: str
             style={styles.deleteButton}
             onPress={() => {
               translateX.value = withTiming(-screenWidth, { duration: 200 }, () => {
-                handleRemove();
+                runOnJS(handleRemove)();
               });
             }}
             activeOpacity={0.7}
@@ -131,7 +131,9 @@ function SwipeableListItem({ item, onRemove }: { item: Drink; onRemove: (id: str
         
         <Animated.View style={[styles.listItem, animatedStyle]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.itemTitle}>{item.name}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.itemTitle}>{item.name}</Text>
+            </View>
             <Text style={styles.itemSub}>
               {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
               {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
@@ -270,6 +272,27 @@ export default function CalendarScreen() {
   const dayTotalUnits = useMemo(() => dayList.reduce((s, d) => s + d.standardUnits, 0), [dayList]);
   const dayTotalVolumeMl = useMemo(() => dayList.reduce((s, d) => s + d.volumeMl * (d.quantity ?? 1), 0), [dayList]);
 
+  const scrollToToday = () => {
+    if (listRef.current && listHeight && listHeight > 0) {
+      try {
+        listRef.current.scrollToIndex({ 
+          index: initialIndex, 
+          animated: true,
+        });
+      } catch (error) {
+        // Если не удалось, пробуем через offset
+        if (listRef.current) {
+          listRef.current.scrollToOffset({ 
+            offset: initialIndex * listHeight, 
+            animated: true,
+          });
+        }
+      }
+    }
+  };
+
+  const showBackToToday = visibleIndex < initialIndex;
+
   return (
     <SafeAreaView style={styles.container}>
       <View 
@@ -333,8 +356,8 @@ export default function CalendarScreen() {
           }
           const matrix = buildMonthMatrix(item);
           // Высота ячейки — 6 рядов по высоте месяца
-          // Используем Math.floor чтобы избежать дробных значений, которые могут вызывать проблемы с рендерингом
-          const cellHeight = Math.floor(listHeight / 6);
+          // Используем Math.ceil для более точного распределения высоты
+          const cellHeight = Math.ceil(listHeight / 6);
           const cellWidth = Math.floor(screenWidth / 7);
           const monthWidth = cellWidth * 7;
           return (
@@ -373,27 +396,74 @@ export default function CalendarScreen() {
       ) : null}
       </View>
 
+      {/* Кнопка возврата к текущему месяцу */}
+      {showBackToToday && (
+        <TouchableOpacity
+          style={styles.backToTodayButton}
+          onPress={scrollToToday}
+          activeOpacity={0.8}
+        >
+          <FontAwesome6 name="circle-arrow-down" size={28} color={colors.text} />
+        </TouchableOpacity>
+      )}
+
       <Modal visible={!!selectedDate} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Записи {selectedDate}</Text>
-              <Text style={styles.modalTotal}>всего: {formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
-              <TouchableOpacity onPress={() => setSelectedDate(null)}><Text style={styles.close}>Закрыть</Text></TouchableOpacity>
-            </View>
-            <FlatList
-              data={dayList}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <SwipeableListItem
-                  item={item}
-                  onRemove={deleteEntry}
-                />
-              )}
-              ListEmptyComponent={<Text style={{ color: colors.textSecondary }}>Нет записей</Text>}
-            />
+        <TouchableWithoutFeedback onPress={() => setSelectedDate(null)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalSpacer} />
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalCard}>
+                <GestureDetector gesture={Gesture.Pan()
+                  .activeOffsetY([10, 100])
+                  .failOffsetX([-50, 50])
+                  .onEnd((e) => {
+                    if (e.translationY > 50) {
+                      runOnJS(setSelectedDate)(null);
+                    }
+                  })
+                }>
+                  <TouchableOpacity 
+                    style={styles.modalDragHandle}
+                    onPress={() => setSelectedDate(null)}
+                    activeOpacity={1}
+                  >
+                    <View style={styles.modalDragBar} />
+                  </TouchableOpacity>
+                </GestureDetector>
+                <View style={[styles.modalHeader, { marginTop: 4 }]}>
+                  <View style={{ flex: 1 }}>
+                    {selectedDate && (() => {
+                      const date = new Date(selectedDate + 'T00:00:00');
+                      const weekdayIndex = getWeekdayIndexMonFirst(date);
+                      const weekdayShort = WEEKDAY_SHORT_RU[weekdayIndex];
+                      const dayNumber = date.getDate();
+                      const month = date.toLocaleDateString('ru-RU', { month: 'short' });
+                      return (
+                        <Text style={styles.modalTitle}>
+                          {weekdayShort}, {dayNumber} {month}
+                        </Text>
+                      );
+                    })()}
+                  </View>
+                  <Text style={styles.modalTotal}>всего: {formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
+                </View>
+                <View style={{ marginTop: 20 }}>
+                  <FlatList
+                    data={dayList}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <SwipeableListItem
+                        item={item}
+                        onRemove={deleteEntry}
+                      />
+                    )}
+                    ListEmptyComponent={<Text style={{ color: colors.textSecondary }}>Нет записей</Text>}
+                  />
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -443,25 +513,29 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   cell: {
-    paddingTop: 8,
+    paddingTop: 4,
     paddingHorizontal: 4,
+    paddingBottom: 4,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     borderColor: colors.border,
   },
   cellContent: {
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: '100%',
+    height: '100%',
+    paddingTop: 2,
   },
   cellEmpty: {
     padding: 8,
   },
   dayNum: {
     fontWeight: '700',
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
     color: colors.text,
+    marginTop: 2,
   },
   dayNumMuted: {
     color: colors.textTertiary,
@@ -473,12 +547,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundTertiary,
   },
   badge: {
-    marginTop: 6,
+    marginTop: 4,
     alignSelf: 'center',
     backgroundColor: colors.primaryLight,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   badgeText: {
     color: colors.text,
@@ -490,18 +564,41 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
+  modalSpacer: {
+    height: 40,
+  },
   modalCard: {
     backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    minHeight: '33%',
     maxHeight: '70%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  modalDragHandle: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 8,
+    minHeight: 40,
+  },
+  modalDragBar: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textTertiary,
+    alignSelf: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 0,
+    marginTop: 8,
+    paddingBottom: 0,
     flexWrap: 'wrap',
   },
   modalTitle: {
@@ -509,6 +606,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     flex: 1,
+    paddingBottom: 8,
+    minHeight: 32,
+    lineHeight: 28,
   },
   modalTotal: {
     marginLeft: 'auto',
@@ -517,14 +617,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  close: {
-    color: colors.primaryLight || colors.primary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
   swipeContainer: {
     marginBottom: 8,
     overflow: 'hidden',
+    borderRadius: 12,
   },
   deleteButtonContainer: {
     position: 'absolute',
@@ -561,19 +657,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: colors.backgroundTertiary,
     borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
   },
   itemTitle: {
     fontSize: 17,
@@ -585,6 +670,29 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: 2,
+  },
+  backToTodayButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
 });
 
