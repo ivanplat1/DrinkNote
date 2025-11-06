@@ -64,6 +64,7 @@ export default function App() {
             name="Сегодня" 
             component={TodayScreen}
             options={{
+              headerShown: false,
               tabBarIcon: TodayIcon,
             }}
           />

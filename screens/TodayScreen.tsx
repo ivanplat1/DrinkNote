@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { MaterialIcons, Ionicons, Entypo } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons, Ionicons, Entypo, FontAwesome } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import PresetButton from '../components/PresetButton';
 import { suggestedPresets, getUserPresets, addPreset, removePreset, updatePreset } from '../storage/presets';
 import { PresetDrink } from '../types/preset';
@@ -12,6 +12,7 @@ import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/un
 import { Drink } from '../types/drink';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
 
 const getBeverageColor = (type: PresetDrink['beverageType']) => {
   return colors[type] || colors.other;
@@ -217,6 +218,10 @@ export default function TodayScreen() {
   const [newVolume, setNewVolume] = useState('500');
   const [newAbv, setNewAbv] = useState('5');
 
+  // Выбранная дата для добавления напитка
+  const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date());
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+
   useEffect(() => {
     (async () => {
       const presets = await getUserPresets();
@@ -240,16 +245,16 @@ export default function TodayScreen() {
     const qtyNum = Math.max(1, Math.floor(Number(qtyModal.qty) || 1));
     const baseUnits = calculateStandardUnits(qtyModal.preset.volumeMl, qtyModal.preset.abvPercent);
     const totalUnits = Math.round(baseUnits * qtyNum * 100) / 100;
-    const entry: Drink = {
-      id: `drink_${Date.now()}`,
-      dateISO: todayISO(),
-      name: qtyModal.preset.name,
-      beverageType: qtyModal.preset.beverageType,
-      volumeMl: qtyModal.preset.volumeMl,
-      abvPercent: qtyModal.preset.abvPercent,
-      standardUnits: totalUnits,
-      quantity: qtyNum,
-    };
+      const entry: Drink = {
+        id: `drink_${Date.now()}`,
+        dateISO: formatISO(selectedDateForAdd),
+        name: qtyModal.preset.name,
+        beverageType: qtyModal.preset.beverageType,
+        volumeMl: qtyModal.preset.volumeMl,
+        abvPercent: qtyModal.preset.abvPercent,
+        standardUnits: totalUnits,
+        quantity: qtyNum,
+      };
     await addOrMergeDrink(entry);
     closeQtyModal();
     // Alert.alert('Добавлено', `${qtyModal.preset.name}: ${qtyNum} ед. (~${totalUnits} std)`);
@@ -260,7 +265,7 @@ export default function TodayScreen() {
     const units = calculateStandardUnits(preset.volumeMl, preset.abvPercent);
     const entry: Drink = {
       id: `drink_${Date.now()}`,
-      dateISO: todayISO(),
+      dateISO: formatISO(selectedDateForAdd),
       name: preset.name,
       beverageType: preset.beverageType,
       volumeMl: preset.volumeMl,
@@ -332,11 +337,26 @@ export default function TodayScreen() {
   const [todayList, setTodayList] = useState<Drink[]>([]);
   const totalUnits = useMemo(() => todayList.reduce((s, d) => s + d.standardUnits, 0), [todayList]);
   const totalVolumeMl = useMemo(() => todayList.reduce((s, d) => s + d.volumeMl * (d.quantity ?? 1), 0), [todayList]);
+  const totalAlcoholGrams = useMemo(() => {
+    return todayList.reduce((s, d) => {
+      const ethanolDensity = 0.789; // g/mL
+      const grams = d.volumeMl * (d.abvPercent / 100) * ethanolDensity * (d.quantity ?? 1);
+      return s + grams;
+    }, 0);
+  }, [todayList]);
+
+  const canGoNext = useMemo(() => {
+    const nextDate = new Date(selectedDateForAdd);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return nextDate <= today;
+  }, [selectedDateForAdd]);
 
   const reloadToday = useCallback(async () => {
-    const list = await getDrinksByDate(todayISO());
+    const list = await getDrinksByDate(formatISO(selectedDateForAdd));
     setTodayList(list);
-  }, []);
+  }, [selectedDateForAdd]);
 
   useFocusEffect(
     useCallback(() => {
@@ -455,7 +475,7 @@ export default function TodayScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <TouchableOpacity
         style={styles.collapsibleHeader}
         onPress={() => setPresetsCollapsed(!presetsCollapsed)}
@@ -502,6 +522,9 @@ export default function TodayScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.presetText, { color: beverageColor.text, opacity: isEditing ? 0.3 : 1 }]}>{p.name}</Text>
+                <Text style={[styles.presetDetails, { color: beverageColor.text, opacity: isEditing ? 0.3 : 0.7 }]}>
+                  {formatTotalVolume(p.volumeMl, 1)} · {p.abvPercent}%
+                </Text>
                 {isEditing && (
                   <View style={styles.editIconContainer}>
                     <View style={styles.editButtonsRow}>
@@ -538,24 +561,72 @@ export default function TodayScreen() {
           }}
           accessibilityLabel="Добавить напиток"
         >
-          <Entypo name="circle-with-plus" size={20} color={colors.primaryLight} />
+          <Entypo name="circle-with-plus" size={24} color={colors.primaryLight} />
         </TouchableOpacity>
         </ScrollView>
       </TouchableOpacity>
       )}
+
 
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => deletingPresetId && setDeletingPresetId(null)}
       >
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Сегодняшние записи</Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.total}>всего: {formatTotalVolume(totalVolumeMl, 1)}</Text>
-            <Text style={styles.total}>всего: {totalUnits.toFixed(2)} ед.</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+            <TouchableOpacity
+              style={styles.dateNavButton}
+              onPress={() => {
+                const newDate = new Date(selectedDateForAdd);
+                newDate.setDate(newDate.getDate() - 1);
+                setSelectedDateForAdd(newDate);
+              }}
+              activeOpacity={0.7}
+            >
+              <FontAwesome name="chevron-left" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setDatePickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dateButtonText}>
+                {selectedDateForAdd.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dateNavButton}
+              onPress={() => {
+                if (!canGoNext) return;
+                const newDate = new Date(selectedDateForAdd);
+                newDate.setDate(newDate.getDate() + 1);
+                setSelectedDateForAdd(newDate);
+              }}
+              activeOpacity={canGoNext ? 0.7 : 1}
+              disabled={!canGoNext}
+            >
+              <FontAwesome name="chevron-right" size={20} color={canGoNext ? colors.primary : colors.textTertiary} />
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
+      {/* Бар со статистикой */}
+      <View style={styles.statsBar}>
+        <View style={styles.statsBarItem}>
+          <Text style={styles.statsBarLabel}>Объем</Text>
+          <Text style={styles.statsBarValue}>{formatTotalVolume(totalVolumeMl, 1)}</Text>
+        </View>
+        <View style={styles.statsBarDivider} />
+        <View style={styles.statsBarItem}>
+          <Text style={styles.statsBarLabel}>Единицы</Text>
+          <Text style={styles.statsBarValue}>{totalUnits.toFixed(2)}</Text>
+        </View>
+        <View style={styles.statsBarDivider} />
+        <View style={styles.statsBarItem}>
+          <Text style={styles.statsBarLabel}>Спирт</Text>
+          <Text style={styles.statsBarValue}>{Math.round(totalAlcoholGrams)} г</Text>
+        </View>
+      </View>
       <FlatList
         data={todayList}
         keyExtractor={(item) => item.id}
@@ -971,7 +1042,116 @@ export default function TodayScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+
+      {/* Модалка выбора даты */}
+      <Modal visible={datePickerVisible} animationType="slide" transparent>
+        <TouchableWithoutFeedback onPress={() => setDatePickerVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.datePickerCard}>
+                <GestureDetector gesture={Gesture.Pan()
+                  .activeOffsetY([10, 100])
+                  .failOffsetX([-50, 50])
+                  .onEnd((e) => {
+                    if (e.translationY > 50) {
+                      runOnJS(setDatePickerVisible)(false);
+                    }
+                  })
+                }>
+                  <TouchableOpacity 
+                    style={styles.modalDragHandle}
+                    onPress={() => setDatePickerVisible(false)}
+                    activeOpacity={1}
+                  >
+                    <View style={styles.modalDragBar} />
+                  </TouchableOpacity>
+                </GestureDetector>
+                <Text style={styles.modalTitle}>Выберите дату</Text>
+                <View style={styles.datePickerWeekRow}>
+                  {WEEKDAY_SHORT_RU.map((day) => (
+                    <Text key={day} style={styles.datePickerWeekLabel}>{day}</Text>
+                  ))}
+                </View>
+                <View style={styles.datePickerGrid}>
+                  {(() => {
+                    const matrix = buildMonthMatrix(selectedDateForAdd);
+                    const today = new Date();
+                    const todayISO = formatISO(today);
+                    return matrix.map((date, idx) => {
+                      const dateISO = formatISO(date);
+                      const isCurrentMonth = date.getMonth() === selectedDateForAdd.getMonth();
+                      const isSelected = dateISO === formatISO(selectedDateForAdd);
+                      const isToday = dateISO === todayISO;
+                      return (
+                        <TouchableOpacity
+                          key={`${dateISO}_${idx}`}
+                          style={[
+                            styles.datePickerCell,
+                            !isCurrentMonth && styles.datePickerCellAdjacent,
+                            isSelected && styles.datePickerCellSelected,
+                            isToday && styles.datePickerCellToday,
+                          ]}
+                          onPress={() => {
+                            setSelectedDateForAdd(date);
+                            setDatePickerVisible(false);
+                          }}
+                        >
+                          <Text style={[
+                            styles.datePickerCellText,
+                            !isCurrentMonth && styles.datePickerCellTextMuted,
+                            isSelected && styles.datePickerCellTextSelected,
+                          ]}>
+                            {date.getDate()}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    });
+                  })()}
+                </View>
+                <View style={styles.datePickerMonthNav}>
+                  <TouchableOpacity
+                    style={styles.datePickerNavButton}
+                    onPress={() => {
+                      const newDate = new Date(selectedDateForAdd);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setSelectedDateForAdd(newDate);
+                    }}
+                  >
+                    <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.datePickerMonthLabel}>
+                    {selectedDateForAdd.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.datePickerNavButton}
+                    onPress={() => {
+                      const newDate = new Date(selectedDateForAdd);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      const today = new Date();
+                      if (newDate <= today) {
+                        setSelectedDateForAdd(newDate);
+                      }
+                    }}
+                  >
+                    <MaterialIcons name="chevron-right" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={styles.todayButton}
+                  onPress={() => {
+                    setSelectedDateForAdd(new Date());
+                    setDatePickerVisible(false);
+                  }}
+                >
+                  <Text style={styles.todayButtonText}>Сегодня</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+    </SafeAreaView>
   );
 }
 
@@ -1094,10 +1274,15 @@ const styles = StyleSheet.create({
   presetText: {
     fontSize: 14,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  presetDetails: {
+    fontSize: 11,
+    fontWeight: '400',
   },
   addFavButtonRect: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     marginRight: 8,
@@ -1105,6 +1290,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: colors.primary,
@@ -1438,6 +1625,165 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontSize: 16,
     fontWeight: '700',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.backgroundCard,
+    borderRadius: 12,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  statsBarItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statsBarLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  statsBarValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  statsBarDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.border,
+    marginHorizontal: 8,
+  },
+  dateButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  dateNavButton: {
+    padding: 4,
+  },
+  datePickerCard: {
+    backgroundColor: colors.backgroundCard,
+    minHeight: '50%',
+    maxHeight: '80%',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  datePickerWeekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  datePickerWeekLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    width: 40,
+    textAlign: 'center',
+  },
+  datePickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 4,
+  },
+  datePickerCell: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  datePickerCellAdjacent: {
+    opacity: 0.3,
+  },
+  datePickerCellSelected: {
+    backgroundColor: colors.primary,
+  },
+  datePickerCellToday: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  datePickerCellText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  datePickerCellTextMuted: {
+    color: colors.textTertiary,
+  },
+  datePickerCellTextSelected: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  datePickerMonthNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  datePickerNavButton: {
+    padding: 8,
+  },
+  datePickerMonthLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    textTransform: 'capitalize',
+  },
+  todayButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  todayButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
 

@@ -10,6 +10,7 @@ import { Drink } from '../types/drink';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst } from '../utils/date';
 import { formatTotalVolume } from '../utils/units';
 import { colors } from '../theme/colors';
+import { getDailyGoal } from '../storage/settings';
 
 // Компонент для свайп-удаления записи
 function SwipeableListItem({ item, onRemove }: { item: Drink; onRemove: (id: string) => void }) {
@@ -149,6 +150,7 @@ export default function CalendarScreen() {
   const [all, setAll] = useState<Drink[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
+  const [dailyGoal, setDailyGoal] = useState<number | null>(null);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
@@ -177,14 +179,20 @@ export default function CalendarScreen() {
     setAll(list);
   }, []);
 
+  const loadDailyGoal = useCallback(async () => {
+    const goal = await getDailyGoal();
+    setDailyGoal(goal);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       // Загружаем данные асинхронно, не блокируя UI
       loadAll();
+      loadDailyGoal();
       return () => {
         // Cleanup при размонтировании
       };
-    }, [loadAll])
+    }, [loadAll, loadDailyGoal])
   );
 
   const totalsByDate = useMemo(() => {
@@ -369,6 +377,17 @@ export default function CalendarScreen() {
                   const isCurrentMonth = d.getMonth() === item.getMonth();
                   const isLastCol = (idx % 7) === 6;
                   const isLastRow = Math.floor(idx / 7) === 5;
+                  
+                  // Определяем цвет индикации
+                  let cellColorStyle = null;
+                  if (dailyGoal !== null && total > dailyGoal) {
+                    if (total <= dailyGoal * 1.5) {
+                      cellColorStyle = styles.cellExceedsGoal; // Розовый - превышено
+                    } else {
+                      cellColorStyle = styles.cellStronglyExceeds; // Красный - сильно превышено
+                    }
+                  }
+                  
                   return (
                     <TouchableOpacity
                       key={`${iso}_${idx}`}
@@ -376,6 +395,7 @@ export default function CalendarScreen() {
                         styles.cell,
                         { width: cellWidth, height: cellHeight, borderRightWidth: isLastCol ? 0 : StyleSheet.hairlineWidth, borderBottomWidth: isLastRow ? 0 : StyleSheet.hairlineWidth },
                         isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
+                        cellColorStyle,
                       ]}
                       onPress={() => openDay(d)}
                     >
@@ -500,6 +520,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 6,
     paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   weekCell: {
     flex: 1,
@@ -545,6 +566,12 @@ const styles = StyleSheet.create({
   },
   cellAdjacent: {
     backgroundColor: colors.backgroundTertiary,
+  },
+  cellExceedsGoal: {
+    backgroundColor: '#ec489940', // Розовый - превышено (40 = ~25% opacity)
+  },
+  cellStronglyExceeds: {
+    backgroundColor: `${colors.error}40`, // Красный - сильно превышено
   },
   badge: {
     marginTop: 4,
