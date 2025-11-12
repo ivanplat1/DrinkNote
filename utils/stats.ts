@@ -1,5 +1,5 @@
 import { Drink } from '../types/drink';
-import { startOfMonth, endOfMonth, formatISO } from './date';
+import { startOfMonth, endOfMonth, formatISO, getWeekdayIndexMonFirst } from './date';
 
 // Начало недели (понедельник)
 export function startOfWeek(date: Date): Date {
@@ -133,6 +133,28 @@ export function getOverallStats(drinks: Drink[]): {
   };
 }
 
+// Получить статистику по дням выбранной недели
+export function getWeekDaysStats(drinks: Drink[], date: Date): Array<{ day: Date; units: number }> {
+  const start = startOfWeek(date);
+  const result: Array<{ day: Date; units: number }> = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    const dayISO = formatISO(day);
+    
+    const dayDrinks = drinks.filter(d => d.dateISO === dayISO);
+    const units = dayDrinks.reduce((sum, d) => sum + d.standardUnits, 0);
+    
+    result.push({
+      day,
+      units: Math.round(units * 100) / 100,
+    });
+  }
+  
+  return result;
+}
+
 // Получить последние N недель
 export function getLastNWeeks(drinks: Drink[], n: number): Array<{ weekStart: Date; stats: ReturnType<typeof getWeekStats> }> {
   const result: Array<{ weekStart: Date; stats: ReturnType<typeof getWeekStats> }> = [];
@@ -165,5 +187,192 @@ export function getLastNMonths(drinks: Drink[], n: number): Array<{ month: Date;
   }
   
   return result;
+}
+
+// Статистика по типам напитков
+export function getBeverageTypeStats(drinks: Drink[]): Array<{
+  type: Drink['beverageType'];
+  totalUnits: number;
+  totalVolumeMl: number;
+  percentage: number;
+  count: number;
+}> {
+  const typeMap = new Map<Drink['beverageType'], { units: number; volume: number; count: number }>();
+  
+  drinks.forEach(drink => {
+    const existing = typeMap.get(drink.beverageType) || { units: 0, volume: 0, count: 0 };
+    typeMap.set(drink.beverageType, {
+      units: existing.units + drink.standardUnits,
+      volume: existing.volume + drink.volumeMl * (drink.quantity ?? 1),
+      count: existing.count + 1,
+    });
+  });
+  
+  const totalUnits = drinks.reduce((sum, d) => sum + d.standardUnits, 0);
+  
+  return Array.from(typeMap.entries())
+    .map(([type, data]) => ({
+      type,
+      totalUnits: Math.round(data.units * 100) / 100,
+      totalVolumeMl: data.volume,
+      percentage: totalUnits > 0 ? Math.round((data.units / totalUnits) * 1000) / 10 : 0,
+      count: data.count,
+    }))
+    .sort((a, b) => b.totalUnits - a.totalUnits);
+}
+
+// Статистика по дням недели
+export function getWeekdayStats(drinks: Drink[]): Array<{
+  weekday: number; // 0 = понедельник, 6 = воскресенье
+  totalUnits: number;
+  averageUnits: number;
+  daysCount: number;
+}> {
+  const weekdayMap = new Map<number, { units: number; dates: Set<string> }>();
+  
+  drinks.forEach(drink => {
+    const date = new Date(drink.dateISO + 'T00:00:00');
+    const weekday = getWeekdayIndexMonFirst(date);
+    const existing = weekdayMap.get(weekday) || { units: 0, dates: new Set() };
+    existing.units += drink.standardUnits;
+    existing.dates.add(drink.dateISO);
+    weekdayMap.set(weekday, existing);
+  });
+  
+  const result: Array<{ weekday: number; totalUnits: number; averageUnits: number; daysCount: number }> = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const data = weekdayMap.get(i) || { units: 0, dates: new Set() };
+    const daysCount = data.dates.size;
+    result.push({
+      weekday: i,
+      totalUnits: Math.round(data.units * 100) / 100,
+      averageUnits: daysCount > 0 ? Math.round((data.units / daysCount) * 100) / 100 : 0,
+      daysCount,
+    });
+  }
+  
+  return result;
+}
+
+
+// Рекорды и достижения
+export function getRecords(drinks: Drink[]): {
+  heaviestDay: { date: string; units: number } | null;
+  longestStreak: number;
+  currentStreak: number;
+  lightestDay: { date: string; units: number } | null;
+} {
+  if (drinks.length === 0) {
+    return {
+      heaviestDay: null,
+      longestStreak: 0,
+      currentStreak: 0,
+      lightestDay: null,
+    };
+  }
+  
+  // Группируем по дням
+  const dayMap = new Map<string, number>();
+  drinks.forEach(drink => {
+    const existing = dayMap.get(drink.dateISO) || 0;
+    dayMap.set(drink.dateISO, existing + drink.standardUnits);
+  });
+  
+  // Самый тяжелый и легкий день
+  let heaviestDay: { date: string; units: number } | null = null;
+  let lightestDay: { date: string; units: number } | null = null;
+  
+  dayMap.forEach((units, date) => {
+    if (!heaviestDay || units > heaviestDay.units) {
+      heaviestDay = { date, units: Math.round(units * 100) / 100 };
+    }
+    if (!lightestDay || units < lightestDay.units) {
+      lightestDay = { date, units: Math.round(units * 100) / 100 };
+    }
+  });
+  
+  // Серии дней без алкоголя
+  const allDates = Array.from(dayMap.keys()).sort();
+  const today = formatISO(new Date());
+  
+  let longestStreak = 0;
+  let currentStreak = 0;
+  let currentStreakEnd = today;
+  
+  if (allDates.length > 0) {
+    const firstDate = new Date(allDates[0] + 'T00:00:00');
+    const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    
+    // Проверяем серии между записями
+    for (let i = 0; i < allDates.length - 1; i++) {
+      const current = new Date(allDates[i] + 'T00:00:00');
+      const next = new Date(allDates[i + 1] + 'T00:00:00');
+      const diffDays = Math.floor((next.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays > 1) {
+        const streak = diffDays - 1;
+        if (streak > longestStreak) {
+          longestStreak = streak;
+        }
+      }
+    }
+    
+    // Проверяем текущую серию (от последней записи до сегодня)
+    const lastRecordDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+    const daysSinceLastRecord = Math.floor((todayDate.getTime() - lastRecordDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceLastRecord > 0) {
+      currentStreak = daysSinceLastRecord;
+    }
+    
+    // Проверяем серию до первой записи
+    const daysBeforeFirst = Math.floor((firstDate.getTime() - new Date('2020-01-01').getTime()) / (1000 * 60 * 60 * 24));
+    // Не учитываем это в longestStreak, так как это период до начала записей
+  }
+  
+  return {
+    heaviestDay,
+    longestStreak,
+    currentStreak,
+    lightestDay,
+  };
+}
+
+// Топ напитков
+export function getTopDrinks(drinks: Drink[], limit: number = 5): Array<{
+  name: string;
+  beverageType: Drink['beverageType'];
+  totalUnits: number;
+  totalVolumeMl: number;
+  count: number;
+}> {
+  const drinkMap = new Map<string, { units: number; volume: number; count: number; type: Drink['beverageType'] }>();
+  
+  drinks.forEach(drink => {
+    const key = `${drink.name}_${drink.volumeMl}_${drink.abvPercent}`;
+    const existing = drinkMap.get(key) || { units: 0, volume: 0, count: 0, type: drink.beverageType };
+    drinkMap.set(key, {
+      units: existing.units + drink.standardUnits,
+      volume: existing.volume + drink.volumeMl * (drink.quantity ?? 1),
+      count: existing.count + (drink.quantity ?? 1),
+      type: drink.beverageType,
+    });
+  });
+  
+  return Array.from(drinkMap.entries())
+    .map(([key, data]) => {
+      const [name] = key.split('_');
+      return {
+        name,
+        beverageType: data.type,
+        totalUnits: Math.round(data.units * 100) / 100,
+        totalVolumeMl: data.volume,
+        count: data.count,
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
 }
 
