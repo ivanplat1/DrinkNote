@@ -1,0 +1,45 @@
+Improve drink addition modal UX and fix keyboard dismissal issues
+
+- Remove automatic favorite addition when adding drinks from calendar
+  - Drinks are now only added to the selected day, not to favorites
+  - Prevents unwanted favorite list pollution
+
+- Update "Add drink" button styling in calendar day modal
+  - Match style with "Add custom drink" button (purple dashed border)
+  - Remove icon, use "+ Add drink" text format
+  - Make border color purple instead of gray
+
+- Remove "Cancel" buttons from add drink modals
+  - Remove from calendar custom drink modal
+  - Remove from today screen add drink modal
+  - Modals can be closed via swipe down or backdrop tap
+
+- Fix keyboard dismissal when typing in search input
+  - Remove conditional rendering of TextInput to prevent unmounting
+  - Change outer TouchableWithoutFeedback to prevent accidental closure
+  - Ensure TextInput maintains focus during typing
+
+- Add search query reset on modal close
+  - Clear search input when closing add drink modals
+  - Reset occurs in all modal close scenarios (swipe, backdrop, selection)
+
+- Display volume and percentage in drink lists
+  - Show volume and ABV next to drink names in calendar add modal
+  - Format: "150 мл · 12%" displayed on the right side
+  - Applied to both favorites and suggested presets lists
+
+- Clean up suggested preset names
+  - Remove volume and percentage from preset names
+  - Names now contain only drink name (e.g., "Мохито" instead of "Мохито 250 мл (12%)")
+  - Volume and percentage displayed separately in UI
+
+- Improve modal bottom padding
+  - Increase bottom padding for better spacing from screen edge
+  - Apply to all modals (add drink, custom drink, edit modals)
+  - Reduce gap between "Add drink" button and home indicator by half
+
+- Fix search input focus issues
+  - Ensure TextInput is always rendered (not conditionally)
+  - Prevent modal re-rendering from causing keyboard dismissal
+  - Add keyboardShouldPersistTaps="handled" to ScrollView
+

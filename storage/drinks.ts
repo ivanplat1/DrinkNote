@@ -77,8 +77,8 @@ export async function updateDrink(id: string, updated: Partial<Drink>): Promise<
     dateISO: updated.dateISO ?? existing.dateISO, // Сохраняем дату если не указана
   };
   
-  // Пересчитываем стандартные единицы если изменились объём или крепость
-  if (updated.volumeMl !== undefined || updated.abvPercent !== undefined) {
+  // Пересчитываем стандартные единицы если изменились объём, крепость или количество
+  if (updated.volumeMl !== undefined || updated.abvPercent !== undefined || updated.quantity !== undefined) {
     const volumeMl = updated.volumeMl ?? existing.volumeMl;
     const abvPercent = updated.abvPercent ?? existing.abvPercent;
     const quantity = updated.quantity ?? existing.quantity ?? 1;
