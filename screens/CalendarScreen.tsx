@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction } from 'react-native-reanimated';
-import { MaterialIcons, FontAwesome6, FontAwesome } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
@@ -12,7 +12,7 @@ import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst } from '../utils/date';
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { colors } from '../theme/colors';
-import { getDailyGoal } from '../storage/settings';
+import { getDailyGoal, getLethalDose } from '../storage/settings';
 
 // Компонент заголовка месяца - вынесен отдельно для независимого обновления
 function MonthHeader({ label, headerStyle, monthStyle }: { 
@@ -187,6 +187,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
   const [dailyGoal, setDailyGoal] = useState<number | null>(null);
+  const [lethalDose, setLethalDose] = useState<number>(15);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
@@ -221,6 +222,9 @@ export default function CalendarScreen() {
   const loadDailyGoal = useCallback(async () => {
     const goal = await getDailyGoal();
     setDailyGoal(goal);
+    
+    const lethal = await getLethalDose();
+    setLethalDose(lethal);
   }, []);
 
   useFocusEffect(
@@ -683,12 +687,19 @@ export default function CalendarScreen() {
       
       // Определяем цвет индикации
       let cellColorStyle = null;
-      if (dailyGoal !== null && total > dailyGoal) {
-        if (total <= dailyGoal * 1.5) {
+      if (dailyGoal !== null) {
+        if (total === 0) {
+          cellColorStyle = styles.cellNoDrink; // Зеленый - не пил
+        } else if (total <= dailyGoal) {
+          cellColorStyle = styles.cellWithinGoal; // Зеленый - в пределах нормы
+        } else if (total <= dailyGoal * 1.5) {
           cellColorStyle = styles.cellExceedsGoal; // Розовый - превышено
         } else {
           cellColorStyle = styles.cellStronglyExceeds; // Красный - сильно превышено
         }
+      } else if (total === 0) {
+        // Если цель не установлена, подсвечиваем только дни без алкоголя
+        cellColorStyle = styles.cellNoDrink;
       }
       
       return (
@@ -696,7 +707,7 @@ export default function CalendarScreen() {
           key={`${iso}_${idx}`}
           style={[
             styles.cell,
-            { width: cellWidth, height: cellHeight, borderRightWidth: isLastCol ? 0 : StyleSheet.hairlineWidth, borderBottomWidth: isLastRow ? 0 : StyleSheet.hairlineWidth },
+            { width: cellWidth - 4, height: cellHeight - 4 },
             isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
             cellColorStyle,
           ]}
@@ -705,7 +716,13 @@ export default function CalendarScreen() {
           <View style={styles.cellContent}>
             <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
             {total > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{total.toFixed(1)}</Text></View>
+              total >= lethalDose ? (
+                <View style={styles.deadIconContainer}>
+                  <MaterialCommunityIcons name="emoticon-dead" size={20} color={colors.error} />
+                </View>
+              ) : (
+                <View style={styles.badge}><Text style={styles.badgeText}>{total.toFixed(1)}</Text></View>
+              )
             )}
           </View>
         </TouchableOpacity>
@@ -726,7 +743,7 @@ export default function CalendarScreen() {
         </View>
       </View>
     );
-  }, [listHeight, screenWidth, monthMatrices, totalsByDate, dailyGoal, openDay]);
+  }, [listHeight, screenWidth, monthMatrices, totalsByDate, dailyGoal, lethalDose, openDay]);
 
   // Логирование времени рендеринга компонента
   useEffect(() => {
@@ -1207,7 +1224,24 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    borderColor: colors.border,
+    borderRadius: 10,
+    margin: 2,
+    borderWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderRightColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.3)',
+    borderLeftColor: 'rgba(0, 0, 0, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: -2, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   cellContent: {
     alignItems: 'center',
@@ -1228,6 +1262,8 @@ const styles = StyleSheet.create({
   },
   dayNumMuted: {
     color: colors.textTertiary,
+    opacity: 0.5,
+    fontSize: 14,
   },
   cellCurrent: {
     backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
@@ -1235,11 +1271,17 @@ const styles = StyleSheet.create({
   cellAdjacent: {
     backgroundColor: colors.backgroundTertiary,
   },
+  cellNoDrink: {
+    backgroundColor: '#10b98140', // Зеленый - не пил (40 = ~25% opacity)
+  },
+  cellWithinGoal: {
+    backgroundColor: '#10b98130', // Зеленый - в пределах нормы (30 = ~19% opacity, светлее)
+  },
   cellExceedsGoal: {
     backgroundColor: '#ec489940', // Розовый - превышено (40 = ~25% opacity)
   },
   cellStronglyExceeds: {
-    backgroundColor: `${colors.error}40`, // Красный - сильно превышено
+    backgroundColor: '#ef444440', // Красный - сильно превышено (40 = ~25% opacity)
   },
   badge: {
     marginTop: 4,
@@ -1253,6 +1295,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
     fontWeight: '700',
+  },
+  deadIconContainer: {
+    marginTop: 4,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalBackdrop: {
     flex: 1,
