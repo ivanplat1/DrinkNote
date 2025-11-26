@@ -4,12 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getDailyGoal, setDailyGoal, exportData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate } from '../storage/settings';
+import { getDailyGoal, setDailyGoal, exportData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
 import { colors } from '../theme/colors';
 
 export default function SettingsScreen() {
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
   const [weight, setWeightValue] = useState<string>('');
   const [isEditingWeight, setIsEditingWeight] = useState(false);
   const [gender, setGenderValue] = useState<Gender | null>(null);
@@ -21,6 +22,11 @@ export default function SettingsScreen() {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
   const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
+
+  const updateRecommendation = useCallback(async () => {
+    const recommended = await getRecommendedDailyLimit();
+    setRecommendedLimit(recommended);
+  }, []);
 
   const loadSettings = useCallback(async () => {
     const goal = await getDailyGoal();
@@ -51,7 +57,10 @@ export default function SettingsScreen() {
     }
     
     setAppStartDateValue(startDate);
-  }, []);
+    
+    // Загружаем рекомендацию
+    await updateRecommendation();
+  }, [updateRecommendation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +86,7 @@ export default function SettingsScreen() {
       await setUserWeight(null);
       const lethal = await getLethalDose();
       setLethalDose(lethal);
+      await updateRecommendation();
       loadSettings();
       return;
     }
@@ -88,6 +98,7 @@ export default function SettingsScreen() {
     await setUserWeight(value);
     const lethal = await getLethalDose();
     setLethalDose(lethal);
+    await updateRecommendation();
   };
 
   const handleSaveGender = async (selectedGender: Gender) => {
@@ -97,6 +108,7 @@ export default function SettingsScreen() {
     setGenderValue(newGender);
     const lethal = await getLethalDose();
     setLethalDose(lethal);
+    await updateRecommendation();
   };
 
 
@@ -145,44 +157,83 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.title}>Настройки</Text>
-
         {/* Дневная цель */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Дневная цель</Text>
+          <Text style={styles.sectionSubtitle}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
           <View style={styles.goalContainer}>
-            {isEditingGoal ? (
-              <View style={styles.goalInputRow}>
-                <TextInput
-                  style={styles.goalInput}
-                  value={dailyGoal}
-                  onChangeText={(text) => {
-                    const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
-                    setDailyGoalValue(normalized);
-                  }}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveGoal}
-                  onBlur={handleSaveGoal}
-                  autoFocus
-                />
-                <Text style={styles.goalUnit}>ед.</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.goalDisplayRow}
-                onPress={() => setIsEditingGoal(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.goalValue}>
-                  {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(2)} ед.` : 'Не установлена'}
+            {/* Левая часть - Моя цель */}
+            <View style={styles.goalColumn}>
+              <Text style={styles.goalColumnLabel}>Моя цель</Text>
+              {isEditingGoal ? (
+                <View style={styles.goalInputRow}>
+                  <TextInput
+                    style={styles.goalInput}
+                    value={dailyGoal}
+                    onChangeText={(text) => {
+                      const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
+                      setDailyGoalValue(normalized);
+                    }}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    onSubmitEditing={handleSaveGoal}
+                    onBlur={handleSaveGoal}
+                    autoFocus
+                  />
+                  <Text style={styles.goalUnit}>ед.</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.goalDisplayRow}
+                  onPress={() => setIsEditingGoal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.goalValue}>
+                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : 'Не установлена'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Разделитель */}
+            <View style={styles.goalDivider} />
+            
+            {/* Правая часть - Условная норма */}
+            <View style={styles.goalColumn}>
+              <Text style={styles.goalColumnLabel}>Условная норма</Text>
+              <View style={[styles.goalDisplayRow, { flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
+                <Text style={[styles.goalValue, styles.goalRecommended]}>
+                  {recommendedLimit.toFixed(1)} ед.
                 </Text>
-              </TouchableOpacity>
-            )}
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert(
+                      'Как рассчитывается условная норма',
+                      '📊 Базовая норма:\n' +
+                      '• Мужчины: 2.5 ед. (25г спирта)\n' +
+                      '• Женщины: 1.5 ед. (15г спирта)\n\n' +
+                      '⚖️ Корректировка по весу:\n' +
+                      '• Средний вес: 80кг (М) / 65кг (Ж)\n' +
+                      '• Коэффициент: ±30%\n\n' +
+                      '🎂 Корректировка по возрасту:\n' +
+                      '• До 25 лет: -20%\n' +
+                      '• 50-65 лет: -15%\n' +
+                      '• Старше 65: -30%\n\n' +
+                      '⚠️ Внимание:\n' +
+                      'Это ориентировочный расчет, не медицинская рекомендация. ВОЗ утверждает, что безопасного уровня потребления алкоголя не существует.',
+                      [{ text: 'Понятно', style: 'default' }]
+                    );
+                  }}
+                  style={{ padding: 4 }}
+                >
+                  <MaterialIcons name="info-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -204,6 +255,7 @@ export default function SettingsScreen() {
                     await setUserWeight(newValue);
                     const lethal = await getLethalDose();
                     setLethalDose(lethal);
+                    await updateRecommendation();
                   }}
                 >
                   <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
@@ -232,6 +284,7 @@ export default function SettingsScreen() {
                     await setUserWeight(newValue);
                     const lethal = await getLethalDose();
                     setLethalDose(lethal);
+                    await updateRecommendation();
                   }}
                 >
                   <MaterialIcons name="chevron-right" size={24} color={colors.primary} />
@@ -290,7 +343,7 @@ export default function SettingsScreen() {
           
           <View style={styles.profileContainer}>
             <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Дата:</Text>
+              <Text style={styles.profileLabel}>Дата отсчета:</Text>
               <TouchableOpacity
                 style={{ flex: 1, alignItems: 'flex-end' }}
                 onPress={() => {
@@ -365,6 +418,7 @@ export default function SettingsScreen() {
                   setAge(calculatedAge);
                   const lethal = await getLethalDose();
                   setLethalDose(lethal);
+                  await updateRecommendation();
                   setShowBirthDatePicker(false);
                 }}
                 style={styles.datePickerButton}
@@ -460,7 +514,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 16,
+    marginHorizontal: 16,
     color: colors.text,
     letterSpacing: -0.5,
   },
@@ -482,6 +538,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundCard,
     borderRadius: 12,
     padding: 16,
+    flexDirection: 'row',
+    alignItems: 'stretch',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -493,6 +551,21 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
+  },
+  goalColumn: {
+    flex: 1,
+  },
+  goalColumnLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  goalDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 16,
+    alignSelf: 'stretch',
   },
   goalInputRow: {
     flexDirection: 'row',
@@ -536,6 +609,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  goalRecommended: {
+    color: colors.primary,
   },
   editButton: {
     padding: 4,
@@ -791,3 +867,4 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
+

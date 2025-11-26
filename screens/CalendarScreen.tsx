@@ -196,14 +196,13 @@ function SwipeableListItem({ item, onRemove, onQuantityChange }: { item: Drink; 
 }
 
 export default function CalendarScreen() {
-  const renderStartTimeRef = useRef(performance.now());
-  renderStartTimeRef.current = performance.now();
   const [all, setAll] = useState<Drink[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
   const [dailyGoal, setDailyGoal] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
   const [appStartDate, setAppStartDate] = useState<string | null>(null);
+  const appStartDateRef = useRef<string | null>(null);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
@@ -235,15 +234,22 @@ export default function CalendarScreen() {
     setAll(list);
   }, []);
 
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
   const loadDailyGoal = useCallback(async () => {
+    console.log('[LOAD DATA] loadDailyGoal started');
     const goal = await getDailyGoal();
     setDailyGoal(goal);
+    console.log('[LOAD DATA] dailyGoal loaded:', goal);
     
     const lethal = await getLethalDose();
     setLethalDose(lethal);
+    console.log('[LOAD DATA] lethalDose loaded:', lethal);
     
     const startDate = await getAppStartDate();
+    appStartDateRef.current = startDate;
     setAppStartDate(startDate);
+    console.log('[LOAD DATA] appStartDate loaded:', startDate, '(ref also set)');
   }, []);
 
   useFocusEffect(
@@ -313,7 +319,7 @@ export default function CalendarScreen() {
     } else {
       const sortedDates = allDates.sort();
       const firstDate = new Date(sortedDates[0]);
-      const startDateFilter = appStartDate ? new Date(appStartDate) : firstDate;
+      const startDateFilter = appStartDateRef.current ? new Date(appStartDateRef.current) : firstDate;
       // Начинаем с более РАННЕЙ даты (или с appStartDate если она установлена)
       const effectiveStartDate = startDateFilter < firstDate ? startDateFilter : firstDate;
       
@@ -346,8 +352,15 @@ export default function CalendarScreen() {
     }
     
     return { currentStreak, bestStreak };
-  }, [totalsByDate, appStartDate]);
+  }, [totalsByDate, forceUpdate]);
 
+  // Форсируем обновление при изменении appStartDate
+  useEffect(() => {
+    if (appStartDate !== null) {
+      setForceUpdate(prev => prev + 1);
+    }
+  }, [appStartDate]);
+  
   // Проверка и разблокировка достижений
   useEffect(() => {
     const checkAchievements = async () => {
@@ -434,32 +447,7 @@ export default function CalendarScreen() {
     }
   }, [monthLabels, initialIndex, monthLabel]);
 
-  useEffect(() => {
-    if (listRef.current && listHeight !== null && listHeight > 0) {
-      // Устанавливаем начальный индекс сразу чтобы кнопка появлялась без задержки
-      setVisibleIndex(initialIndex);
-      
-      const scrollStartTime = performance.now();
-      // Используем requestAnimationFrame для более плавного скролла
-      const timeoutId = requestAnimationFrame(() => {
-        try {
-          listRef.current?.scrollToIndex({ 
-            index: initialIndex, 
-            animated: false,
-            viewOffset: 0,
-            viewPosition: 0,
-          });
-          const scrollEndTime = performance.now();
-          console.log(`[PERF] scrollToIndex completed in ${(scrollEndTime - scrollStartTime).toFixed(2)}ms`);
-        } catch (error) {
-          // Игнорируем ошибки скролла
-          const scrollEndTime = performance.now();
-          console.log(`[PERF] scrollToIndex failed in ${(scrollEndTime - scrollStartTime).toFixed(2)}ms`);
-        }
-      });
-      return () => cancelAnimationFrame(timeoutId);
-    }
-  }, [listHeight, initialIndex]);
+  // initialScrollIndex делает начальный скролл, не нужен useEffect
 
   const onMomentumEndHorizontal = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -796,14 +784,11 @@ export default function CalendarScreen() {
 
   // Мемоизируем renderItem для оптимизации производительности
   const renderMonthItem = useCallback(({ item, index }: { item: Date; index: number }) => {
-    const renderItemStart = performance.now();
     if (!listHeight || listHeight <= 0) {
       return <View style={{ height: 300, width: screenWidth }} />;
     }
     const monthKey = `${item.getFullYear()}-${item.getMonth()}`;
-    const matrixStart = performance.now();
     const matrix = monthMatrices.get(monthKey) || buildMonthMatrix(item);
-    const matrixEnd = performance.now();
     
     // Высота ячейки — 6 рядов по высоте месяца
     // Используем Math.ceil для более точного распределения высоты
@@ -811,7 +796,6 @@ export default function CalendarScreen() {
     const cellWidth = Math.floor(screenWidth / 7);
     const monthWidth = cellWidth * 7;
     
-    const cellsStart = performance.now();
     const todayISO = formatISO(new Date());
     const cells = matrix.map((d, idx) => {
       const iso = formatISO(d);
@@ -868,7 +852,7 @@ export default function CalendarScreen() {
           <View style={styles.cellContent}>
             <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
             <View style={styles.badgeContainer}>
-              {total === 0 && !isToday && new Date(iso) < new Date(todayISO) ? (
+              {total === 0 && !isToday && new Date(iso) < new Date(todayISO) && (!appStartDateRef.current || new Date(iso) >= new Date(appStartDateRef.current)) ? (
                 <MaterialIcons name="star" size={24} color="#fbbf24" />
               ) : total > 0 && total >= lethalDose ? (
                 <View style={styles.deadIconContainer}>
@@ -885,13 +869,6 @@ export default function CalendarScreen() {
         </TouchableOpacity>
       );
     });
-    const cellsEnd = performance.now();
-    
-    const renderItemEnd = performance.now();
-    const totalTime = renderItemEnd - renderItemStart;
-    if (totalTime > 5) {
-      console.log(`[PERF] renderItem month ${monthKey}: total=${totalTime.toFixed(2)}ms, matrix=${(matrixEnd - matrixStart).toFixed(2)}ms, cells=${(cellsEnd - cellsStart).toFixed(2)}ms, cellsCount=${cells.length}`);
-    }
     
     return (
       <View style={{ height: listHeight, width: monthWidth, alignSelf: 'center' }}>
@@ -900,16 +877,8 @@ export default function CalendarScreen() {
         </View>
       </View>
     );
-  }, [listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay]);
+  }, [listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex]);
 
-  // Логирование времени рендеринга компонента
-  useEffect(() => {
-    const renderEndTime = performance.now();
-    const renderTime = renderEndTime - renderStartTimeRef.current;
-    if (renderTime > 16) { // Больше одного кадра (60fps = 16.67ms)
-      console.log(`[PERF] CalendarScreen render took ${renderTime.toFixed(2)}ms, all.length=${all.length}, selectedDate=${selectedDate}, dayList.length=${dayList.length}`);
-    }
-  });
 
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
   const calendarView = useMemo(() => {
@@ -931,15 +900,20 @@ export default function CalendarScreen() {
             index 
           }) : undefined}
           keyExtractor={(item, index) => `month-${item.getFullYear()}-${item.getMonth()}-${index}`}
+          initialScrollIndex={initialIndex}
           removeClippedSubviews={true}
-          windowSize={5}
-          maxToRenderPerBatch={2}
-          updateCellsBatchingPeriod={50}
-          initialNumToRender={2}
+          windowSize={3}
+          maxToRenderPerBatch={1}
+          updateCellsBatchingPeriod={100}
+          initialNumToRender={1}
           scrollEventThrottle={16}
+          onScrollToIndexFailed={() => {
+            // Игнорируем ошибки скролла
+          }}
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / listHeight);
+            
             // Обновляем только если индекс действительно изменился
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < months.length) {
               lastScrollIndexRef.current = idx;
@@ -954,20 +928,22 @@ export default function CalendarScreen() {
             }
           }}
           onMomentumScrollEnd={(e) => {
-            const scrollStartTime = performance.now();
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / listHeight);
-            if (idx !== visibleIndex) {
+            const currentIdx = lastScrollIndexRef.current;
+            if (idx !== currentIdx) {
               setVisibleIndex(idx);
-              const scrollEndTime = performance.now();
-              console.log(`[PERF] onMomentumScrollEnd completed in ${(scrollEndTime - scrollStartTime).toFixed(2)}ms, index: ${idx}`);
             }
           }}
           renderItem={renderMonthItem}
         />
       </View>
     );
-  }, [listHeight, screenWidth, months, visibleIndex, renderMonthItem, listRef]);
+  }, [listHeight, screenWidth, months, renderMonthItem, listRef]);
+  
+
+  // Пока не измерили высоту, показываем только структуру для измерения
+  const needsMeasurement = listHeight === null || listHeight <= 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1004,7 +980,19 @@ export default function CalendarScreen() {
       </View>
 
       {/* Календарь - мемоизирован, не перерендеривается при изменении dayList */}
-      {calendarView}
+      {!needsMeasurement && calendarView}
+      
+      {/* Спиннер пока измеряется высота */}
+      {needsMeasurement && (
+        <View style={{ 
+          flex: 1,
+          justifyContent: 'center', 
+          alignItems: 'center',
+          backgroundColor: colors.background
+        }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
 
       {/* Кнопка возврата к текущему месяцу */}
       {showBackToToday && (

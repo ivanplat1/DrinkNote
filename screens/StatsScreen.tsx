@@ -91,10 +91,8 @@ export default function StatsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Статистика</Text>
-
         {/* Выбор периода */}
         <View style={styles.periodSelector}>
           <TouchableOpacity
@@ -364,7 +362,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 16,
+    marginHorizontal: 16,
     color: colors.text,
     letterSpacing: -0.5,
   },

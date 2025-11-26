@@ -198,6 +198,58 @@ export async function getLethalDose(): Promise<number> {
   return calculateLethalDose(finalWeight, finalGender);
 }
 
+// Рассчитывает рекомендованную дневную норму на основе веса, пола и возраста
+export function calculateRecommendedDailyLimit(weight: number, gender: Gender, age: number | null): number {
+  // Базовая безопасная норма: 20г чистого спирта = 2 стандартные единицы
+  // Для мужчин можно чуть больше, для женщин меньше
+  // С возрастом норма снижается
+  
+  let baseLimit = 2.0; // стандартные единицы
+  
+  // Корректировка по полу
+  if (gender === 'male') {
+    baseLimit = 2.5; // Мужчины: 25г чистого спирта
+  } else {
+    baseLimit = 1.5; // Женщины и другие: 15г чистого спирта
+  }
+  
+  // Корректировка по весу (если вес сильно отличается от среднего)
+  const averageWeight = gender === 'male' ? 80 : 65;
+  const weightFactor = weight / averageWeight;
+  baseLimit *= Math.max(0.7, Math.min(1.3, weightFactor)); // Ограничиваем коэффициент
+  
+  // Корректировка по возрасту
+  if (age !== null) {
+    if (age < 25) {
+      baseLimit *= 0.8; // Для молодых - меньше
+    } else if (age > 50) {
+      baseLimit *= 0.85; // Для пожилых - меньше
+    } else if (age > 65) {
+      baseLimit *= 0.7; // Для очень пожилых - значительно меньше
+    }
+  }
+  
+  // Округляем до 0.1
+  return Math.round(baseLimit * 10) / 10;
+}
+
+// Получает рекомендованную дневную норму из настроек
+export async function getRecommendedDailyLimit(): Promise<number> {
+  const weight = await getUserWeight();
+  const gender = await getUserGender();
+  const birthDate = await getBirthDate();
+  const age = calculateAgeFromDate(birthDate);
+  
+  // Дефолт: 50кг, genderless, без возраста
+  const defaultWeight = 50;
+  const defaultGender: Gender = 'genderless';
+  
+  const finalWeight = weight || defaultWeight;
+  const finalGender = gender || defaultGender;
+  
+  return calculateRecommendedDailyLimit(finalWeight, finalGender, age);
+}
+
 export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem('drinks_entries_v1');
   await AsyncStorage.removeItem('user_presets_v1');
