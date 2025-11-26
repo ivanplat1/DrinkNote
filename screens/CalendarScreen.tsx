@@ -12,17 +12,32 @@ import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst } from '../utils/date';
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { colors } from '../theme/colors';
-import { getDailyGoal, getLethalDose } from '../storage/settings';
+import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
 
 // Компонент заголовка месяца - вынесен отдельно для независимого обновления
-function MonthHeader({ label, headerStyle, monthStyle }: { 
+function MonthHeader({ label, headerStyle, monthStyle, sobrietyStats }: { 
   label: string;
   headerStyle: any; 
   monthStyle: any;
+  sobrietyStats?: { currentStreak: number; bestStreak: number };
 }) {
   return (
     <View style={headerStyle}>
-      <Text style={monthStyle}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={monthStyle}>{label}</Text>
+        {sobrietyStats && sobrietyStats.currentStreak > 0 && (
+          <Text style={{ color: '#10b981', fontSize: 13, fontWeight: '600', marginTop: 2 }}>
+            🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
+          </Text>
+        )}
+      </View>
+      {sobrietyStats && sobrietyStats.bestStreak > 0 && (
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
+            Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -188,6 +203,7 @@ export default function CalendarScreen() {
   const [dayList, setDayList] = useState<Drink[]>([]);
   const [dailyGoal, setDailyGoal] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
+  const [appStartDate, setAppStartDate] = useState<string | null>(null);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
@@ -225,6 +241,9 @@ export default function CalendarScreen() {
     
     const lethal = await getLethalDose();
     setLethalDose(lethal);
+    
+    const startDate = await getAppStartDate();
+    setAppStartDate(startDate);
   }, []);
 
   useFocusEffect(
@@ -251,6 +270,121 @@ export default function CalendarScreen() {
     }
     return map;
   }, [all]);
+
+  // Подсчет текущей серии дней без алкоголя и лучшей серии
+  const sobrietyStats = useMemo(() => {
+    const today = new Date();
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let tempStreak = 0;
+    
+    // Находим дату последнего употребления
+    let lastDrinkDate: Date | null = null;
+    for (let i = 0; i < 365; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      const iso = formatISO(checkDate);
+      const total = totalsByDate[iso] ?? 0;
+      
+      if (total > 0) {
+        lastDrinkDate = checkDate;
+        break;
+      }
+    }
+    
+    // Считаем дни с последнего употребления (сегодня не считаем, только завершенные дни)
+    if (lastDrinkDate) {
+      const diffTime = today.getTime() - lastDrinkDate.getTime();
+      const daysSinceLastDrink = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // Вычитаем 1, чтобы не считать сегодняшний день
+      currentStreak = Math.max(0, daysSinceLastDrink - 1);
+    } else {
+      // Если не нашли употребление за 365 дней, считаем что серия = 365+ (минус сегодня)
+      currentStreak = 364;
+    }
+    
+    // Считаем лучшую серию за все время (с учетом даты первого запуска)
+    // Находим диапазон дат
+    const allDates = Object.keys(totalsByDate);
+    
+    if (allDates.length === 0) {
+      // Если нет записей вообще, рекорд = 0
+      bestStreak = 0;
+    } else {
+      const sortedDates = allDates.sort();
+      const firstDate = new Date(sortedDates[0]);
+      const startDateFilter = appStartDate ? new Date(appStartDate) : firstDate;
+      // Начинаем с более РАННЕЙ даты (или с appStartDate если она установлена)
+      const effectiveStartDate = startDateFilter < firstDate ? startDateFilter : firstDate;
+      
+      // Проходим по всем дням от startDate до вчерашнего дня (сегодня не считаем)
+      const currentDate = new Date(effectiveStartDate);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() - 1); // Вчерашний день - последний завершенный
+      
+      while (currentDate <= endDate) {
+        const iso = formatISO(currentDate);
+        const total = totalsByDate[iso] ?? 0;
+        
+        if (total === 0) {
+          tempStreak++;
+          if (tempStreak > bestStreak) {
+            bestStreak = tempStreak;
+          }
+        } else {
+          tempStreak = 0;
+        }
+        
+        // Переходим к следующему дню
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+    
+    // Текущая серия может быть лучшей
+    if (currentStreak > bestStreak) {
+      bestStreak = currentStreak;
+    }
+    
+    return { currentStreak, bestStreak };
+  }, [totalsByDate, appStartDate]);
+
+  // Проверка и разблокировка достижений
+  useEffect(() => {
+    const checkAchievements = async () => {
+      if (sobrietyStats.currentStreak > 0) {
+        const newAchievements = await checkAndUnlockAchievements(sobrietyStats.currentStreak);
+        if (newAchievements.length > 0) {
+          // Показываем уведомление о новом достижении
+          const achievement = newAchievements[0];
+          Alert.alert(
+            '🏆 Достижение разблокировано!',
+            `${achievement.title}\n${achievement.description}`,
+            [{ text: 'Отлично!', style: 'default' }]
+          );
+        }
+      }
+    };
+    checkAchievements();
+  }, [sobrietyStats.currentStreak]);
+
+  // Определяем серии дней без алкоголя для визуального выделения
+  const streaksByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    const sortedDates = Object.keys(totalsByDate).sort();
+    
+    let currentStreak = 0;
+    for (const dateISO of sortedDates) {
+      const total = totalsByDate[dateISO] ?? 0;
+      if (total === 0) {
+        currentStreak++;
+        map[dateISO] = currentStreak;
+      } else {
+        currentStreak = 0;
+      }
+    }
+    
+    return map;
+  }, [totalsByDate]);
 
   // Подготовим список месяцев: 3 года назад до текущего месяца (текущий - последний)
   const base = useMemo(() => new Date(), []);
@@ -678,18 +812,29 @@ export default function CalendarScreen() {
     const monthWidth = cellWidth * 7;
     
     const cellsStart = performance.now();
+    const todayISO = formatISO(new Date());
     const cells = matrix.map((d, idx) => {
       const iso = formatISO(d);
       const total = totalsByDate[iso] ?? 0;
       const isCurrentMonth = d.getMonth() === item.getMonth();
+      const isToday = iso === todayISO;
       const isLastCol = (idx % 7) === 6;
       const isLastRow = Math.floor(idx / 7) === 5;
       
       // Определяем цвет индикации
       let cellColorStyle = null;
+      const streakLength = streaksByDate[iso] ?? 0;
+      
       if (dailyGoal !== null) {
         if (total === 0) {
-          cellColorStyle = styles.cellNoDrink; // Зеленый - не пил
+          // Усиливаем зеленый при серии 3+ дней
+          if (streakLength >= 7) {
+            cellColorStyle = styles.cellNoDrinkStrong; // Яркий зеленый для серии 7+ дней
+          } else if (streakLength >= 3) {
+            cellColorStyle = styles.cellNoDrinkMedium; // Средний зеленый для серии 3-6 дней
+          } else {
+            cellColorStyle = styles.cellNoDrink; // Обычный зеленый
+          }
         } else if (total <= dailyGoal) {
           cellColorStyle = styles.cellWithinGoal; // Зеленый - в пределах нормы
         } else if (total <= dailyGoal * 1.5) {
@@ -699,7 +844,13 @@ export default function CalendarScreen() {
         }
       } else if (total === 0) {
         // Если цель не установлена, подсвечиваем только дни без алкоголя
-        cellColorStyle = styles.cellNoDrink;
+        if (streakLength >= 7) {
+          cellColorStyle = styles.cellNoDrinkStrong;
+        } else if (streakLength >= 3) {
+          cellColorStyle = styles.cellNoDrinkMedium;
+        } else {
+          cellColorStyle = styles.cellNoDrink;
+        }
       }
       
       return (
@@ -710,20 +861,26 @@ export default function CalendarScreen() {
             { width: cellWidth - 4, height: cellHeight - 4 },
             isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
             cellColorStyle,
+            isToday && styles.cellToday,
           ]}
           onPress={() => openDay(d)}
         >
           <View style={styles.cellContent}>
             <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
-            {total > 0 && (
-              total >= lethalDose ? (
+            <View style={styles.badgeContainer}>
+              {total === 0 && !isToday && new Date(iso) < new Date(todayISO) ? (
+                <MaterialIcons name="star" size={24} color="#fbbf24" />
+              ) : total > 0 && total >= lethalDose ? (
                 <View style={styles.deadIconContainer}>
-                  <MaterialCommunityIcons name="emoticon-dead" size={20} color={colors.error} />
+                  <Text style={styles.deadEmoji}>💀</Text>
                 </View>
-              ) : (
-                <View style={styles.badge}><Text style={styles.badgeText}>{total.toFixed(1)}</Text></View>
-              )
-            )}
+              ) : total > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeUnits}>{total.toFixed(1)}</Text>
+                  <Text style={styles.badgeAlcohol}>{(total * 10).toFixed(0)}г</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </TouchableOpacity>
       );
@@ -743,7 +900,7 @@ export default function CalendarScreen() {
         </View>
       </View>
     );
-  }, [listHeight, screenWidth, monthMatrices, totalsByDate, dailyGoal, lethalDose, openDay]);
+  }, [listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay]);
 
   // Логирование времени рендеринга компонента
   useEffect(() => {
@@ -827,6 +984,7 @@ export default function CalendarScreen() {
           label={monthLabel}
           headerStyle={styles.headerRow} 
           monthStyle={styles.month}
+          sobrietyStats={sobrietyStats}
         />
       </View>
 
@@ -905,8 +1063,19 @@ export default function CalendarScreen() {
                       );
                     })()}
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.modalTotal}>всего: {formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                      <MaterialCommunityIcons name="cup" size={14} color={colors.textSecondary} />
+                      <Text style={styles.modalTotal}>{formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                      <MaterialIcons name="water-drop" size={14} color={colors.textSecondary} />
+                      <Text style={styles.modalTotal}>{(dayTotalUnits * 10).toFixed(0)}г</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                      <MaterialCommunityIcons name="calculator" size={14} color={colors.textSecondary} />
+                      <Text style={styles.modalTotal}>{dayTotalUnits.toFixed(1)}</Text>
+                    </View>
                   </View>
                 </View>
                 <View style={{ marginTop: 20 }}>
@@ -1249,6 +1418,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     paddingTop: 2,
+    paddingBottom: 2,
+  },
+  badgeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   cellEmpty: {
     padding: 8,
@@ -1271,8 +1447,21 @@ const styles = StyleSheet.create({
   cellAdjacent: {
     backgroundColor: colors.backgroundTertiary,
   },
+  cellToday: {
+    borderWidth: 2,
+    borderTopColor: colors.primary,
+    borderRightColor: colors.primary,
+    borderBottomColor: colors.primary,
+    borderLeftColor: colors.primary,
+  },
   cellNoDrink: {
-    backgroundColor: '#10b98140', // Зеленый - не пил (40 = ~25% opacity)
+    backgroundColor: '#10b98150', // Зеленый - не пил (50 = ~31% opacity)
+  },
+  cellNoDrinkMedium: {
+    backgroundColor: '#10b98190', // Средний зеленый - серия 3-6 дней (90 = ~56% opacity)
+  },
+  cellNoDrinkStrong: {
+    backgroundColor: '#10b981cc', // Яркий зеленый - серия 7+ дней (cc = ~80% opacity)
   },
   cellWithinGoal: {
     backgroundColor: '#10b98130', // Зеленый - в пределах нормы (30 = ~19% opacity, светлее)
@@ -1284,23 +1473,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef444440', // Красный - сильно превышено (40 = ~25% opacity)
   },
   badge: {
-    marginTop: 4,
-    alignSelf: 'center',
     backgroundColor: colors.primaryLight,
     borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  deadIconContainer: {
-    marginTop: 4,
-    alignSelf: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 3,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 40,
+    minHeight: 44,
+  },
+  badgeUnits: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  badgeAlcohol: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  deadIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deadEmoji: {
+    fontSize: 36,
   },
   modalBackdrop: {
     flex: 1,
@@ -1361,11 +1558,9 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   modalTotal: {
-    marginLeft: 'auto',
-    marginRight: 12,
     color: colors.textSecondary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12,
   },
   swipeContainer: {
     marginBottom: 8,

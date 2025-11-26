@@ -1,9 +1,10 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Platform, Share, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
-import { getDailyGoal, setDailyGoal, exportData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthYear, setBirthYear, calculateAge } from '../storage/settings';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { getDailyGoal, setDailyGoal, exportData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate } from '../storage/settings';
 import { colors } from '../theme/colors';
 
 export default function SettingsScreen() {
@@ -12,13 +13,14 @@ export default function SettingsScreen() {
   const [weight, setWeightValue] = useState<string>('');
   const [isEditingWeight, setIsEditingWeight] = useState(false);
   const [gender, setGenderValue] = useState<Gender | null>(null);
-  const [birthYear, setBirthYearValue] = useState<string>((new Date().getFullYear() - 18).toString());
+  const [birthDate, setBirthDateValue] = useState<string>('');
   const [age, setAge] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
-  const [yearPickerVisible, setYearPickerVisible] = useState(false);
-  const yearPickerScrollRef = useRef<ScrollView>(null);
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const ITEM_HEIGHT = 50;
+  const [appStartDate, setAppStartDateValue] = useState<string>('');
+  const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
+  const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
 
   const loadSettings = useCallback(async () => {
     const goal = await getDailyGoal();
@@ -30,13 +32,25 @@ export default function SettingsScreen() {
     const userGender = await getUserGender();
     setGenderValue(userGender);
     
-    const userBirthYear = await getBirthYear();
-    setBirthYearValue(userBirthYear !== null ? userBirthYear.toString() : '');
-    const calculatedAge = calculateAge(userBirthYear);
+    const userBirthDate = await getBirthDate();
+    setBirthDateValue(userBirthDate || '');
+    const calculatedAge = calculateAgeFromDate(userBirthDate);
     setAge(calculatedAge);
     
     const lethal = await getLethalDose();
     setLethalDose(lethal);
+    
+    let startDate = await getAppStartDate();
+    
+    // Если дата не установлена, устанавливаем сегодняшнюю как дату первого запуска
+    if (!startDate) {
+      const today = new Date();
+      const todayISO = today.toISOString().split('T')[0]; // ГГГГ-ММ-ДД
+      await setAppStartDate(todayISO);
+      startDate = todayISO;
+    }
+    
+    setAppStartDateValue(startDate);
   }, []);
 
   useFocusEffect(
@@ -85,27 +99,6 @@ export default function SettingsScreen() {
     setLethalDose(lethal);
   };
 
-  const handleSaveBirthYear = async () => {
-    const trimmed = birthYear.trim();
-    if (!trimmed) {
-      // Если поле пустое, удаляем значение
-      await setBirthYear(null);
-      setAge(null);
-      loadSettings();
-      return;
-    }
-    const value = parseInt(trimmed, 10);
-    const currentYear = new Date().getFullYear();
-    if (isNaN(value) || value < 1900 || value > currentYear) {
-      Alert.alert('Ошибка', `Введите корректный год рождения (1900-${currentYear})`);
-      return;
-    }
-    await setBirthYear(value);
-    const calculatedAge = calculateAge(value);
-    setAge(calculatedAge);
-    const lethal = await getLethalDose();
-    setLethalDose(lethal);
-  };
 
   const handleExport = async () => {
     try {
@@ -196,7 +189,6 @@ export default function SettingsScreen() {
         {/* Параметры профиля */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Параметры профиля</Text>
-          <Text style={styles.sectionSubtitle}>Для расчета смертельной дозы</Text>
           
           <View style={styles.profileContainer}>
             {/* Вес */}
@@ -272,55 +264,45 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Год рождения */}
-            <View>
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Год рождения:</Text>
-                <View style={styles.profileInputRow}>
-                  <TouchableOpacity
-                    style={styles.profileArrowButton}
-                    onPress={async () => {
-                      const current = birthYear ? parseInt(birthYear, 10) : new Date().getFullYear() - 18;
-                      const newValue = Math.max(1900, current - 1);
-                      setBirthYearValue(newValue.toString());
-                      await setBirthYear(newValue);
-                      const calculatedAge = calculateAge(newValue);
-                      setAge(calculatedAge);
-                      const lethal = await getLethalDose();
-                      setLethalDose(lethal);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.profileInput, { justifyContent: 'center', alignItems: 'center' }]}
-                    onPress={() => setYearPickerVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ fontSize: 15, color: colors.text }}>
-                      {birthYear || (new Date().getFullYear() - 18).toString()}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.profileArrowButton}
-                    onPress={async () => {
-                      const current = birthYear ? parseInt(birthYear, 10) : new Date().getFullYear() - 18;
-                      const currentYear = new Date().getFullYear();
-                      const newValue = Math.min(currentYear, current + 1);
-                      setBirthYearValue(newValue.toString());
-                      await setBirthYear(newValue);
-                      const calculatedAge = calculateAge(newValue);
-                      setAge(calculatedAge);
-                      const lethal = await getLethalDose();
-                      setLethalDose(lethal);
-                    }}
-                  >
-                    <MaterialIcons name="chevron-right" size={24} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+            {/* Дата рождения */}
+            <View style={styles.profileRow}>
+              <Text style={styles.profileLabel}>Дата рождения:</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'flex-end' }}
+                onPress={() => {
+                  setTempBirthDate(birthDate ? new Date(birthDate) : new Date(new Date().getFullYear() - 18, 0, 1));
+                  setShowBirthDatePicker(true);
+                }}
+              >
+                <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder]}>
+                  {birthDate ? new Date(birthDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
+          </View>
+        </View>
+
+        {/* Дата начала отсчета */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Дата начала отсчета</Text>
+          <Text style={styles.sectionSubtitle}>Рекорды будут считаться с этой даты</Text>
+          
+          <View style={styles.profileContainer}>
+            <View style={styles.profileRow}>
+              <Text style={styles.profileLabel}>Дата:</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'flex-end' }}
+                onPress={() => {
+                  setTempStartDate(appStartDate ? new Date(appStartDate) : new Date());
+                  setShowStartDatePicker(true);
+                }}
+              >
+                <Text style={[styles.profileValue, !appStartDate && styles.valuePlaceholder]}>
+                  {appStartDate ? new Date(appStartDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -352,121 +334,110 @@ export default function SettingsScreen() {
     </View>
       </ScrollView>
 
-      {/* Модальное окно выбора года - iOS style wheel */}
+      {/* DateTimePicker для даты рождения */}
       <Modal
-        visible={yearPickerVisible}
+        visible={showBirthDatePicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setYearPickerVisible(false)}
+        onRequestClose={() => setShowBirthDatePicker(false)}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
-            style={styles.modalOverlayTouchable}
+            style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => setYearPickerVisible(false)}
+            onPress={() => setShowBirthDatePicker(false)}
           />
-          <View style={styles.yearPickerModal}>
-            <View style={styles.yearPickerHeader}>
+          <View style={styles.datePickerModal}>
+            <View style={styles.datePickerHeader}>
               <TouchableOpacity
-                onPress={() => setYearPickerVisible(false)}
-                style={styles.yearPickerCancelButton}
+                onPress={() => setShowBirthDatePicker(false)}
+                style={styles.datePickerButton}
               >
-                <Text style={styles.yearPickerCancelText}>Отмена</Text>
+                <Text style={styles.datePickerCancelText}>Отмена</Text>
               </TouchableOpacity>
-              <Text style={styles.yearPickerTitle}>Год рождения</Text>
+              <Text style={styles.datePickerTitle}>Дата рождения</Text>
               <TouchableOpacity
                 onPress={async () => {
-                  // Вычисляем выбранный год на основе позиции скролла
-                  const selectedIndex = Math.round(scrollOffset / ITEM_HEIGHT);
-                  const currentYear = new Date().getFullYear();
-                  const selectedYear = currentYear - selectedIndex;
-                  if (selectedYear >= 1900 && selectedYear <= currentYear) {
-                    setBirthYearValue(selectedYear.toString());
-                    await setBirthYear(selectedYear);
-                    const calculatedAge = calculateAge(selectedYear);
-                    setAge(calculatedAge);
-                    const lethal = await getLethalDose();
-                    setLethalDose(lethal);
-                  }
-                  setYearPickerVisible(false);
+                  const dateISO = tempBirthDate.toISOString().split('T')[0];
+                  setBirthDateValue(dateISO);
+                  await setBirthDate(dateISO);
+                  const calculatedAge = calculateAgeFromDate(dateISO);
+                  setAge(calculatedAge);
+                  const lethal = await getLethalDose();
+                  setLethalDose(lethal);
+                  setShowBirthDatePicker(false);
                 }}
-                style={styles.yearPickerDoneButton}
+                style={styles.datePickerButton}
               >
-                <Text style={styles.yearPickerDoneText}>Готово</Text>
+                <Text style={styles.datePickerDoneText}>Готово</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.yearPickerWheelContainer}>
-              {/* Верхняя маска */}
-              <View style={styles.yearPickerMask} pointerEvents="none" />
-              {/* Центральная линия */}
-              <View style={styles.yearPickerCenterLine} pointerEvents="none" />
-              {/* Нижняя маска */}
-              <View style={[styles.yearPickerMask, { bottom: 0, top: 'auto' }]} pointerEvents="none" />
-              
-              <ScrollView
-                ref={yearPickerScrollRef}
-                style={styles.yearPickerWheel}
-                contentContainerStyle={styles.yearPickerWheelContent}
-                showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_HEIGHT}
-                decelerationRate="fast"
-                onScroll={(e) => {
-                  setScrollOffset(e.nativeEvent.contentOffset.y);
-                }}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => {
-                  // Выравниваем на ближайший элемент
-                  const offset = e.nativeEvent.contentOffset.y;
-                  const index = Math.round(offset / ITEM_HEIGHT);
-                  yearPickerScrollRef.current?.scrollTo({
-                    y: index * ITEM_HEIGHT,
-                    animated: true,
-                  });
-                }}
-                onLayout={() => {
-                  // Прокручиваем к выбранному году при открытии
-                  if (birthYear && yearPickerScrollRef.current) {
-                    const currentYear = new Date().getFullYear();
-                    const selectedYear = parseInt(birthYear, 10);
-                    const index = currentYear - selectedYear;
-                    setTimeout(() => {
-                      yearPickerScrollRef.current?.scrollTo({
-                        y: index * ITEM_HEIGHT,
-                        animated: false,
-                      });
-                      setScrollOffset(index * ITEM_HEIGHT);
-                    }, 100);
-                  }
-                }}
+            <DateTimePicker
+              value={tempBirthDate}
+              mode="date"
+              display="spinner"
+              maximumDate={new Date()}
+              minimumDate={new Date(1900, 0, 1)}
+              themeVariant="dark"
+              locale="ru-RU"
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setTempBirthDate(selectedDate);
+                }
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* DateTimePicker для даты начала отсчета */}
+      <Modal
+        visible={showStartDatePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStartDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowStartDatePicker(false)}
+          />
+          <View style={styles.datePickerModal}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity
+                onPress={() => setShowStartDatePicker(false)}
+                style={styles.datePickerButton}
               >
-                {(() => {
-                  const currentYear = new Date().getFullYear();
-                  const years = [];
-                  for (let year = currentYear; year >= 1900; year--) {
-                    years.push(year);
-                  }
-                  // Добавляем пустые элементы сверху и снизу для центрирования
-                  return (
-                    <>
-                      <View style={{ height: ITEM_HEIGHT * 2 }} />
-                      {years.map((year, index) => {
-                        return (
-                          <View
-                            key={year}
-                            style={styles.yearPickerWheelItem}
-                          >
-                            <Text style={styles.yearPickerWheelItemText}>
-                              {year}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                      <View style={{ height: ITEM_HEIGHT * 2 }} />
-                    </>
-                  );
-                })()}
-              </ScrollView>
+                <Text style={styles.datePickerCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>Дата начала отсчета</Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  const dateISO = tempStartDate.toISOString().split('T')[0];
+                  setAppStartDateValue(dateISO);
+                  await setAppStartDate(dateISO);
+                  setShowStartDatePicker(false);
+                }}
+                style={styles.datePickerButton}
+              >
+                <Text style={styles.datePickerDoneText}>Готово</Text>
+              </TouchableOpacity>
             </View>
+            <DateTimePicker
+              value={tempStartDate}
+              mode="date"
+              display="spinner"
+              maximumDate={new Date()}
+              minimumDate={new Date(2000, 0, 1)}
+              themeVariant="dark"
+              locale="ru-RU"
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setTempStartDate(selectedDate);
+                }
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -771,32 +742,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.error,
   },
+  valuePlaceholder: {
+    color: colors.textTertiary,
+    opacity: 0.7,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  yearPickerModal: {
+  modalBackdrop: {
+    flex: 1,
+  },
+  datePickerModal: {
     backgroundColor: colors.backgroundCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '50%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    paddingBottom: Platform.select({ ios: 34, android: 20 }),
   },
-  modalOverlayTouchable: {
-    flex: 1,
-  },
-  yearPickerHeader: {
+  datePickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -805,71 +769,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  yearPickerTitle: {
+  datePickerTitle: {
     fontSize: 17,
     fontWeight: '600',
     color: colors.text,
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
   },
-  yearPickerCancelButton: {
+  datePickerButton: {
     padding: 4,
-    zIndex: 1,
+    minWidth: 70,
   },
-  yearPickerCancelText: {
+  datePickerCancelText: {
     fontSize: 17,
-    color: colors.primary,
+    color: colors.textSecondary,
   },
-  yearPickerDoneButton: {
-    padding: 4,
-    zIndex: 1,
-  },
-  yearPickerDoneText: {
+  datePickerDoneText: {
     fontSize: 17,
     fontWeight: '600',
     color: colors.primary,
-  },
-  yearPickerWheelContainer: {
-    height: 200,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  yearPickerWheel: {
-    flex: 1,
-  },
-  yearPickerWheelContent: {
-    paddingVertical: 0,
-  },
-  yearPickerWheelItem: {
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  yearPickerWheelItemText: {
-    fontSize: 20,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  yearPickerMask: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 75,
-    backgroundColor: colors.backgroundCard,
-    zIndex: 1,
-    opacity: 0.95,
-  },
-  yearPickerCenterLine: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: colors.border,
-    zIndex: 2,
-    marginTop: -0.5,
+    textAlign: 'right',
   },
 });

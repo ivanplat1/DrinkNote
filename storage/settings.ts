@@ -7,6 +7,8 @@ const DAILY_GOAL_KEY = 'daily_goal_units';
 const USER_WEIGHT_KEY = 'user_weight';
 const USER_GENDER_KEY = 'user_gender';
 const USER_BIRTH_YEAR_KEY = 'user_birth_year';
+const USER_BIRTH_DATE_KEY = 'user_birth_date';
+const APP_START_DATE_KEY = 'app_start_date';
 
 export type Gender = 'male' | 'female' | 'genderless';
 
@@ -127,6 +129,52 @@ export function calculateAge(birthYear: number | null): number | null {
   return currentYear - birthYear;
 }
 
+// Дата рождения (формат ГГГГ-ММ-ДД)
+export async function getBirthDate(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(USER_BIRTH_DATE_KEY);
+  return raw;
+}
+
+export async function setBirthDate(dateISO: string | null): Promise<void> {
+  if (dateISO === null) {
+    await AsyncStorage.removeItem(USER_BIRTH_DATE_KEY);
+  } else {
+    await AsyncStorage.setItem(USER_BIRTH_DATE_KEY, dateISO);
+  }
+}
+
+// Рассчитывает точный возраст на основе полной даты рождения
+export function calculateAgeFromDate(birthDateISO: string | null): number | null {
+  if (!birthDateISO) return null;
+  
+  const birthDate = new Date(birthDateISO);
+  const today = new Date();
+  
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  // Если день рождения еще не наступил в этом году, вычитаем 1
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+
+// Дата первого запуска (для расчета рекордов)
+export async function getAppStartDate(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(APP_START_DATE_KEY);
+  return raw;
+}
+
+export async function setAppStartDate(dateISO: string | null): Promise<void> {
+  if (dateISO === null) {
+    await AsyncStorage.removeItem(APP_START_DATE_KEY);
+  } else {
+    await AsyncStorage.setItem(APP_START_DATE_KEY, dateISO);
+  }
+}
+
 // Рассчитывает смертельную дозу в единицах на основе веса и пола
 export function calculateLethalDose(weight: number, gender: Gender): number {
   // Для женщин и genderless: примерно 0.3 единицы на кг веса
@@ -157,5 +205,86 @@ export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem(USER_WEIGHT_KEY);
   await AsyncStorage.removeItem(USER_GENDER_KEY);
   await AsyncStorage.removeItem(USER_BIRTH_YEAR_KEY);
+  await AsyncStorage.removeItem(USER_BIRTH_DATE_KEY);
+  await AsyncStorage.removeItem(ACHIEVEMENTS_KEY);
+  await AsyncStorage.removeItem(APP_START_DATE_KEY);
+}
+
+// Достижения
+const ACHIEVEMENTS_KEY = 'user_achievements';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string; // ISO date
+}
+
+export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
+  { id: 'first_day', title: 'Первый день', description: '1 день без алкоголя', icon: 'star' },
+  { id: 'three_days', title: 'Три дня', description: '3 дня подряд без алкоголя', icon: 'star-half-full' },
+  { id: 'week', title: 'Неделя', description: '7 дней подряд без алкоголя', icon: 'trophy' },
+  { id: 'two_weeks', title: 'Две недели', description: '14 дней подряд без алкоголя', icon: 'trophy' },
+  { id: 'month', title: 'Месяц', description: '30 дней подряд без алкоголя', icon: 'medal' },
+  { id: 'three_months', title: 'Три месяца', description: '90 дней подряд без алкоголя', icon: 'medal' },
+  { id: 'half_year', title: 'Полгода', description: '180 дней подряд без алкоголя', icon: 'crown' },
+  { id: 'year', title: 'Год', description: '365 дней подряд без алкоголя', icon: 'crown' },
+];
+
+export async function getAchievements(): Promise<Achievement[]> {
+  const raw = await AsyncStorage.getItem(ACHIEVEMENTS_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export async function unlockAchievement(achievementId: string): Promise<void> {
+  const achievements = await getAchievements();
+  const exists = achievements.find(a => a.id === achievementId);
+  if (exists) return;
+
+  const definition = ACHIEVEMENT_DEFINITIONS.find(a => a.id === achievementId);
+  if (!definition) return;
+
+  const newAchievement: Achievement = {
+    ...definition,
+    unlockedAt: new Date().toISOString(),
+  };
+
+  achievements.push(newAchievement);
+  await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(achievements));
+}
+
+export async function checkAndUnlockAchievements(currentStreak: number): Promise<Achievement[]> {
+  const newlyUnlocked: Achievement[] = [];
+  
+  const thresholds = [
+    { days: 1, id: 'first_day' },
+    { days: 3, id: 'three_days' },
+    { days: 7, id: 'week' },
+    { days: 14, id: 'two_weeks' },
+    { days: 30, id: 'month' },
+    { days: 90, id: 'three_months' },
+    { days: 180, id: 'half_year' },
+    { days: 365, id: 'year' },
+  ];
+
+  const achievements = await getAchievements();
+  
+  for (const { days, id } of thresholds) {
+    if (currentStreak >= days && !achievements.find(a => a.id === id)) {
+      await unlockAchievement(id);
+      const definition = ACHIEVEMENT_DEFINITIONS.find(a => a.id === id);
+      if (definition) {
+        newlyUnlocked.push({ ...definition, unlockedAt: new Date().toISOString() });
+      }
+    }
+  }
+
+  return newlyUnlocked;
 }
 
