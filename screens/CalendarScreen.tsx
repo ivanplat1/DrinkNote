@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction, withRepeat, withSequence } from 'react-native-reanimated';
 import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
@@ -13,6 +14,101 @@ import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst 
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { colors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
+
+// Компонент диагонального градиента для плоских металлических слитков
+function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
+  const glowAnim = useSharedValue(0);
+  
+  React.useEffect(() => {
+    // Бесконечная анимация от 0 до 360 (градусы круга)
+    glowAnim.value = withRepeat(
+      withTiming(360, { duration: 4000 }),
+      -1,
+      false
+    );
+  }, []);
+  
+  // Выраженные диагональные градиенты (перевернутые - темное сверху)
+  const gradients = {
+    bronze: {
+      colors: ['#7d4d2f', '#a66841', '#c08850', '#e8c4a0'] as const,
+      locations: [0, 0.3, 0.7, 1] as const,
+      border: '#c08850',
+    },
+    silver: {
+      colors: ['#707070', '#a8a8a8', '#d3d3d3', '#ffffff'] as const,
+      locations: [0, 0.3, 0.7, 1] as const,
+      border: '#d3d3d3',
+    },
+    gold: {
+      colors: ['#a07d1a', '#c9a029', '#f4c430', '#ffe680'] as const,
+      locations: [0, 0.3, 0.7, 1] as const,
+      border: '#f4c430',
+    },
+  };
+  
+  const gradient = gradients[type];
+  
+  const animatedBorderStyle = useAnimatedStyle(() => {
+    'worklet';
+    const angle = glowAnim.value % 360; // 0-360 градусов, циклически
+    
+    // Функция для расчета яркости стороны в зависимости от угла света
+    const getBrightness = (sideAngle: number) => {
+      // Расстояние между текущим углом света и углом стороны
+      let diff = Math.abs(angle - sideAngle);
+      // Нормализуем разницу (кратчайший путь по кругу)
+      if (diff > 180) diff = 360 - diff;
+      
+      // Чем ближе свет, тем ярче (от 0.2 до 0.8)
+      // diff от 0 (прямо на стороне) до 180 (противоположная сторона)
+      const brightness = 0.2 + (1 - diff / 180) * 0.6;
+      return brightness;
+    };
+    
+    const topBrightness = getBrightness(0);     // Верх = 0°
+    const rightBrightness = getBrightness(90);  // Право = 90°
+    const bottomBrightness = getBrightness(180); // Низ = 180°
+    const leftBrightness = getBrightness(270);   // Лево = 270°
+    
+    return {
+      position: 'absolute',
+      top: -4,
+      left: -4,
+      right: -4,
+      bottom: -4,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderTopColor: `rgba(255, 255, 255, ${topBrightness})`,
+      borderRightColor: `rgba(255, 255, 255, ${rightBrightness})`,
+      borderBottomColor: `rgba(255, 255, 255, ${bottomBrightness})`,
+      borderLeftColor: `rgba(255, 255, 255, ${leftBrightness})`,
+    };
+  });
+  
+  return (
+    <>
+      {/* Диагональный градиент внутри рамки */}
+      <LinearGradient
+        colors={gradient.colors}
+        locations={gradient.locations}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: -3,
+          left: -3,
+          right: -3,
+          bottom: -3,
+          borderRadius: 9,
+        }}
+      />
+      
+      {/* Анимированная светящаяся рамка */}
+      <Animated.View style={animatedBorderStyle} pointerEvents="none" />
+    </>
+  );
+}
 
 // Компонент заголовка месяца - вынесен отдельно для независимого обновления
 function MonthHeader({ label, headerStyle, monthStyle, sobrietyStats }: { 
@@ -771,7 +867,7 @@ export default function CalendarScreen() {
         // Если не удалось, пробуем через offset
         if (listRef.current) {
           listRef.current.scrollToOffset({ 
-            offset: initialIndex * listHeight, 
+            offset: initialIndex * actualMonthHeight, 
             animated: true,
           });
         }
@@ -783,6 +879,12 @@ export default function CalendarScreen() {
   const showBackToToday = useMemo(() => visibleIndex < initialIndex, [visibleIndex, initialIndex]);
 
   // Мемоизируем renderItem для оптимизации производительности
+  // Вычисляем высоту ячейки чтобы 6 рядов точно влезли в listHeight
+  const cellHeight = listHeight ? Math.floor(listHeight / 6) : 0;
+  const actualMonthHeight = cellHeight * 6;
+  
+  console.log(`[INIT] listHeight=${listHeight}, cellHeight=${cellHeight}, actualMonthHeight=${actualMonthHeight}`);
+  
   const renderMonthItem = useCallback(({ item, index }: { item: Date; index: number }) => {
     if (!listHeight || listHeight <= 0) {
       return <View style={{ height: 300, width: screenWidth }} />;
@@ -790,13 +892,82 @@ export default function CalendarScreen() {
     const monthKey = `${item.getFullYear()}-${item.getMonth()}`;
     const matrix = monthMatrices.get(monthKey) || buildMonthMatrix(item);
     
-    // Высота ячейки — 6 рядов по высоте месяца
-    // Используем Math.ceil для более точного распределения высоты
-    const cellHeight = Math.ceil(listHeight / 6);
+    const firstDay = matrix[0];
+    const lastDay = matrix[matrix.length - 1];
+    console.log(`[RENDER MONTH] Index: ${index}, Month: ${item.getMonth() + 1}/${item.getFullYear()}, cellHeight=${cellHeight}, actualMonthHeight=${actualMonthHeight}`);
+    console.log(`  First cell: ${formatISO(firstDay)}, Last cell: ${formatISO(lastDay)}`);
+    
     const cellWidth = Math.floor(screenWidth / 7);
     const monthWidth = cellWidth * 7;
     
     const todayISO = formatISO(new Date());
+    const today = new Date();
+    
+    // Вычисляем все серии без алкоголя для поиска лучшей
+    const allStreaks: { dates: string[]; length: number }[] = [];
+    const startDate = appStartDateRef.current ? new Date(appStartDateRef.current) : new Date(0);
+    let scanDate = new Date(today);
+    scanDate.setHours(0, 0, 0, 0);
+    
+    let currentScanStreak: string[] = [];
+    while (scanDate >= startDate) {
+      const scanISO = formatISO(scanDate);
+      const scanTotal = totalsByDate[scanISO] ?? 0;
+      
+      if (scanTotal === 0 && scanISO <= todayISO) {
+        currentScanStreak.push(scanISO);
+      } else {
+        if (currentScanStreak.length > 0) {
+          allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
+          currentScanStreak = [];
+        }
+      }
+      scanDate.setDate(scanDate.getDate() - 1);
+    }
+    // Добавляем последнюю серию если есть
+    if (currentScanStreak.length > 0) {
+      allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
+    }
+    
+    // Находим лучшую завершенную серию (не текущую, если она активна)
+    const currentStreakActive = allStreaks.length > 0 && allStreaks[0].dates.includes(todayISO);
+    const completedStreaks = currentStreakActive ? allStreaks.slice(1) : allStreaks;
+    const bestCompletedStreak = completedStreaks.length > 0 
+      ? completedStreaks.reduce((best, current) => current.length > best.length ? current : best)
+      : null;
+    
+    // Создаем Map для лучшей завершенной серии
+    const bestStreakDays = new Map<string, number>();
+    if (bestCompletedStreak && bestCompletedStreak.length >= 7) {
+      bestCompletedStreak.dates.reverse().forEach((iso, index) => {
+        bestStreakDays.set(iso, index + 1);
+      });
+    }
+    
+    // Вычисляем текущую серию без алкоголя с номерами дней
+    const currentStreakDays = new Map<string, number>(); // ISO -> день в серии (1, 2, 3...)
+    let tempDate = new Date(today);
+    tempDate.setHours(0, 0, 0, 0);
+    
+    // Идем от сегодня назад, пока встречаем дни без алкоголя
+    const streakDates: string[] = [];
+    while (tempDate >= startDate) {
+      const tempISO = formatISO(tempDate);
+      const tempTotal = totalsByDate[tempISO] ?? 0;
+      
+      if (tempTotal === 0 && tempISO <= todayISO) {
+        streakDates.push(tempISO);
+        tempDate.setDate(tempDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
+    // Присваиваем номера дней (от самого раннего к сегодня)
+    streakDates.reverse().forEach((iso, index) => {
+      currentStreakDays.set(iso, index + 1);
+    });
+    
     const cells = matrix.map((d, idx) => {
       const iso = formatISO(d);
       const total = totalsByDate[iso] ?? 0;
@@ -804,36 +975,71 @@ export default function CalendarScreen() {
       const isToday = iso === todayISO;
       const isLastCol = (idx % 7) === 6;
       const isLastRow = Math.floor(idx / 7) === 5;
+      const streakDayNumber = currentStreakDays.get(iso);
+      const isInCurrentStreak = streakDayNumber !== undefined;
+      const bestStreakDayNumber = bestStreakDays.get(iso);
+      const isInBestStreak = bestStreakDayNumber !== undefined;
       
-      // Определяем цвет индикации
-      let cellColorStyle = null;
-      const streakLength = streaksByDate[iso] ?? 0;
+      // Определяем стиль свечения в зависимости от длины серии (детальная прогрессия)
+      let glowStyle = null;
       
-      if (dailyGoal !== null) {
-        if (total === 0) {
-          // Усиливаем зеленый при серии 3+ дней
-          if (streakLength >= 7) {
-            cellColorStyle = styles.cellNoDrinkStrong; // Яркий зеленый для серии 7+ дней
-          } else if (streakLength >= 3) {
-            cellColorStyle = styles.cellNoDrinkMedium; // Средний зеленый для серии 3-6 дней
-          } else {
-            cellColorStyle = styles.cellNoDrink; // Обычный зеленый
-          }
-        } else if (total <= dailyGoal) {
-          cellColorStyle = styles.cellWithinGoal; // Зеленый - в пределах нормы
-        } else if (total <= dailyGoal * 1.5) {
-          cellColorStyle = styles.cellExceedsGoal; // Розовый - превышено
+      // Сначала проверяем лучшую серию (стили дублируют стандартные, градиент поверх)
+      if (isInBestStreak && bestStreakDayNumber && bestCompletedStreak) {
+        const bestLength = bestCompletedStreak.length;
+        if (bestLength >= 30) {
+          glowStyle = styles.cellGoldStrong; // 30+ дней - золото
+        } else if (bestLength >= 14) {
+          glowStyle = styles.cellGoldMedium; // 14-29 дней - серебро
         } else {
-          cellColorStyle = styles.cellStronglyExceeds; // Красный - сильно превышено
+          glowStyle = styles.cellGoldLight; // 7-13 дней - медь
         }
-      } else if (total === 0) {
-        // Если цель не установлена, подсвечиваем только дни без алкоголя
-        if (streakLength >= 7) {
-          cellColorStyle = styles.cellNoDrinkStrong;
-        } else if (streakLength >= 3) {
-          cellColorStyle = styles.cellNoDrinkMedium;
+      } else if (isInCurrentStreak && streakDayNumber) {
+        if (streakDayNumber >= 30) {
+          glowStyle = styles.cellGlow30Plus;
+        } else if (streakDayNumber >= 21) {
+          glowStyle = styles.cellGlow21;
+        } else if (streakDayNumber >= 14) {
+          glowStyle = styles.cellGlow14;
+        } else if (streakDayNumber >= 10) {
+          glowStyle = styles.cellGlow10;
+        } else if (streakDayNumber >= 7) {
+          glowStyle = styles.cellGlow7;
+        } else if (streakDayNumber === 6) {
+          glowStyle = styles.cellGlow6;
+        } else if (streakDayNumber === 5) {
+          glowStyle = styles.cellGlow5;
+        } else if (streakDayNumber === 4) {
+          glowStyle = styles.cellGlow4;
+        } else if (streakDayNumber === 3) {
+          glowStyle = styles.cellGlow3;
+        } else if (streakDayNumber === 2) {
+          glowStyle = styles.cellGlow2;
+        } else if (streakDayNumber === 1) {
+          glowStyle = styles.cellGlow1;
+        }
+      }
+      
+      // Тепловая карта: градиент от зеленого до красного
+      let cellColorStyle = null;
+      
+      if (dailyGoal !== null && dailyGoal > 0 && total > 0) {
+        if (total <= dailyGoal * 0.5) {
+          cellColorStyle = styles.cellLowAmount; // Светло-зеленый
+        } else if (total <= dailyGoal) {
+          cellColorStyle = styles.cellModerateAmount; // Желто-зеленый
+        } else if (total <= dailyGoal * 1.5) {
+          cellColorStyle = styles.cellHighAmount; // Оранжевый
+        } else if (total < lethalDose) {
+          cellColorStyle = styles.cellVeryHighAmount; // Красный
         } else {
-          cellColorStyle = styles.cellNoDrink;
+          cellColorStyle = styles.cellCriticalAmount; // Темно-красный
+        }
+      } else if (total > 0) {
+        // Если цель не установлена, показываем только факт употребления
+        if (total >= lethalDose) {
+          cellColorStyle = styles.cellCriticalAmount;
+        } else {
+          cellColorStyle = styles.cellModerateAmount;
         }
       }
       
@@ -846,23 +1052,35 @@ export default function CalendarScreen() {
             isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
             cellColorStyle,
             isToday && styles.cellToday,
+            glowStyle,
           ]}
           onPress={() => openDay(d)}
         >
           <View style={styles.cellContent}>
+            {/* Градиент слитка + анимированная рамка */}
+            {isInBestStreak && bestCompletedStreak && (
+              <MetalGradient 
+                type={bestCompletedStreak.length >= 30 ? 'gold' : 
+                     bestCompletedStreak.length >= 14 ? 'silver' : 'bronze'} 
+              />
+            )}
             <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
             <View style={styles.badgeContainer}>
-              {total === 0 && !isToday && new Date(iso) < new Date(todayISO) && (!appStartDateRef.current || new Date(iso) >= new Date(appStartDateRef.current)) ? (
-                <MaterialIcons name="star" size={24} color="#fbbf24" />
-              ) : total > 0 && total >= lethalDose ? (
+              {total >= lethalDose ? (
                 <View style={styles.deadIconContainer}>
                   <Text style={styles.deadEmoji}>💀</Text>
                 </View>
               ) : total > 0 ? (
                 <View style={styles.badge}>
+                  <MaterialCommunityIcons name="glass-cocktail" size={14} color="#f59e0b" />
                   <Text style={styles.badgeUnits}>{total.toFixed(1)}</Text>
                   <Text style={styles.badgeAlcohol}>{(total * 10).toFixed(0)}г</Text>
                 </View>
+              ) : isInBestStreak && bestCompletedStreak ? (
+                <Text style={styles.awardEmoji}>
+                  {bestCompletedStreak.length >= 30 ? '🏆' : 
+                   bestCompletedStreak.length >= 14 ? '🥈' : '🥉'}
+                </Text>
               ) : null}
             </View>
           </View>
@@ -871,34 +1089,57 @@ export default function CalendarScreen() {
     });
     
     return (
-      <View style={{ height: listHeight, width: monthWidth, alignSelf: 'center' }}>
-        <View style={styles.grid}>
+      <View 
+        style={{ height: actualMonthHeight, width: monthWidth, alignSelf: 'center', overflow: 'hidden' }}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          console.log(`[LAYOUT] Month ${item.getMonth() + 1}: container height=${h}, expected=${actualMonthHeight}`);
+        }}
+      >
+        <View 
+          style={styles.grid}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            console.log(`[LAYOUT] Month ${item.getMonth() + 1}: grid height=${h}, cellHeight=${cellHeight}`);
+          }}
+        >
           {cells}
         </View>
       </View>
     );
-  }, [listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex]);
+  }, [actualMonthHeight, listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex]);
 
 
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
   const calendarView = useMemo(() => {
-    if (listHeight === null || listHeight <= 0) return null;
+    if (listHeight === null || listHeight <= 0 || actualMonthHeight <= 0) return null;
+    
+    const totalContentHeight = actualMonthHeight * months.length;
+    console.log(`[FLATLIST] Creating FlatList: actualMonthHeight=${actualMonthHeight}, months=${months.length}, totalContentHeight=${totalContentHeight}`);
     
     return (
-      <View style={{ height: listHeight, width: screenWidth }}>
+      <View style={{ height: actualMonthHeight, width: screenWidth, overflow: 'hidden' }}>
         <FlatList
           ref={listRef}
           data={months}
           horizontal={false}
           pagingEnabled
+          snapToInterval={actualMonthHeight}
+          decelerationRate="fast"
           showsVerticalScrollIndicator={false}
-          style={{ height: listHeight, width: screenWidth }}
-          contentContainerStyle={{ height: listHeight * months.length }}
-          getItemLayout={listHeight > 0 ? (_, index) => ({ 
-            length: listHeight, 
-            offset: listHeight * index, 
-            index 
-          }) : undefined}
+          style={{ height: actualMonthHeight, width: screenWidth, overflow: 'hidden' }}
+          contentContainerStyle={{ height: totalContentHeight }}
+          getItemLayout={(_, index) => {
+            const layout = { 
+              length: actualMonthHeight, 
+              offset: actualMonthHeight * index, 
+              index 
+            };
+            if (index % 3 === 0) { // Логируем каждый 3-й для меньшего спама
+              console.log(`[ITEM LAYOUT] Index ${index}: length=${layout.length}, offset=${layout.offset}`);
+            }
+            return layout;
+          }}
           keyExtractor={(item, index) => `month-${item.getFullYear()}-${item.getMonth()}-${index}`}
           initialScrollIndex={initialIndex}
           removeClippedSubviews={true}
@@ -912,11 +1153,14 @@ export default function CalendarScreen() {
           }}
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
-            const idx = Math.round(y / listHeight);
+            const idx = Math.round(y / actualMonthHeight);
+            
+            console.log(`[SCROLL] y=${y.toFixed(1)}, actualMonthHeight=${actualMonthHeight}, idx=${idx}`);
             
             // Обновляем только если индекс действительно изменился
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < months.length) {
               lastScrollIndexRef.current = idx;
+              console.log(`[SCROLL] Changed to month index ${idx}`);
               // Обновляем текст заголовка синхронно для мгновенного отображения
               if (monthLabels[idx]) {
                 setMonthLabel(monthLabels[idx]);
@@ -929,7 +1173,7 @@ export default function CalendarScreen() {
           }}
           onMomentumScrollEnd={(e) => {
             const y = e.nativeEvent.contentOffset.y;
-            const idx = Math.round(y / listHeight);
+            const idx = Math.round(y / actualMonthHeight);
             const currentIdx = lastScrollIndexRef.current;
             if (idx !== currentIdx) {
               setVisibleIndex(idx);
@@ -939,7 +1183,7 @@ export default function CalendarScreen() {
         />
       </View>
     );
-  }, [listHeight, screenWidth, months, renderMonthItem, listRef]);
+  }, [actualMonthHeight, listHeight, screenWidth, months, renderMonthItem, listRef]);
   
 
   // Пока не измерили высоту, показываем только структуру для измерения
@@ -1172,7 +1416,6 @@ export default function CalendarScreen() {
                             styles.presetItem,
                             pressed && { opacity: 0.7 }
                           ]}
-                          delayPressIn={0}
                           onPressIn={() => {
                             Keyboard.dismiss();
                           }}
@@ -1199,7 +1442,6 @@ export default function CalendarScreen() {
                             styles.suggestedItem,
                             pressed && { opacity: 0.7 }
                           ]}
-                          delayPressIn={0}
                           onPressIn={() => {
                             Keyboard.dismiss();
                           }}
@@ -1374,6 +1616,7 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    overflow: 'hidden',
   },
   cell: {
     paddingTop: 4,
@@ -1413,6 +1656,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    zIndex: 10,
   },
   cellEmpty: {
     padding: 8,
@@ -1423,6 +1667,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
     marginTop: 2,
+    zIndex: 10,
   },
   dayNumMuted: {
     color: colors.textTertiary,
@@ -1435,6 +1680,19 @@ const styles = StyleSheet.create({
   cellAdjacent: {
     backgroundColor: colors.backgroundTertiary,
   },
+  // Металлические стили (прозрачная рамка, анимированная рамка поверх)
+  cellGoldLight: {
+    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    borderColor: 'transparent',
+  },
+  cellGoldMedium: {
+    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    borderColor: 'transparent',
+  },
+  cellGoldStrong: {
+    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    borderColor: 'transparent',
+  },
   cellToday: {
     borderWidth: 2,
     borderTopColor: colors.primary,
@@ -1442,23 +1700,136 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
     borderLeftColor: colors.primary,
   },
-  cellNoDrink: {
-    backgroundColor: '#10b98150', // Зеленый - не пил (50 = ~31% opacity)
+  // Subtle Glow для текущей серии - детальная прогрессия с фоном
+  // Первые 5 дней - каждый день усиливается
+  cellGlow1: {
+    backgroundColor: '#10b98110',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 3,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#10b98120',
   },
-  cellNoDrinkMedium: {
-    backgroundColor: '#10b98190', // Средний зеленый - серия 3-6 дней (90 = ~56% opacity)
+  cellGlow2: {
+    backgroundColor: '#10b98118',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#10b98130',
   },
-  cellNoDrinkStrong: {
-    backgroundColor: '#10b981cc', // Яркий зеленый - серия 7+ дней (cc = ~80% opacity)
+  cellGlow3: {
+    backgroundColor: '#10b98120',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 5,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#10b98140',
   },
-  cellWithinGoal: {
-    backgroundColor: '#10b98130', // Зеленый - в пределах нормы (30 = ~19% opacity, светлее)
+  cellGlow4: {
+    backgroundColor: '#10b98128',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#10b98145',
   },
-  cellExceedsGoal: {
-    backgroundColor: '#ec489940', // Розовый - превышено (40 = ~25% opacity)
+  cellGlow5: {
+    backgroundColor: '#10b98130',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.65,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#10b98150',
   },
-  cellStronglyExceeds: {
-    backgroundColor: '#ef444440', // Красный - сильно превышено (40 = ~25% opacity)
+  cellGlow6: {
+    backgroundColor: '#10b98138',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.68,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#10b98155',
+  },
+  cellGlow7: {
+    backgroundColor: '#10b98135',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 7,
+    elevation: 7,
+    borderWidth: 1,
+    borderColor: '#10b98160',
+  },
+  cellGlow10: {
+    backgroundColor: '#10b98145',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.75,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#10b98170',
+  },
+  cellGlow14: {
+    backgroundColor: '#10b98160',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 9,
+    elevation: 9,
+    borderWidth: 1.5,
+    borderColor: '#10b98180',
+  },
+  cellGlow21: {
+    backgroundColor: '#10b98180',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+    elevation: 10,
+    borderWidth: 1.5,
+    borderColor: '#10b98190',
+  },
+  cellGlow30Plus: {
+    backgroundColor: '#10b981a0',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 2,
+    borderColor: '#10b981',
+  },
+  awardEmoji: {
+    fontSize: 24,
+  },
+  // Тепловая карта: от зеленого к красному
+  cellLowAmount: {
+    backgroundColor: '#10b98140', // Светло-зеленый - небольшое количество
+  },
+  cellModerateAmount: {
+    backgroundColor: '#fbbf2440', // Желтый - умеренное количество (в пределах нормы)
+  },
+  cellHighAmount: {
+    backgroundColor: '#f59e0b50', // Оранжевый - превышение нормы
+  },
+  cellVeryHighAmount: {
+    backgroundColor: '#ef444460', // Красный - значительное превышение
+  },
+  cellCriticalAmount: {
+    backgroundColor: '#991b1b80', // Темно-красный - критическое количество
   },
   badge: {
     backgroundColor: colors.primaryLight,

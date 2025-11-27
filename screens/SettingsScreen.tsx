@@ -493,7 +493,7 @@ export default function SettingsScreen() {
               }}
             />
           </View>
-        </View>
+    </View>
       </Modal>
     </SafeAreaView>
   );
