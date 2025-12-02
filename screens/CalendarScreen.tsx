@@ -505,6 +505,80 @@ export default function CalendarScreen() {
     return map;
   }, [totalsByDate]);
 
+  // Вычисляем все серии без алкоголя и Maps для подсветки (один раз, не в каждом renderWeekItem)
+  const streakMaps = useMemo(() => {
+    const today = new Date();
+    const todayISO = formatISO(today);
+    const startDate = appStartDateRef.current ? new Date(appStartDateRef.current) : new Date(0);
+    
+    // Вычисляем все серии без алкоголя для поиска лучшей
+    const allStreaks: { dates: string[]; length: number }[] = [];
+    let scanDate = new Date(today);
+    scanDate.setHours(0, 0, 0, 0);
+    
+    let currentScanStreak: string[] = [];
+    while (scanDate >= startDate) {
+      const scanISO = formatISO(scanDate);
+      const scanTotal = totalsByDate[scanISO] ?? 0;
+      
+      if (scanTotal === 0 && scanISO <= todayISO) {
+        currentScanStreak.push(scanISO);
+      } else {
+        if (currentScanStreak.length > 0) {
+          allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
+          currentScanStreak = [];
+        }
+      }
+      scanDate.setDate(scanDate.getDate() - 1);
+    }
+    if (currentScanStreak.length > 0) {
+      allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
+    }
+    
+    // Находим лучшую завершенную серию
+    const currentStreakActive = allStreaks.length > 0 && allStreaks[0].dates.includes(todayISO);
+    const completedStreaks = currentStreakActive ? allStreaks.slice(1) : allStreaks;
+    const bestCompletedStreak = completedStreaks.length > 0 
+      ? completedStreaks.reduce((best, current) => current.length > best.length ? current : best)
+      : null;
+    
+    // Создаем Map для лучшей завершенной серии
+    const bestStreakDays = new Map<string, number>();
+    if (bestCompletedStreak && bestCompletedStreak.length >= 7) {
+      bestCompletedStreak.dates.reverse().forEach((iso, index) => {
+        bestStreakDays.set(iso, index + 1);
+      });
+    }
+    
+    // Вычисляем текущую серию без алкоголя с номерами дней
+    const currentStreakDays = new Map<string, number>();
+    let tempDate = new Date(today);
+    tempDate.setHours(0, 0, 0, 0);
+    
+    const streakDates: string[] = [];
+    while (tempDate >= startDate) {
+      const tempISO = formatISO(tempDate);
+      const tempTotal = totalsByDate[tempISO] ?? 0;
+      
+      if (tempTotal === 0 && tempISO <= todayISO) {
+        streakDates.push(tempISO);
+        tempDate.setDate(tempDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
+    streakDates.reverse().forEach((iso, index) => {
+      currentStreakDays.set(iso, index + 1);
+    });
+    
+    return {
+      currentStreakDays,
+      bestStreakDays,
+      bestCompletedStreak,
+    };
+  }, [totalsByDate]);
+
   // Подготовим список недель: 3 года назад до конца текущего месяца
   const baseToday = useMemo(() => {
     const d = new Date();
@@ -552,11 +626,23 @@ export default function CalendarScreen() {
   }, [weeks, baseToday]);
   const [visibleIndex, setVisibleIndex] = useState(initialIndex);
   const lastScrollIndexRef = useRef(initialIndex);
+  const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Отдельное состояние для текста заголовка и его анимации
   const [monthLabel, setMonthLabel] = useState<string>('');
   const monthHeaderFade = useSharedValue(1);
   const backToTodayFade = useSharedValue(0);
+  
+  // Throttle для обновления visibleIndex чтобы избежать частых перерендеров
+  const updateVisibleIndexThrottled = useCallback((idx: number) => {
+    if (throttleTimerRef.current) {
+      clearTimeout(throttleTimerRef.current);
+    }
+    throttleTimerRef.current = setTimeout(() => {
+      setVisibleIndex(idx);
+      throttleTimerRef.current = null;
+    }, 150); // Обновляем не чаще чем раз в 150ms
+  }, []);
   
   // Анимация модалок - движение за пальцем
   const dayModalTranslateY = useSharedValue(0);
@@ -581,6 +667,10 @@ export default function CalendarScreen() {
       date: weekStart,
     };
   }, [weeks, visibleIndex]);
+  
+  // Стабилизируем year и month для оптимизации зависимостей
+  const dominantYear = dominantMonth?.year ?? null;
+  const dominantMonthNum = dominantMonth?.month ?? null;
 
   // Обновляем текст заголовка по доминирующему месяцу
   useEffect(() => {
@@ -686,6 +776,15 @@ export default function CalendarScreen() {
       setUserPresets(presets);
     });
     return unsubscribe;
+  }, []);
+
+  // Cleanup для throttle таймера
+  useEffect(() => {
+    return () => {
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+      }
+    };
   }, []);
 
   // Сбрасываем позиции модалок при открытии
@@ -983,11 +1082,6 @@ export default function CalendarScreen() {
   const cellHeight = listHeight ? Math.floor(listHeight / VISIBLE_WEEKS) : 0;
   const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
-  console.log(
-    `[INIT] listHeight=${listHeight}, cellHeight=${cellHeight}, ` +
-    `actualMonthHeight=${actualMonthHeight}, visibleWeeks=${VISIBLE_WEEKS}`
-  );
-  
   // Рендер одной НЕДЕЛИ (7 дней). FlatList ниже работает поверх массива weeks.
   const renderWeekItem = useCallback(({ item, index }: { item: Date; index: number }) => {
     if (!listHeight || listHeight <= 0 || cellHeight <= 0) {
@@ -1013,86 +1107,28 @@ export default function CalendarScreen() {
     const today = new Date();
     const todayISO = formatISO(today);
     
-    // Вычисляем все серии без алкоголя для поиска лучшей
-    const allStreaks: { dates: string[]; length: number }[] = [];
-    const startDate = appStartDateRef.current ? new Date(appStartDateRef.current) : new Date(0);
-    let scanDate = new Date(today);
-    scanDate.setHours(0, 0, 0, 0);
-    
-    let currentScanStreak: string[] = [];
-    while (scanDate >= startDate) {
-      const scanISO = formatISO(scanDate);
-      const scanTotal = totalsByDate[scanISO] ?? 0;
-      
-      if (scanTotal === 0 && scanISO <= todayISO) {
-        currentScanStreak.push(scanISO);
-      } else {
-        if (currentScanStreak.length > 0) {
-          allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
-          currentScanStreak = [];
-        }
-      }
-      scanDate.setDate(scanDate.getDate() - 1);
-    }
-    // Добавляем последнюю серию если есть
-    if (currentScanStreak.length > 0) {
-      allStreaks.push({ dates: [...currentScanStreak], length: currentScanStreak.length });
-    }
-    
-    // Находим лучшую завершенную серию (не текущую, если она активна)
-    const currentStreakActive = allStreaks.length > 0 && allStreaks[0].dates.includes(todayISO);
-    const completedStreaks = currentStreakActive ? allStreaks.slice(1) : allStreaks;
-    const bestCompletedStreak = completedStreaks.length > 0 
-      ? completedStreaks.reduce((best, current) => current.length > best.length ? current : best)
-      : null;
-    
-    // Создаем Map для лучшей завершенной серии
-    const bestStreakDays = new Map<string, number>();
-    if (bestCompletedStreak && bestCompletedStreak.length >= 7) {
-      bestCompletedStreak.dates.reverse().forEach((iso, index) => {
-        bestStreakDays.set(iso, index + 1);
-      });
-    }
-    
-    // Вычисляем текущую серию без алкоголя с номерами дней
-    const currentStreakDays = new Map<string, number>(); // ISO -> день в серии (1, 2, 3...)
-    let tempDate = new Date(today);
-    tempDate.setHours(0, 0, 0, 0);
-    
-    // Идем от сегодня назад, пока встречаем дни без алкоголя
-    const streakDates: string[] = [];
-    while (tempDate >= startDate) {
-      const tempISO = formatISO(tempDate);
-      const tempTotal = totalsByDate[tempISO] ?? 0;
-      
-      if (tempTotal === 0 && tempISO <= todayISO) {
-        streakDates.push(tempISO);
-        tempDate.setDate(tempDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    
-    // Присваиваем номера дней (от самого раннего к сегодня)
-    streakDates.reverse().forEach((iso, index) => {
-      currentStreakDays.set(iso, index + 1);
-    });
+    // Используем предвычисленные Maps вместо пересчета на каждой неделе
+    const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
     
     const cells = weekDays.map((d, idx) => {
       const iso = formatISO(d);
       const total = totalsByDate[iso] ?? 0;
-      // Текущий месяц для подсветки — доминирующий месяц на экране
-      const isCurrentMonth =
-        dominantMonth &&
-        d.getFullYear() === dominantMonth.year &&
-        d.getMonth() === dominantMonth.month;
-      const isToday = iso === todayISO;
-      const isLastCol = (idx % 7) === 6;
-      const isLastRow = Math.floor(idx / 7) === 5;
       const streakDayNumber = currentStreakDays.get(iso);
       const isInCurrentStreak = streakDayNumber !== undefined;
       const bestStreakDayNumber = bestStreakDays.get(iso);
       const isInBestStreak = bestStreakDayNumber !== undefined;
+      
+      // Текущий месяц для подсветки — доминирующий месяц на экране
+      // Но дни текущей серии без алкоголя всегда яркие, даже если в соседнем месяце
+      const isCurrentMonth =
+        (dominantYear !== null &&
+         dominantMonthNum !== null &&
+         d.getFullYear() === dominantYear &&
+         d.getMonth() === dominantMonthNum) ||
+        isInCurrentStreak;
+      const isToday = iso === todayISO;
+      const isLastCol = (idx % 7) === 6;
+      const isLastRow = Math.floor(idx / 7) === 5;
       
       // Определяем стиль свечения в зависимости от длины серии (детальная прогрессия)
       let glowStyle = null;
@@ -1205,38 +1241,22 @@ export default function CalendarScreen() {
     return (
       <View 
         style={{ height: dynamicWeekHeight, width: weekWidth, alignSelf: 'center', overflow: 'hidden' }}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          console.log(
-            `[LAYOUT] Week #${index}: container height=${h}, expected=${dynamicWeekHeight}`
-          );
-        }}
       >
-        <View 
-          style={styles.grid}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            console.log(`[LAYOUT] Month ${item.getMonth() + 1}: grid height=${h}, cellHeight=${cellHeight}`);
-          }}
-        >
+        <View style={styles.grid}>
           {cells}
         </View>
       </View>
     );
-  }, [cellHeight, listHeight, screenWidth, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex, dominantMonth]);
+  }, [cellHeight, listHeight, screenWidth, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex, dominantYear, dominantMonthNum, streakMaps]);
 
 
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
   const calendarView = useMemo(() => {
     if (listHeight === null || listHeight <= 0 || cellHeight <= 0) return null;
     
-    // На экране всегда помещается 6 недель (6 строк)
+    // На экране всегда помещается 5 недель (5 строк)
     const weekRowHeight = cellHeight;
     const totalContentHeight = weekRowHeight * weeks.length;
-    console.log(
-      `[FLATLIST] Creating weeks FlatList: rowHeight=${weekRowHeight}, weeks=${weeks.length}, ` +
-      `totalContentHeight=${totalContentHeight}`
-    );
     
     return (
       <View style={{ height: actualMonthHeight, width: screenWidth }}>
@@ -1249,24 +1269,20 @@ export default function CalendarScreen() {
           style={{ height: actualMonthHeight, width: screenWidth }}
           contentContainerStyle={{ paddingBottom: 20 }}
           getItemLayout={(_, index) => {
-            const layout = { 
+            return { 
               length: weekRowHeight, 
               offset: weekRowHeight * index, 
               index 
             };
-            if (index % 10 === 0) { // Логируем не каждую неделю, чтобы избежать спама
-              console.log(`[ITEM LAYOUT] Week index ${index}: length=${layout.length}, offset=${layout.offset}`);
-            }
-            return layout;
           }}
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
           initialScrollIndex={initialIndex}
           removeClippedSubviews={true}
-          windowSize={10}
-          maxToRenderPerBatch={12}
-          updateCellsBatchingPeriod={50}
-          initialNumToRender={6}
-          scrollEventThrottle={16}
+          windowSize={5}
+          maxToRenderPerBatch={5}
+          updateCellsBatchingPeriod={100}
+          initialNumToRender={5}
+          scrollEventThrottle={100}
           onScrollToIndexFailed={() => {
             // Игнорируем ошибки скролла
           }}
@@ -1277,11 +1293,8 @@ export default function CalendarScreen() {
             // Обновляем только если индекс действительно изменился
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < weeks.length) {
               lastScrollIndexRef.current = idx;
-              console.log(`[SCROLL] Changed to week index ${idx}`);
-              // Текст заголовка пересчитывается по visibleIndex в useEffect
-              requestAnimationFrame(() => {
-                setVisibleIndex(idx);
-              });
+              // Используем throttle для плавного обновления
+              updateVisibleIndexThrottled(idx);
             }
           }}
           onMomentumScrollEnd={(e) => {
@@ -1296,7 +1309,7 @@ export default function CalendarScreen() {
         />
       </View>
     );
-  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight]);
+  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight, updateVisibleIndexThrottled]);
   
 
   // Пока не измерили высоту, показываем только структуру для измерения
