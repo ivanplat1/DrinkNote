@@ -232,12 +232,36 @@ export default function TodayScreen() {
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date());
   const [datePickerVisible, setDatePickerVisible] = useState(false);
 
+  // Анимация модалок - движение за пальцем
+  const addModalTranslateY = useSharedValue(0);
+  const customModalTranslateY = useSharedValue(0);
+  const editModalTranslateY = useSharedValue(0);
+  const editPresetModalTranslateY = useSharedValue(0);
+  const datePickerModalTranslateY = useSharedValue(0);
+
   useEffect(() => {
     (async () => {
       const presets = await getUserPresets();
       setUserPresets(presets);
     })();
   }, []);
+
+  // Сбрасываем позиции модалок при открытии
+  useEffect(() => {
+    if (addModalVisible) addModalTranslateY.value = 0;
+  }, [addModalVisible]);
+  useEffect(() => {
+    if (customModalVisible) customModalTranslateY.value = 0;
+  }, [customModalVisible]);
+  useEffect(() => {
+    if (editModalVisible) editModalTranslateY.value = 0;
+  }, [editModalVisible]);
+  useEffect(() => {
+    if (editPresetModalVisible) editPresetModalTranslateY.value = 0;
+  }, [editPresetModalVisible]);
+  useEffect(() => {
+    if (datePickerVisible) datePickerModalTranslateY.value = 0;
+  }, [datePickerVisible]);
 
   // Подписываемся на события изменения пресетов для синхронизации между экранами
   useEffect(() => {
@@ -555,6 +579,23 @@ export default function TodayScreen() {
     setEditingPresetId(null);
   };
 
+  // Анимированные стили для модалок - движение за пальцем
+  const addModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, addModalTranslateY.value) }],
+  }));
+  const customModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, customModalTranslateY.value) }],
+  }));
+  const editModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, editModalTranslateY.value) }],
+  }));
+  const editPresetModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, editPresetModalTranslateY.value) }],
+  }));
+  const datePickerModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, datePickerModalTranslateY.value) }],
+  }));
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <TouchableOpacity
@@ -782,17 +823,26 @@ export default function TodayScreen() {
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={styles.modalBackdrop}>
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={[
+                <Animated.View style={[
                   styles.modalCard,
-                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 8 + insets.top }]
+                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
+                  addModalAnimatedStyle
                 ]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      addModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       // Свайп вниз закрывает модальное окно
                       if (e.translationY > 50) {
-                        runOnJS(closeAddModal)();
+                        addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeAddModal)();
+                          addModalTranslateY.value = 0;
+                        });
+                      } else {
+                        addModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -848,7 +898,7 @@ export default function TodayScreen() {
                     </ScrollView>
 
                   </View>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
@@ -865,14 +915,22 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.modalCard}>
+                <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      customModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       // Свайп вниз закрывает модальное окно
                       if (e.translationY > 50) {
-                        runOnJS(closeCustomModal)();
+                        customModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeCustomModal)();
+                          customModalTranslateY.value = 0;
+                        });
+                      } else {
+                        customModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -954,7 +1012,7 @@ export default function TodayScreen() {
                     </TouchableOpacity>
                   </View>
                     </ScrollView>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
@@ -971,13 +1029,21 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.modalCard}>
+                <Animated.View style={[styles.modalCard, editModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      editModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        runOnJS(closeEditModal)();
+                        editModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeEditModal)();
+                          editModalTranslateY.value = 0;
+                        });
+                      } else {
+                        editModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -1041,7 +1107,7 @@ export default function TodayScreen() {
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
@@ -1058,13 +1124,21 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.modalCard}>
+                <Animated.View style={[styles.modalCard, editPresetModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      editPresetModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        runOnJS(closeEditPresetModal)();
+                        editPresetModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeEditPresetModal)();
+                          editPresetModalTranslateY.value = 0;
+                        });
+                      } else {
+                        editPresetModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -1144,7 +1218,7 @@ export default function TodayScreen() {
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
@@ -1156,13 +1230,21 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={() => setDatePickerVisible(false)}>
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.datePickerCard}>
+              <Animated.View style={[styles.datePickerCard, datePickerModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
                   .activeOffsetY([10, 100])
                   .failOffsetX([-50, 50])
+                  .onUpdate((e) => {
+                    datePickerModalTranslateY.value = e.translationY;
+                  })
                   .onEnd((e) => {
                     if (e.translationY > 50) {
-                      runOnJS(setDatePickerVisible)(false);
+                      datePickerModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        runOnJS(setDatePickerVisible)(false);
+                        datePickerModalTranslateY.value = 0;
+                      });
+                    } else {
+                      datePickerModalTranslateY.value = withTiming(0, { duration: 200 });
                     }
                   })
                 }>
@@ -1253,7 +1335,7 @@ export default function TodayScreen() {
                 >
                   <Text style={styles.todayButtonText}>Сегодня</Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
@@ -1437,7 +1519,7 @@ const styles = StyleSheet.create({
     minHeight: '33%',
     maxHeight: '90%',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1472,14 +1554,14 @@ shadowOpacity: 0.5,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 0,
-    paddingBottom: 12,
-    minHeight: 40,
+    paddingTop: 4,
+    paddingBottom: 8,
+    minHeight: 28,
   },
   modalDragBar: {
-    width: 60,
-    height: 4,
-    borderRadius: 2,
+    width: 40,
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: colors.textTertiary,
     alignSelf: 'center',
   },
@@ -1824,7 +1906,7 @@ shadowOpacity: 0.5,
     minHeight: '50%',
     maxHeight: '80%',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

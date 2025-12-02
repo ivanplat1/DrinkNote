@@ -3,17 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction, withRepeat, withSequence } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
 import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
 import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from '../storage/presets';
-import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst } from '../utils/date';
+import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { colors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
+
+// Сколько недель одновременно видно на экране
+const VISIBLE_WEEKS = 5;
 
 // Компонент диагонального градиента для плоских металлических слитков
 function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
@@ -111,14 +114,21 @@ function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
 }
 
 // Компонент заголовка месяца - вынесен отдельно для независимого обновления
-function MonthHeader({ label, headerStyle, monthStyle, sobrietyStats }: { 
+function MonthHeader({ 
+  label, 
+  headerStyle, 
+  monthStyle, 
+  sobrietyStats,
+  animatedStyle,
+}: { 
   label: string;
   headerStyle: any; 
   monthStyle: any;
   sobrietyStats?: { currentStreak: number; bestStreak: number };
+  animatedStyle?: any;
 }) {
   return (
-    <View style={headerStyle}>
+    <Animated.View style={[headerStyle, animatedStyle]}>
       <View style={{ flex: 1 }}>
         <Text style={monthStyle}>{label}</Text>
         {sobrietyStats && sobrietyStats.currentStreak > 0 && (
@@ -134,7 +144,7 @@ function MonthHeader({ label, headerStyle, monthStyle, sobrietyStats }: {
           </Text>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -495,35 +505,63 @@ export default function CalendarScreen() {
     return map;
   }, [totalsByDate]);
 
-  // Подготовим список месяцев: 3 года назад до текущего месяца (текущий - последний)
-  const base = useMemo(() => new Date(), []);
-  const months: Date[] = useMemo(() => {
-    const arr: Date[] = [];
-    for (let i = -36; i <= 0; i++) {
-      arr.push(new Date(base.getFullYear(), base.getMonth() + i, 1));
+  // Подготовим список недель: 3 года назад до конца текущего месяца
+  const baseToday = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const weeks: Date[] = useMemo(() => {
+    // Верхняя граница: конец текущего месяца
+    const endOfCurrentMonth = endOfMonth(baseToday);
+    endOfCurrentMonth.setHours(0, 0, 0, 0);
+
+    // Нижняя граница: начало месяца 2 года назад
+    const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 24, 1);
+    startMonth.setHours(0, 0, 0, 0);
+
+    // Выравниваем к понедельнику (0 = понедельник в getWeekdayIndexMonFirst)
+    const start = new Date(startMonth);
+    const weekdayIndex = getWeekdayIndexMonFirst(start); // 0..6, 0 = Пн
+    start.setDate(start.getDate() - weekdayIndex);
+
+    const result: Date[] = [];
+    const cursor = new Date(start);
+    while (cursor <= endOfCurrentMonth) {
+      result.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 7);
     }
-    return arr;
-  }, [base]);
+
+    console.log(
+      `[WEEKS] Generated ${result.length} weeks from ${formatISO(start)} to ${formatISO(endOfCurrentMonth)}`
+    );
+    return result;
+  }, [baseToday]);
   
-  // Мемоизируем матрицы для каждого месяца
-  const monthMatrices = useMemo(() => {
-    const startTime = performance.now();
-    const matrices: Map<string, Date[]> = new Map();
-    months.forEach(month => {
-      const key = `${month.getFullYear()}-${month.getMonth()}`;
-      matrices.set(key, buildMonthMatrix(month));
+  // Индекс недели, содержащей сегодняшний день
+  const initialIndex = useMemo(() => {
+    const todayISO = formatISO(baseToday);
+    const idx = weeks.findIndex((weekStart) => {
+      const start = new Date(weekStart);
+      const end = new Date(weekStart);
+      end.setDate(end.getDate() + 6);
+      return todayISO >= formatISO(start) && todayISO <= formatISO(end);
     });
-    const endTime = performance.now();
-    console.log(`[PERF] monthMatrices computed in ${(endTime - startTime).toFixed(2)}ms, months: ${months.length}`);
-    return matrices;
-  }, [months]);
-  
-  const initialIndex = months.length - 1; // текущий месяц - последний в массиве
+    return idx >= 0 ? idx : weeks.length - 1;
+  }, [weeks, baseToday]);
   const [visibleIndex, setVisibleIndex] = useState(initialIndex);
   const lastScrollIndexRef = useRef(initialIndex);
   
-  // Отдельное состояние для текста заголовка - обновляется независимо
+  // Отдельное состояние для текста заголовка и его анимации
   const [monthLabel, setMonthLabel] = useState<string>('');
+  const monthHeaderFade = useSharedValue(1);
+  const backToTodayFade = useSharedValue(0);
+  
+  // Анимация модалок - движение за пальцем
+  const dayModalTranslateY = useSharedValue(0);
+  const addModalTranslateY = useSharedValue(0);
+  const customModalTranslateY = useSharedValue(0);
 
   // Форматтер вынесен наружу, чтобы не создавать его при каждом рендере
   const dateFormatter = useMemo(() => 
@@ -531,17 +569,53 @@ export default function CalendarScreen() {
     []
   );
 
-  // Предрендерим все тексты месяцев для мгновенного переключения
-  const monthLabels = useMemo(() => {
-    return months.map((month) => dateFormatter.format(month));
-  }, [months, dateFormatter]);
+  // Определяем "доминирующий" месяц на экране — по центральной из 6 видимых недель
+  const dominantMonth = useMemo(() => {
+    if (!weeks.length) return null;
+    // Берём примерно третью неделю от верхней границы (индекс + 2)
+    const centerIndex = Math.min(Math.max(visibleIndex + 2, 0), weeks.length - 1);
+    const weekStart = weeks[centerIndex];
+    return {
+      year: weekStart.getFullYear(),
+      month: weekStart.getMonth(),
+      date: weekStart,
+    };
+  }, [weeks, visibleIndex]);
 
-  // Инициализируем начальный текст
+  // Обновляем текст заголовка по доминирующему месяцу
   useEffect(() => {
-    if (monthLabels.length > 0 && !monthLabel) {
-      setMonthLabel(monthLabels[initialIndex] || '');
-    }
-  }, [monthLabels, initialIndex, monthLabel]);
+    if (!dominantMonth) return;
+    setMonthLabel(dateFormatter.format(dominantMonth.date));
+  }, [dominantMonth, dateFormatter]);
+
+  // Анимация появления заголовка при смене месяца
+  const monthHeaderAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: monthHeaderFade.value,
+      transform: [
+        {
+          translateY: (1 - monthHeaderFade.value) * 8, // лёгкий сдвиг вверх при появлении
+        },
+      ],
+    };
+  });
+
+  const backToTodayAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: backToTodayFade.value,
+      transform: [
+        {
+          translateY: (1 - backToTodayFade.value) * 12, // выезжает снизу
+        },
+      ],
+    };
+  });
+
+  useEffect(() => {
+    if (!dominantMonth) return;
+    monthHeaderFade.value = 0;
+    monthHeaderFade.value = withTiming(1, { duration: 220 });
+  }, [dominantMonth?.year, dominantMonth?.month]);
 
   // initialScrollIndex делает начальный скролл, не нужен useEffect
 
@@ -562,6 +636,13 @@ export default function CalendarScreen() {
     console.log(`[PERF] openDay completed in ${(endTime - startTime).toFixed(2)}ms, date: ${iso}, drinks: ${list.length}`);
     setDayList(list);
   }, [all]);
+
+  // Сбрасываем позицию модалки дня при открытии
+  useEffect(() => {
+    if (selectedDate) {
+      dayModalTranslateY.value = 0;
+    }
+  }, [selectedDate]);
 
   const deleteEntry = async (id: string) => {
     // Оптимистичное обновление UI - удаляем из dayList сразу
@@ -607,8 +688,13 @@ export default function CalendarScreen() {
     return unsubscribe;
   }, []);
 
-  // Отслеживание изменений состояния модальных окон
-  useEffect(() => {  }, [addModalVisible, customModalVisible, selectedDate]);
+  // Сбрасываем позиции модалок при открытии
+  useEffect(() => {
+    if (addModalVisible) addModalTranslateY.value = 0;
+  }, [addModalVisible]);
+  useEffect(() => {
+    if (customModalVisible) customModalTranslateY.value = 0;
+  }, [customModalVisible]);
 
   const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
     const labels: Record<PresetDrink['beverageType'], string> = {
@@ -867,7 +953,7 @@ export default function CalendarScreen() {
         // Если не удалось, пробуем через offset
         if (listRef.current) {
           listRef.current.scrollToOffset({ 
-            offset: initialIndex * actualMonthHeight, 
+            offset: initialIndex * cellHeight, 
             animated: true,
           });
         }
@@ -875,33 +961,57 @@ export default function CalendarScreen() {
     }
   }, [listHeight, initialIndex]);
 
-  // Мемоизируем условие показа кнопки чтобы избежать задержки
-  const showBackToToday = useMemo(() => visibleIndex < initialIndex, [visibleIndex, initialIndex]);
+  // Мемоизируем условие показа кнопки "вниз к сегодня"
+  const showBackToToday = useMemo(() => {
+    if (!weeks.length) return false;
+    // Показываем стрелку, когда пользователь пролистал достаточно ВЫШЕ сегодняшней недели:
+    // на 4 и более недель (чтобы не мигала при лёгком скролле вокруг today)
+    return visibleIndex <= initialIndex - 4;
+  }, [visibleIndex, initialIndex, weeks.length]);
+
+  // Анимируем появление/исчезновение стрелки вниз
+  useEffect(() => {
+    backToTodayFade.value = withTiming(showBackToToday ? 1 : 0, {
+      duration: 320,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [showBackToToday]);
 
   // Мемоизируем renderItem для оптимизации производительности
-  // Вычисляем высоту ячейки чтобы 6 рядов точно влезли в listHeight
-  const cellHeight = listHeight ? Math.floor(listHeight / 6) : 0;
-  const actualMonthHeight = cellHeight * 6;
+  // Высота ячейки подбирается так, чтобы на экране помещалось примерно 5 недель
+  const VISIBLE_WEEKS = 5;
+  const cellHeight = listHeight ? Math.floor(listHeight / VISIBLE_WEEKS) : 0;
+  const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
-  console.log(`[INIT] listHeight=${listHeight}, cellHeight=${cellHeight}, actualMonthHeight=${actualMonthHeight}`);
+  console.log(
+    `[INIT] listHeight=${listHeight}, cellHeight=${cellHeight}, ` +
+    `actualMonthHeight=${actualMonthHeight}, visibleWeeks=${VISIBLE_WEEKS}`
+  );
   
-  const renderMonthItem = useCallback(({ item, index }: { item: Date; index: number }) => {
-    if (!listHeight || listHeight <= 0) {
+  // Рендер одной НЕДЕЛИ (7 дней). FlatList ниже работает поверх массива weeks.
+  const renderWeekItem = useCallback(({ item, index }: { item: Date; index: number }) => {
+    if (!listHeight || listHeight <= 0 || cellHeight <= 0) {
       return <View style={{ height: 300, width: screenWidth }} />;
     }
-    const monthKey = `${item.getFullYear()}-${item.getMonth()}`;
-    const matrix = monthMatrices.get(monthKey) || buildMonthMatrix(item);
-    
-    const firstDay = matrix[0];
-    const lastDay = matrix[matrix.length - 1];
-    console.log(`[RENDER MONTH] Index: ${index}, Month: ${item.getMonth() + 1}/${item.getFullYear()}, cellHeight=${cellHeight}, actualMonthHeight=${actualMonthHeight}`);
-    console.log(`  First cell: ${formatISO(firstDay)}, Last cell: ${formatISO(lastDay)}`);
-    
+
+    // Начало недели (понедельник)
+    const weekStart = new Date(item);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // 7 последовательных дней недели
+    const weekDays: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      weekDays.push(d);
+    }
+
     const cellWidth = Math.floor(screenWidth / 7);
-    const monthWidth = cellWidth * 7;
+    const weekWidth = cellWidth * 7;
+    const dynamicWeekHeight = cellHeight; // одна строка = одна неделя
     
-    const todayISO = formatISO(new Date());
     const today = new Date();
+    const todayISO = formatISO(today);
     
     // Вычисляем все серии без алкоголя для поиска лучшей
     const allStreaks: { dates: string[]; length: number }[] = [];
@@ -968,10 +1078,14 @@ export default function CalendarScreen() {
       currentStreakDays.set(iso, index + 1);
     });
     
-    const cells = matrix.map((d, idx) => {
+    const cells = weekDays.map((d, idx) => {
       const iso = formatISO(d);
       const total = totalsByDate[iso] ?? 0;
-      const isCurrentMonth = d.getMonth() === item.getMonth();
+      // Текущий месяц для подсветки — доминирующий месяц на экране
+      const isCurrentMonth =
+        dominantMonth &&
+        d.getFullYear() === dominantMonth.year &&
+        d.getMonth() === dominantMonth.month;
       const isToday = iso === todayISO;
       const isLastCol = (idx % 7) === 6;
       const isLastRow = Math.floor(idx / 7) === 5;
@@ -1090,10 +1204,12 @@ export default function CalendarScreen() {
     
     return (
       <View 
-        style={{ height: actualMonthHeight, width: monthWidth, alignSelf: 'center', overflow: 'hidden' }}
+        style={{ height: dynamicWeekHeight, width: weekWidth, alignSelf: 'center', overflow: 'hidden' }}
         onLayout={(e) => {
           const h = e.nativeEvent.layout.height;
-          console.log(`[LAYOUT] Month ${item.getMonth() + 1}: container height=${h}, expected=${actualMonthHeight}`);
+          console.log(
+            `[LAYOUT] Week #${index}: container height=${h}, expected=${dynamicWeekHeight}`
+          );
         }}
       >
         <View 
@@ -1107,65 +1223,62 @@ export default function CalendarScreen() {
         </View>
       </View>
     );
-  }, [actualMonthHeight, listHeight, screenWidth, monthMatrices, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex]);
+  }, [cellHeight, listHeight, screenWidth, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, initialIndex, dominantMonth]);
 
 
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
   const calendarView = useMemo(() => {
-    if (listHeight === null || listHeight <= 0 || actualMonthHeight <= 0) return null;
+    if (listHeight === null || listHeight <= 0 || cellHeight <= 0) return null;
     
-    const totalContentHeight = actualMonthHeight * months.length;
-    console.log(`[FLATLIST] Creating FlatList: actualMonthHeight=${actualMonthHeight}, months=${months.length}, totalContentHeight=${totalContentHeight}`);
+    // На экране всегда помещается 6 недель (6 строк)
+    const weekRowHeight = cellHeight;
+    const totalContentHeight = weekRowHeight * weeks.length;
+    console.log(
+      `[FLATLIST] Creating weeks FlatList: rowHeight=${weekRowHeight}, weeks=${weeks.length}, ` +
+      `totalContentHeight=${totalContentHeight}`
+    );
     
     return (
-      <View style={{ height: actualMonthHeight, width: screenWidth, overflow: 'hidden' }}>
+      <View style={{ height: actualMonthHeight, width: screenWidth }}>
         <FlatList
           ref={listRef}
-          data={months}
+          data={weeks}
           horizontal={false}
-          pagingEnabled
-          snapToInterval={actualMonthHeight}
-          decelerationRate="fast"
+          decelerationRate="normal"
           showsVerticalScrollIndicator={false}
-          style={{ height: actualMonthHeight, width: screenWidth, overflow: 'hidden' }}
-          contentContainerStyle={{ height: totalContentHeight }}
+          style={{ height: actualMonthHeight, width: screenWidth }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           getItemLayout={(_, index) => {
             const layout = { 
-              length: actualMonthHeight, 
-              offset: actualMonthHeight * index, 
+              length: weekRowHeight, 
+              offset: weekRowHeight * index, 
               index 
             };
-            if (index % 3 === 0) { // Логируем каждый 3-й для меньшего спама
-              console.log(`[ITEM LAYOUT] Index ${index}: length=${layout.length}, offset=${layout.offset}`);
+            if (index % 10 === 0) { // Логируем не каждую неделю, чтобы избежать спама
+              console.log(`[ITEM LAYOUT] Week index ${index}: length=${layout.length}, offset=${layout.offset}`);
             }
             return layout;
           }}
-          keyExtractor={(item, index) => `month-${item.getFullYear()}-${item.getMonth()}-${index}`}
+          keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
           initialScrollIndex={initialIndex}
           removeClippedSubviews={true}
-          windowSize={3}
-          maxToRenderPerBatch={1}
-          updateCellsBatchingPeriod={100}
-          initialNumToRender={1}
+          windowSize={10}
+          maxToRenderPerBatch={12}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={6}
           scrollEventThrottle={16}
           onScrollToIndexFailed={() => {
             // Игнорируем ошибки скролла
           }}
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
-            const idx = Math.round(y / actualMonthHeight);
-            
-            console.log(`[SCROLL] y=${y.toFixed(1)}, actualMonthHeight=${actualMonthHeight}, idx=${idx}`);
+            const idx = Math.round(y / weekRowHeight);
             
             // Обновляем только если индекс действительно изменился
-            if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < months.length) {
+            if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < weeks.length) {
               lastScrollIndexRef.current = idx;
-              console.log(`[SCROLL] Changed to month index ${idx}`);
-              // Обновляем текст заголовка синхронно для мгновенного отображения
-              if (monthLabels[idx]) {
-                setMonthLabel(monthLabels[idx]);
-              }
-              // Обновляем состояние асинхронно для других зависимостей
+              console.log(`[SCROLL] Changed to week index ${idx}`);
+              // Текст заголовка пересчитывается по visibleIndex в useEffect
               requestAnimationFrame(() => {
                 setVisibleIndex(idx);
               });
@@ -1173,21 +1286,32 @@ export default function CalendarScreen() {
           }}
           onMomentumScrollEnd={(e) => {
             const y = e.nativeEvent.contentOffset.y;
-            const idx = Math.round(y / actualMonthHeight);
+            const idx = Math.round(y / weekRowHeight);
             const currentIdx = lastScrollIndexRef.current;
             if (idx !== currentIdx) {
               setVisibleIndex(idx);
             }
           }}
-          renderItem={renderMonthItem}
+          renderItem={renderWeekItem}
         />
       </View>
     );
-  }, [actualMonthHeight, listHeight, screenWidth, months, renderMonthItem, listRef]);
+  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight]);
   
 
   // Пока не измерили высоту, показываем только структуру для измерения
   const needsMeasurement = listHeight === null || listHeight <= 0;
+
+  // Анимированные стили для модалок - движение за пальцем
+  const dayModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, dayModalTranslateY.value) }],
+  }));
+  const addModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, addModalTranslateY.value) }],
+  }));
+  const customModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, customModalTranslateY.value) }],
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1205,6 +1329,7 @@ export default function CalendarScreen() {
           headerStyle={styles.headerRow} 
           monthStyle={styles.month}
           sobrietyStats={sobrietyStats}
+          animatedStyle={monthHeaderAnimatedStyle}
         />
       </View>
 
@@ -1238,16 +1363,19 @@ export default function CalendarScreen() {
         </View>
       )}
 
-      {/* Кнопка возврата к текущему месяцу */}
-      {showBackToToday && (
+      {/* Кнопка возврата к текущей неделе (вниз) с плавной анимацией */}
+      <Animated.View
+        style={[styles.backToTodayButton, backToTodayAnimatedStyle]}
+        pointerEvents={showBackToToday ? 'auto' : 'none'}
+      >
         <TouchableOpacity
-          style={styles.backToTodayButton}
+          style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
           onPress={scrollToToday}
           activeOpacity={0.8}
         >
-          <FontAwesome name="chevron-circle-down" size={44} color={colors.primaryLight} />
+          <MaterialIcons name="keyboard-double-arrow-down" size={34} color={colors.primaryLight} />
         </TouchableOpacity>
-      )}
+      </Animated.View>
 
       <Modal visible={!!selectedDate && !addModalVisible && !customModalVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={() => {
@@ -1257,14 +1385,22 @@ export default function CalendarScreen() {
           <View style={styles.modalBackdrop}>
             <View style={styles.modalSpacer} />
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modalCard}>
+              <Animated.View style={[styles.modalCard, dayModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
                   .activeOffsetY([10, 100])
                   .failOffsetX([-50, 50])
+                  .onUpdate((e) => {
+                    dayModalTranslateY.value = e.translationY;
+                  })
                   .onEnd((e) => {
                     if (e.translationY > 50) {
-                      runOnJS(setSelectedDate)(null);
-                      runOnJS(loadAll)();
+                      dayModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        runOnJS(setSelectedDate)(null);
+                        runOnJS(loadAll)();
+                        dayModalTranslateY.value = 0;
+                      });
+                    } else {
+                      dayModalTranslateY.value = withTiming(0, { duration: 200 });
                     }
                   })
                 }>
@@ -1339,7 +1475,7 @@ export default function CalendarScreen() {
                     }
                   />
                 </View>
-              </View>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
@@ -1352,7 +1488,7 @@ export default function CalendarScreen() {
         transparent
         onRequestClose={closeAddModal}
       >
-        <TouchableWithoutFeedback onPress={() => {}}>
+        <TouchableWithoutFeedback onPress={closeAddModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1363,16 +1499,25 @@ export default function CalendarScreen() {
               ]}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={[
+                <Animated.View style={[
                   styles.modalCard,
-                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 8 + insets.top }]
+                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
+                  addModalAnimatedStyle
                 ]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      addModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        runOnJS(closeAddModal)();
+                        addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeAddModal)();
+                          addModalTranslateY.value = 0;
+                        });
+                      } else {
+                        addModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -1469,14 +1614,14 @@ export default function CalendarScreen() {
                   </TouchableOpacity>
                 </ScrollView>
                   </View>
-                </View>
+                </Animated.View>
             </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+          </KeyboardAvoidingView>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
 
-      {/* Модалка добавления своего напитка */}
+    {/* Модалка добавления своего напитка */}
       <Modal visible={customModalVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
@@ -1486,13 +1631,21 @@ export default function CalendarScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.modalCard}>
+                <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .activeOffsetY([10, 100])
                     .failOffsetX([-50, 50])
+                    .onUpdate((e) => {
+                      customModalTranslateY.value = e.translationY;
+                    })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        runOnJS(closeCustomModal)();
+                        customModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                          runOnJS(closeCustomModal)();
+                          customModalTranslateY.value = 0;
+                        });
+                      } else {
+                        customModalTranslateY.value = withTiming(0, { duration: 200 });
                       }
                     })
                   }>
@@ -1563,7 +1716,7 @@ export default function CalendarScreen() {
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
@@ -1676,9 +1829,12 @@ const styles = StyleSheet.create({
   },
   cellCurrent: {
     backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    opacity: 1,
   },
   cellAdjacent: {
-    backgroundColor: colors.backgroundTertiary,
+    // Та же база, но чуть приглушённая по яркости — визуально мягче при переключении месяца
+    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    opacity: 0.55,
   },
   // Металлические стили (прозрачная рамка, анимированная рамка поверх)
   cellGoldLight: {
@@ -1872,7 +2028,7 @@ const styles = StyleSheet.create({
     maxHeight: '70%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -1887,14 +2043,14 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 0,
+    paddingTop: 4,
     paddingBottom: 8,
-    minHeight: 40,
+    minHeight: 28,
   },
   modalDragBar: {
-    width: 60,
-    height: 4,
-    borderRadius: 2,
+    width: 40,
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: colors.textTertiary,
     alignSelf: 'center',
   },
@@ -2001,8 +2157,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 8,
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
