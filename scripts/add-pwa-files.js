@@ -481,14 +481,22 @@ if (fs.existsSync(indexPath)) {
         // Также проверяем по содержимому - если есть навигационные элементы
         const hasNavContent = element.querySelector('nav[role="tablist"]') || 
                               element.textContent.includes('Сегодня') || 
-                              element.textContent.includes('Календарь');
+                              element.textContent.includes('Календарь') ||
+                              element.textContent.includes('Статистика') ||
+                              element.textContent.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
+          // Получаем текущий padding-bottom, если он есть
           const currentPaddingBottom = style.paddingBottom || '0px';
           const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
           
-          // Применяем safe area insets
-          element.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
+          // Применяем safe area insets - используем env() напрямую для правильного расчета
+          // Если уже есть padding, добавляем к нему, иначе просто устанавливаем safe area
+          if (currentPaddingBottomValue > 0) {
+            element.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
+          } else {
+            element.style.paddingBottom = safeAreaBottom;
+          }
           element.style.marginBottom = '0';
           element.dataset.safeAreaApplied = 'true';
         }
