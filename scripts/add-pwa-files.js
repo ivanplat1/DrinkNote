@@ -288,21 +288,26 @@ if (fs.existsSync(indexPath)) {
       }
       
       /* Применяем safe area к body */
-      /* Для black-translucent статус-бара контент должен быть под ним, поэтому НЕ добавляем padding-top к body */
-      /* Вместо этого применяем padding только к нижней части для home indicator */
+      /* Для black-translucent статус-бара контент должен быть под ним без дополнительного padding */
+      /* Фон должен быть черным, чтобы статус-бар выглядел правильно */
       body {
         padding-bottom: env(safe-area-inset-bottom);
         background-color: #000000;
+        margin: 0;
+        padding-top: 0;
       }
       
       /* Убеждаемся, что статус-бар имеет правильный цвет фона */
       html {
         background-color: #000000;
+        margin: 0;
+        padding: 0;
       }
       
-      /* Применяем safe area к корневому элементу приложения */
+      /* Для black-translucent НЕ добавляем padding-top к root - контент должен быть под статус-баром */
       #root {
-        padding-top: env(safe-area-inset-top);
+        margin: 0;
+        padding: 0;
       }
       
       /* Применяем safe area к таб-бару React Navigation */
