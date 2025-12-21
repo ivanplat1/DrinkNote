@@ -456,47 +456,63 @@ if (fs.existsSync(indexPath)) {
     function applySafeAreaToTabBar() {
       // Проверяем, находимся ли мы в standalone режиме (PWA через домашний экран)
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                          window.navigator.standalone || 
+                          (window.navigator && window.navigator.standalone) || 
                           document.referrer.includes('android-app://');
       
       // Получаем значение safe area insets
-      const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
+      // Используем прямое значение env() для правильной работы
+      const safeAreaBottom = 'env(safe-area-inset-bottom)';
       
       function applyPadding(element) {
-        if (!element || element.dataset.safeAreaApplied) return;
+        if (!element) return;
         
         const style = window.getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         const windowHeight = window.innerHeight;
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : windowHeight;
         
-        // Проверяем, что элемент действительно внизу экрана
+        // Проверяем, что элемент действительно внизу экрана (в пределах 100px от низа)
         const isAtBottom = (style.position === 'fixed' || style.position === 'absolute') && 
-                          (rect.bottom >= windowHeight - 10 || style.bottom === '0px' || style.bottom === '0');
+                          (rect.bottom >= viewportHeight - 100 || 
+                           style.bottom === '0px' || 
+                           style.bottom === '0' ||
+                           Math.abs(rect.bottom - viewportHeight) < 10);
         
         // Также проверяем по содержимому - если есть навигационные элементы
+        const text = element.textContent || '';
         const hasNavContent = element.querySelector('nav[role="tablist"]') || 
-                              element.textContent.includes('Сегодня') || 
-                              element.textContent.includes('Календарь') ||
-                              element.textContent.includes('Статистика') ||
-                              element.textContent.includes('Настройки');
+                              text.includes('Сегодня') || 
+                              text.includes('Календарь') ||
+                              text.includes('Статистика') ||
+                              text.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
           // Применяем padding только в standalone режиме
           if (isStandalone) {
-            // Применяем padding-bottom напрямую к таб-бару
-            // Это создаст пространство для home indicator
+            // Получаем текущий padding-bottom
             const currentPaddingBottom = style.paddingBottom || '0px';
-            const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
+            let currentPaddingBottomValue = 0;
+            
+            // Парсим значение padding-bottom
+            if (currentPaddingBottom !== '0px' && currentPaddingBottom !== '0') {
+              const match = currentPaddingBottom.match(/(\\d+(?:\\.\\d+)?)/);
+              if (match) {
+                currentPaddingBottomValue = parseFloat(match[1]);
+              }
+            }
             
             // Применяем safe area insets
+            // Используем calc() для правильного расчета
             if (currentPaddingBottomValue > 0) {
               element.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
             } else {
               element.style.paddingBottom = safeAreaBottom;
             }
+            
+            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'isStandalone:', isStandalone);
           } else {
-            // В браузере не применяем padding, чтобы не было лишнего пространства
-            element.style.paddingBottom = '0';
+            // В браузере не применяем padding
+            element.style.paddingBottom = currentPaddingBottom;
           }
           
           element.style.marginBottom = '0';
