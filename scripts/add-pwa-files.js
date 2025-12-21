@@ -67,6 +67,10 @@ if (fs.existsSync(iconPath)) {
       purpose: 'any'
     }
   );
+  
+  console.log('✅ Созданы иконки: icon-192.png, icon-512.png');
+} else {
+  console.warn('⚠️  Иконка не найдена:', iconPath);
 }
 
 // Добавляем favicon если есть
@@ -225,6 +229,33 @@ if (fs.existsSync(indexPath)) {
     /<meta name="viewport"[^>]*>/,
     '<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />'
   );
+  
+  // Добавляем apple-touch-icon для iOS
+  if (fs.existsSync(iconPath)) {
+    const appleTouchIconPath = path.join(distAssetsDir, 'apple-touch-icon.png');
+    // Создаем apple-touch-icon (180x180 для iOS)
+    try {
+      const { execSync } = require('child_process');
+      execSync(`sips -z 180 180 "${iconPath}" --out "${appleTouchIconPath}"`, { stdio: 'ignore' });
+      console.log('✅ Создан apple-touch-icon.png');
+    } catch (e) {
+      try {
+        execSync(`convert "${iconPath}" -resize 180x180 "${appleTouchIconPath}"`, { stdio: 'ignore' });
+        console.log('✅ Создан apple-touch-icon.png (через ImageMagick)');
+      } catch (e2) {
+        fs.copyFileSync(iconPath, appleTouchIconPath);
+        console.log('✅ Скопирован apple-touch-icon.png');
+      }
+    }
+    
+    if (!html.includes('apple-touch-icon')) {
+      html = html.replace(
+        /<\/head>/,
+        `  <link rel="apple-touch-icon" href="/DrinkNote/assets/apple-touch-icon.png" />
+</head>`
+      );
+    }
+  }
   
   // Добавляем мета-теги для iOS PWA
   if (!html.includes('apple-mobile-web-app-status-bar-style')) {
