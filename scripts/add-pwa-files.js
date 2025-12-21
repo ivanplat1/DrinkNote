@@ -211,12 +211,21 @@ console.log('✅ Создан sw.js');
 if (fs.existsSync(indexPath)) {
   let html = fs.readFileSync(indexPath, 'utf8');
   
+  // Исправляем абсолютные пути на относительные для GitHub Pages
+  // Заменяем пути к ресурсам, начинающиеся с "/" на относительные
+  html = html.replace(/href="\/([^\/"][^"]*)"/g, (match, path) => {
+    return `href="./${path}"`;
+  });
+  html = html.replace(/src="\/([^\/"][^"]*)"/g, (match, path) => {
+    return `src="./${path}"`;
+  });
+  
   // Проверяем, не добавлены ли уже теги
   if (!html.includes('manifest.json')) {
     // Добавляем ссылку на манифест перед закрывающим тегом head
     html = html.replace(
       /<\/head>/,
-      '  <link rel="manifest" href="/manifest.json" />\n</head>'
+      '  <link rel="manifest" href="./manifest.json" />\n</head>'
     );
   }
   
@@ -227,7 +236,7 @@ if (fs.existsSync(indexPath)) {
   // Регистрация Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('./sw.js')
         .then((registration) => {
           console.log('SW registered: ', registration);
         })
