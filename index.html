@@ -37,6 +37,35 @@
   <script src="/DrinkNote/_expo/static/js/web/index-a7a4c92c9190020e1747e42928e660c0.js" defer></script>
 
 <script>
+  // Исправляем пути к ресурсам для GitHub Pages
+  (function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      if (typeof args[0] === 'string') {
+        args[0] = args[0].replace(/^https:\/\/ivanplat1\.github\.io\/assets\//, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+        args[0] = args[0].replace(/^\/assets\//, '/DrinkNote/_expo/static/');
+      }
+      return originalFetch.apply(this, args);
+    };
+    
+    // Перехватываем создание элементов для исправления путей
+    const originalCreateElement = document.createElement;
+    document.createElement = function(tagName, options) {
+      const element = originalCreateElement.call(this, tagName, options);
+      if (tagName === 'link' || tagName === 'script' || tagName === 'img') {
+        const originalSetAttribute = element.setAttribute;
+        element.setAttribute = function(name, value) {
+          if ((name === 'href' || name === 'src') && typeof value === 'string') {
+            value = value.replace(/^https:\/\/ivanplat1\.github\.io\/assets\//, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+            value = value.replace(/^\/assets\//, '/DrinkNote/_expo/static/');
+          }
+          return originalSetAttribute.call(this, name, value);
+        };
+      }
+      return element;
+    };
+  })();
+  
   // Регистрация Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
