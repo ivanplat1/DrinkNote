@@ -496,6 +496,10 @@ if (fs.existsSync(indexPath)) {
                               text.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
+          // Добавляем визуальные индикаторы для отладки
+          element.style.border = '3px solid red';
+          element.style.boxSizing = 'border-box';
+          
           // Применяем padding только в standalone режиме
           if (isStandalone) {
             // Получаем текущий padding-bottom
@@ -518,10 +522,15 @@ if (fs.existsSync(indexPath)) {
               element.style.paddingBottom = safeAreaBottom;
             }
             
-            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'isStandalone:', isStandalone);
+            // Добавляем цветной фон для отладки
+            element.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+            
+            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'isStandalone:', isStandalone, 'rect:', rect, 'viewportHeight:', viewportHeight);
           } else {
-            // В браузере не применяем padding
+            // В браузере не применяем padding, но все равно добавляем рамку для отладки
             element.style.paddingBottom = currentPaddingBottom;
+            element.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
+            element.style.border = '3px solid green';
           }
           
           element.style.marginBottom = '0';
