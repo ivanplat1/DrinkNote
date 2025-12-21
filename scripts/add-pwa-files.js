@@ -254,22 +254,30 @@ if (fs.existsSync(indexPath)) {
 }
 
 // Исправляем пути в JavaScript бандле
-const jsFiles = fs.readdirSync(path.join(distDir, '_expo', 'static', 'js', 'web')).filter(f => f.endsWith('.js'));
-jsFiles.forEach(jsFile => {
-  const jsPath = path.join(distDir, '_expo', 'static', 'js', 'web', jsFile);
-  let jsContent = fs.readFileSync(jsPath, 'utf8');
-  
-  // Заменяем пути к ресурсам, которые начинаются с "/assets/" на "/DrinkNote/_expo/static/"
-  jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
-  
-  // Также заменяем другие возможные пути
-  jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
-    return match.replace(/^\//, '/DrinkNote/');
+const jsDir = path.join(distDir, '_expo', 'static', 'js', 'web');
+if (fs.existsSync(jsDir)) {
+  const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
+  jsFiles.forEach(jsFile => {
+    const jsPath = path.join(jsDir, jsFile);
+    let jsContent = fs.readFileSync(jsPath, 'utf8');
+    
+    // Заменяем пути к ресурсам, которые начинаются с "/assets/" на "/DrinkNote/_expo/static/"
+    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+    
+    // Заменяем пути к node_modules ресурсам
+    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    
+    // Заменяем пути в url() функциях
+    jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
+      return match.replace(/^\//, '/DrinkNote/_expo/static/');
+    });
+    
+    fs.writeFileSync(jsPath, jsContent);
+    console.log(`✅ Обновлен ${jsFile}`);
   });
-  
-  fs.writeFileSync(jsPath, jsContent);
-  console.log(`✅ Обновлен ${jsFile}`);
-});
+}
 
 console.log('✅ PWA файлы успешно добавлены!');
 
