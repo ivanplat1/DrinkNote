@@ -355,6 +355,8 @@ if (fs.existsSync(indexPath)) {
         div[style*="bottom:0px"] {
           padding-bottom: env(safe-area-inset-bottom) !important;
           margin-bottom: 0 !important;
+          /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
+          min-height: calc(49px + env(safe-area-inset-bottom)) !important;
         }
       }
       
