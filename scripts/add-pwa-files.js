@@ -85,12 +85,12 @@ const manifest = {
   name: 'DrinkNote',
   short_name: 'DrinkNote',
   description: 'Трекер потребления алкоголя',
-  start_url: '/',
+  start_url: '/DrinkNote/',
   display: 'standalone',
   background_color: '#000000',
   theme_color: '#1a1a1a',
   orientation: 'portrait',
-  scope: '/',
+  scope: '/DrinkNote/',
   icons: icons.length > 0 ? icons : [
     {
       src: '/favicon.ico',
