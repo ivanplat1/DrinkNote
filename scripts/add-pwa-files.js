@@ -609,10 +609,33 @@ if (fs.existsSync(indexPath)) {
       
       // Также ищем все fixed элементы внизу экрана
       const allElements = document.querySelectorAll('*');
+      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      
       allElements.forEach(el => {
         const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        
+        // Проверяем fixed элементы внизу экрана
         if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
           applyPadding(el);
+        }
+        
+        // Добавляем отладочные рамки ко ВСЕМ элементам внизу экрана (в пределах 150px от низа)
+        if (rect.bottom >= viewportHeight - 150 && rect.top < viewportHeight) {
+          // Добавляем рамку, если её еще нет
+          if (!el.dataset.debugBorderAdded) {
+            el.style.border = '3px solid pink';
+            el.style.boxSizing = 'border-box';
+            el.style.outline = '2px solid white';
+            el.style.backgroundColor = 'rgba(255, 192, 203, 0.3)';
+            el.dataset.debugBorderAdded = 'true';
+            console.log('Debug border added to element at bottom:', el.tagName, el.className, 'rect:', rect, 'viewportHeight:', viewportHeight, 'style:', {
+              position: style.position,
+              bottom: style.bottom,
+              marginBottom: style.marginBottom,
+              paddingBottom: style.paddingBottom
+            });
+          }
         }
       });
       
