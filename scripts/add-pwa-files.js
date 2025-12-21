@@ -231,7 +231,7 @@ if (fs.existsSync(indexPath)) {
     html = html.replace(
       /<\/head>/,
       `  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="DrinkNote" />
   <link rel="manifest" href="/DrinkNote/manifest.json" />
 </head>`
@@ -257,9 +257,16 @@ if (fs.existsSync(indexPath)) {
       }
       
       /* Применяем safe area к body */
+      /* Для black-translucent статус-бара контент может быть под ним, поэтому добавляем padding-top */
       body {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
+        background-color: #000000;
+      }
+      
+      /* Убеждаемся, что статус-бар имеет правильный цвет фона */
+      html {
+        background-color: #000000;
       }
       
       /* Применяем safe area к таб-бару React Navigation */
