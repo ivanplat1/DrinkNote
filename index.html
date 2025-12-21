@@ -210,43 +210,83 @@
     
     // Применяем safe area insets к таб-бару после загрузки DOM
     function applySafeAreaToTabBar() {
-      // Ищем таб-бар React Navigation (он обычно имеет role="tablist" или находится внизу экрана)
+      // Получаем значение safe area insets
+      const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
+      
+      function applyPadding(element) {
+        if (!element || element.dataset.safeAreaApplied) return;
+        
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        
+        // Проверяем, что элемент действительно внизу экрана
+        const isAtBottom = (style.position === 'fixed' || style.position === 'absolute') && 
+                          (rect.bottom >= windowHeight - 10 || style.bottom === '0px' || style.bottom === '0');
+        
+        // Также проверяем по содержимому - если есть навигационные элементы
+        const hasNavContent = element.querySelector('nav[role="tablist"]') || 
+                              element.textContent.includes('Сегодня') || 
+                              element.textContent.includes('Календарь');
+        
+        if (isAtBottom || hasNavContent) {
+          const currentPaddingBottom = style.paddingBottom || '0px';
+          const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
+          
+          // Применяем safe area insets
+          element.style.paddingBottom = `calc(${safeAreaBottom} + ${currentPaddingBottomValue}px)`;
+          element.style.marginBottom = '0';
+          element.dataset.safeAreaApplied = 'true';
+        }
+      }
+      
+      // Ищем таб-бар React Navigation
       const tabBarSelectors = [
         'nav[role="tablist"]',
         '[data-testid="tab-bar"]',
         '.tab-bar',
-        // React Navigation Bottom Tabs обычно имеет position: fixed и bottom: 0
         'div[style*="position: fixed"][style*="bottom"]',
+        'div[style*="bottom: 0px"]',
+        'div[style*="bottom:0px"]',
       ];
       
+      // Применяем ко всем найденным элементам
       tabBarSelectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-          const style = window.getComputedStyle(el);
-          // Проверяем, что элемент действительно внизу экрана
-          if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
-            const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
-            el.style.paddingBottom = `calc(${safeAreaBottom} + ${el.style.paddingBottom || '0px'})`;
-            el.style.marginBottom = '0';
-          }
-        });
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(applyPadding);
+        } catch (e) {
+          // Игнорируем ошибки селекторов
+        }
+      });
+      
+      // Также ищем все fixed элементы внизу экрана
+      const allElements = document.querySelectorAll('*');
+      allElements.forEach(el => {
+        const style = window.getComputedStyle(el);
+        if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
+          applyPadding(el);
+        }
       });
       
       // Также применяем через MutationObserver для динамически созданных элементов
       const tabBarObserver = new MutationObserver(() => {
         tabBarSelectors.forEach(selector => {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach(el => {
-            const style = window.getComputedStyle(el);
-            if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
-              if (!el.dataset.safeAreaApplied) {
-                const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
-                el.style.paddingBottom = `calc(${safeAreaBottom} + ${el.style.paddingBottom || '0px'})`;
-                el.style.marginBottom = '0';
-                el.dataset.safeAreaApplied = 'true';
-              }
-            }
-          });
+          try {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(applyPadding);
+          } catch (e) {
+            // Игнорируем ошибки
+          }
+        });
+        
+        // Проверяем новые fixed элементы
+        const newElements = document.querySelectorAll('*');
+        newElements.forEach(el => {
+          const style = window.getComputedStyle(el);
+          if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
+            applyPadding(el);
+          }
         });
       });
       
