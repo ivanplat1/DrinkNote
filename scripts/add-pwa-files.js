@@ -316,9 +316,9 @@ if (fs.existsSync(indexPath)) {
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
         /* Расширяем #root до низа экрана, включая safe area, чтобы покрыть home indicator */
+        /* Используем только min-height без padding-bottom, чтобы не было пустой полоски */
         #root {
           min-height: calc(100vh + env(safe-area-inset-bottom));
-          padding-bottom: env(safe-area-inset-bottom);
         }
         
         nav[role="tablist"],
