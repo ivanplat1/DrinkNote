@@ -533,24 +533,6 @@ if (fs.existsSync(indexPath)) {
                               text.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
-          // Добавляем визуальные индикаторы для отладки
-          element.style.border = '4px solid red';
-          element.style.boxSizing = 'border-box';
-          element.style.outline = '2px dashed magenta';
-          
-          // Также добавляем рамку к первому дочернему элементу
-          if (element.firstElementChild) {
-            element.firstElementChild.style.border = '3px solid lime';
-            element.firstElementChild.style.boxSizing = 'border-box';
-            element.firstElementChild.style.outline = '1px dashed yellow';
-          }
-          
-          // Добавляем рамки ко всем дочерним элементам
-          Array.from(element.children).forEach((child, index) => {
-            child.style.border = \`2px solid hsl(\${index * 60}, 100%, 50%)\`;
-            child.style.boxSizing = 'border-box';
-          });
-          
           // Применяем padding только в standalone режиме
           if (isStandalone) {
             // Получаем текущий padding-bottom
@@ -583,16 +565,10 @@ if (fs.existsSync(indexPath)) {
               const currentHeightValue = parseInt(style.height) || currentMinHeightValue;
               element.style.height = \`calc(\${currentHeightValue}px + \${safeAreaBottom})\`;
             }
-            
-            // Добавляем цветной фон для отладки
-            element.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-            
-            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'min-height:', element.style.minHeight, 'isStandalone:', isStandalone, 'rect:', rect, 'viewportHeight:', viewportHeight);
           } else {
-            // В браузере не применяем padding, но все равно добавляем рамку для отладки
+            // В браузере не применяем padding
+            const currentPaddingBottom = style.paddingBottom || '0px';
             element.style.paddingBottom = currentPaddingBottom;
-            element.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
-            element.style.border = '3px solid green';
           }
           
           element.style.marginBottom = '0';
