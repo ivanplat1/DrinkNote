@@ -132,8 +132,8 @@
     const originalInsertRule = CSSStyleSheet.prototype.insertRule;
     CSSStyleSheet.prototype.insertRule = function(rule, index) {
       if (typeof rule === 'string') {
-        rule = rule.replace(/url\(["']?https:\/\/ivanplat1\.github\.io\/assets\//g, 'url("https://ivanplat1.github.io/DrinkNote/_expo/static/');
-        rule = rule.replace(/url\(["']?\/assets\//g, 'url("/DrinkNote/_expo/static/');
+        rule = rule.replace(/url\(["']?https:\/\/ivanplat1\.github\.io\/assets\//g, 'url("https://ivanplat1.github.io/DrinkNote/assets/');
+        rule = rule.replace(/url\(["']?\/assets\//g, 'url("/DrinkNote/assets/');
       }
       return originalInsertRule.call(this, rule, index);
     };
