@@ -31,13 +31,24 @@
   (function() {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
+      // Проверяем, не исправлен ли уже путь (чтобы избежать дублирования)
+      if (url.includes('/DrinkNote/DrinkNote/')) {
+        // Убираем лишние дублирования
+        url = url.replace(//DrinkNote/DrinkNote/+/g, '/DrinkNote/');
+        return url;
+      }
+      // Если путь уже содержит /DrinkNote/, не трогаем его
+      if (url.includes('/DrinkNote/')) {
+        return url;
+      }
       // Исправляем полные URL (разные варианты)
       // Файлы находятся в /assets/node_modules/, а не в _expo/static/
       url = url.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
       url = url.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
-      // Исправляем относительные пути
-      url = url.replace(/\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
-      url = url.replace(/\/assets\//g, '/DrinkNote/assets/');
+      // Исправляем относительные пути (только если они начинаются с /assets/)
+      if (url.startsWith('/assets/')) {
+        url = '/DrinkNote' + url;
+      }
       return url;
     }
     
