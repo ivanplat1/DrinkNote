@@ -311,18 +311,8 @@ if (fs.existsSync(indexPath)) {
       }
       
       /* Применяем safe area к таб-бару React Navigation */
-      /* React Navigation использует различные селекторы для таб-бара */
-      nav[role="tablist"],
-      [data-testid="tab-bar"],
-      .tab-bar,
-      /* Селектор для React Navigation Bottom Tabs */
-      div[style*="position: fixed"][style*="bottom: 0"],
-      /* Более общий селектор для элементов внизу экрана */
-      div[style*="bottom: 0px"],
-      div[style*="bottom:0px"] {
-        padding-bottom: calc(env(safe-area-inset-bottom) + 0px) !important;
-        margin-bottom: 0 !important;
-      }
+      /* НЕ применяем через CSS, так как это создает полоску цвета фона */
+      /* Вместо этого применяем через JavaScript к внутреннему контенту */
       
       /* Альтернативный подход: применяем через JavaScript после загрузки */
       /* Это будет добавлено в runtime скрипт ниже */
@@ -486,19 +476,27 @@ if (fs.existsSync(indexPath)) {
                               element.textContent.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
-          // Получаем текущий padding-bottom, если он есть
-          const currentPaddingBottom = style.paddingBottom || '0px';
+          // Ищем внутренний контейнер с контентом (обычно это первый дочерний элемент)
+          const contentContainer = element.firstElementChild || element;
+          
+          // Применяем padding к внутреннему контейнеру, а не к самому таб-бару
+          // Это предотвращает появление полоски цвета фона таб-бара
+          const containerStyle = window.getComputedStyle(contentContainer);
+          const currentPaddingBottom = containerStyle.paddingBottom || '0px';
           const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
           
-          // Применяем safe area insets - используем env() напрямую для правильного расчета
-          // Если уже есть padding, добавляем к нему, иначе просто устанавливаем safe area
+          // Применяем safe area insets к внутреннему контейнеру
           if (currentPaddingBottomValue > 0) {
-            element.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
+            contentContainer.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
           } else {
-            element.style.paddingBottom = safeAreaBottom;
+            contentContainer.style.paddingBottom = safeAreaBottom;
           }
+          
+          // Также убеждаемся, что сам таб-бар не имеет лишних отступов
           element.style.marginBottom = '0';
+          element.style.paddingBottom = '0';
           element.dataset.safeAreaApplied = 'true';
+          contentContainer.dataset.safeAreaApplied = 'true';
         }
       }
       
