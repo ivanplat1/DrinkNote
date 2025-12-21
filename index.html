@@ -286,7 +286,14 @@
           if (element.firstElementChild) {
             element.firstElementChild.style.border = '3px solid lime';
             element.firstElementChild.style.boxSizing = 'border-box';
+            element.firstElementChild.style.outline = '1px dashed yellow';
           }
+          
+          // Добавляем рамки ко всем дочерним элементам
+          Array.from(element.children).forEach((child, index) => {
+            child.style.border = `2px solid hsl(${index * 60}, 100%, 50%)`;
+            child.style.boxSizing = 'border-box';
+          });
           
           // Применяем padding только в standalone режиме
           if (isStandalone) {
