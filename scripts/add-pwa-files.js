@@ -244,6 +244,45 @@ if (fs.existsSync(indexPath)) {
     );
   }
   
+  // Добавляем CSS для safe area insets на iOS
+  if (!html.includes('safe-area-inset')) {
+    const safeAreaCSS = `
+    <style>
+      /* Safe area insets для iOS */
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        --safe-area-inset-right: env(safe-area-inset-right);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        --safe-area-inset-left: env(safe-area-inset-left);
+      }
+      
+      /* Применяем safe area к body */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      
+      /* Применяем safe area к таб-бару React Navigation */
+      /* React Navigation использует различные селекторы для таб-бара */
+      nav[role="tablist"],
+      [data-testid="tab-bar"],
+      .tab-bar,
+      /* Селектор для React Navigation Bottom Tabs */
+      div[style*="position: fixed"][style*="bottom: 0"],
+      /* Более общий селектор для элементов внизу экрана */
+      div[style*="bottom: 0px"],
+      div[style*="bottom:0px"] {
+        padding-bottom: calc(env(safe-area-inset-bottom) + 0px) !important;
+        margin-bottom: 0 !important;
+      }
+      
+      /* Альтернативный подход: применяем через JavaScript после загрузки */
+      /* Это будет добавлено в runtime скрипт ниже */
+    </style>
+`;
+    html = html.replace('</head>', safeAreaCSS + '</head>');
+  }
+  
   // Добавляем исправление путей в <head> ДО загрузки основного скрипта
   if (!html.includes('fixPath')) {
     const pathFixScript = `
