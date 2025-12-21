@@ -28,13 +28,14 @@
       "name": "DrinkNote",
       "shortName": "DrinkNote",
       "lang": "ru",
-      "scope": "/",
+      "scope": "/DrinkNote/",
       "themeColor": "#1a1a1a",
       "backgroundColor": "#000000",
       "display": "standalone",
       "orientation": "portrait",
-      "startUrl": "/",
-      "bundler": "metro"
+      "startUrl": "/DrinkNote/",
+      "bundler": "metro",
+      "baseUrl": "/DrinkNote"
     },
     "plugins": [
       "expo-localization"
