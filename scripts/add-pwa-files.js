@@ -249,11 +249,14 @@ if (fs.existsSync(indexPath)) {
       }
       // Исправляем полные URL (разные варианты)
       // Файлы находятся в /assets/node_modules/, а не в _expo/static/
-      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
-      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
-      // Исправляем относительные пути (только если они начинаются с /assets/)
-      if (url.startsWith('/assets/')) {
-        url = '/DrinkNote' + url;
+      // Только если путь еще не содержит /DrinkNote/
+      if (!url.includes('/DrinkNote/')) {
+        url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+        url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
+        // Исправляем относительные пути (только если они начинаются с /assets/)
+        if (url.startsWith('/assets/')) {
+          url = '/DrinkNote' + url;
+        }
       }
       return url;
     }
