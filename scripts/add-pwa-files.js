@@ -286,6 +286,17 @@ if (fs.existsSync(jsDir)) {
     jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/_expo/static/');
     jsContent = jsContent.replace(/'\/assets\//g, "'/DrinkNote/_expo/static/");
     
+    // Также заменяем пути без кавычек (если они есть в коде)
+    // Это должно быть последним, чтобы не конфликтовать с предыдущими заменами
+    const beforeReplace = jsContent;
+    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+    
+    // Проверяем, были ли замены
+    if (beforeReplace !== jsContent) {
+      console.log(`   Заменены пути в ${jsFile}`);
+    }
+    
     fs.writeFileSync(jsPath, jsContent);
     console.log(`✅ Обновлен ${jsFile}`);
   });
