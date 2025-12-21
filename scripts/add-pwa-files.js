@@ -290,11 +290,11 @@ if (fs.existsSync(indexPath)) {
       /* Применяем safe area к body */
       /* Для black-translucent статус-бара контент должен быть под ним без дополнительного padding */
       /* Фон должен быть черным, чтобы статус-бар выглядел правильно */
+      /* НЕ добавляем padding-bottom к body - применяем только к таб-бару */
       body {
-        padding-bottom: env(safe-area-inset-bottom);
         background-color: #000000;
         margin: 0;
-        padding-top: 0;
+        padding: 0;
       }
       
       /* Убеждаемся, что статус-бар имеет правильный цвет фона */
