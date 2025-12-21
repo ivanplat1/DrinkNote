@@ -220,8 +220,23 @@ if (fs.existsSync(indexPath)) {
     return `src="/DrinkNote/${path}"`;
   });
   
-  // Проверяем, не добавлены ли уже теги
-  if (!html.includes('manifest.json')) {
+  // Обновляем viewport meta tag для поддержки safe area на iOS
+  html = html.replace(
+    /<meta name="viewport"[^>]*>/,
+    '<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />'
+  );
+  
+  // Добавляем мета-теги для iOS PWA
+  if (!html.includes('apple-mobile-web-app-status-bar-style')) {
+    html = html.replace(
+      /<\/head>/,
+      `  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DrinkNote" />
+  <link rel="manifest" href="/DrinkNote/manifest.json" />
+</head>`
+    );
+  } else if (!html.includes('manifest.json')) {
     // Добавляем ссылку на манифест перед закрывающим тегом head
     html = html.replace(
       /<\/head>/,
