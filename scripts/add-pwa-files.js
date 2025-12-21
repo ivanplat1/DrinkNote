@@ -396,19 +396,29 @@ if (fs.existsSync(jsDir)) {
     const jsPath = path.join(jsDir, jsFile);
     let jsContent = fs.readFileSync(jsPath, 'utf8');
     
-    // Сначала убираем дублирования, если они есть
+    // Сначала убираем все дублирования /DrinkNote/DrinkNote/...
     jsContent = jsContent.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
     
-    // Заменяем полные URL к ресурсам (разные варианты)
+    // Заменяем полные URL к ресурсам
     // Файлы находятся в /assets/node_modules/, а не в _expo/static/
     // Только если путь еще не содержит /DrinkNote/
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/(?!DrinkNote\/)assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/(?!DrinkNote\/)assets\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, (match) => {
+      // Проверяем, не содержит ли уже путь /DrinkNote/
+      if (match.includes('/DrinkNote/')) {
+        return match;
+      }
+      return match.replace('/assets/', '/DrinkNote/assets/');
+    });
     
     // Заменяем относительные пути к ресурсам (только если они начинаются с /assets/ и не содержат /DrinkNote/)
-    // Используем более точные регулярные выражения, чтобы не заменять уже исправленные пути
-    jsContent = jsContent.replace(/(?<!\/DrinkNote)\/(?<!DrinkNote\/)assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
-    jsContent = jsContent.replace(/(?<!\/DrinkNote)\/(?<!DrinkNote\/)assets\//g, '/DrinkNote/assets/');
+    jsContent = jsContent.replace(/\/assets\//g, (match, offset, string) => {
+      // Проверяем контекст - если перед этим уже есть /DrinkNote/, не заменяем
+      const beforeMatch = string.substring(Math.max(0, offset - 20), offset);
+      if (beforeMatch.includes('/DrinkNote/')) {
+        return match;
+      }
+      return '/DrinkNote/assets/';
+    });
     
     // Заменяем пути в url() функциях (включая кавычки)
     jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
