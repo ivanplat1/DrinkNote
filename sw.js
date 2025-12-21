@@ -1,10 +1,9 @@
 // Service Worker для DrinkNote PWA
 const CACHE_NAME = 'drinknote-v1';
-const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '');
 const urlsToCache = [
-  BASE_PATH + '/',
-  BASE_PATH + '/index.html',
-  BASE_PATH + '/manifest.json'
+  '/',
+  '/index.html',
+  '/manifest.json'
 ];
 
 // Установка Service Worker
@@ -85,7 +84,7 @@ self.addEventListener('fetch', (event) => {
           
           // Если это запрос документа и нет в кэше, возвращаем index.html
           if (event.request.destination === 'document' || event.request.mode === 'navigate') {
-            return caches.match(BASE_PATH + '/index.html');
+            return caches.match('/index.html');
           }
           
           // Для других запросов возвращаем пустой ответ
