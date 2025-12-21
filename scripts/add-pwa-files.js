@@ -298,6 +298,13 @@ if (fs.existsSync(indexPath)) {
         border: 2px solid blue !important; /* Отладка: синяя рамка для body */
       }
       
+      /* В standalone режиме расширяем body до низа экрана, чтобы покрыть home indicator */
+      @media (display-mode: standalone) {
+        body {
+          min-height: calc(100vh + env(safe-area-inset-bottom));
+        }
+      }
+      
       /* Убеждаемся, что статус-бар имеет правильный цвет фона */
       html {
         background-color: #000000;
@@ -315,11 +322,8 @@ if (fs.existsSync(indexPath)) {
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
-        /* Расширяем #root до низа экрана, включая safe area, чтобы покрыть home indicator */
-        /* Используем только min-height без padding-bottom, чтобы не было пустой полоски */
-        #root {
-          min-height: calc(100vh + env(safe-area-inset-bottom));
-        }
+        /* НЕ расширяем #root - это создает перекрытие с панелью вкладок */
+        /* Вместо этого расширяем body для покрытия home indicator */
         
         nav[role="tablist"],
         [data-testid="tab-bar"],
