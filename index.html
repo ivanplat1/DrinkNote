@@ -62,9 +62,18 @@
         padding: 0;
       }
       
-      /* Применяем safe area к таб-бару React Navigation */
-      /* НЕ применяем через CSS, так как это создает полоску цвета фона */
-      /* Вместо этого применяем через JavaScript к внутреннему контенту */
+      /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
+      @media (display-mode: standalone) {
+        nav[role="tablist"],
+        [data-testid="tab-bar"],
+        .tab-bar,
+        div[style*="position: fixed"][style*="bottom: 0"],
+        div[style*="bottom: 0px"],
+        div[style*="bottom:0px"] {
+          padding-bottom: env(safe-area-inset-bottom) !important;
+          margin-bottom: 0 !important;
+        }
+      }
       
       /* Альтернативный подход: применяем через JavaScript после загрузки */
       /* Это будет добавлено в runtime скрипт ниже */
