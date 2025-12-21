@@ -41,12 +41,12 @@
   (function() {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
-      // Исправляем полные URL
-      url = url.replace(/^https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
-      url = url.replace(/^https:\/\/ivanplat1\.github\.io\/assets\//, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+      // Исправляем полные URL (разные варианты)
+      url = url.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+      url = url.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
       // Исправляем относительные пути
-      url = url.replace(/^\/assets\/node_modules\//, '/DrinkNote/_expo/static/');
-      url = url.replace(/^\/assets\//, '/DrinkNote/_expo/static/');
+      url = url.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+      url = url.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
       return url;
     }
     
@@ -74,16 +74,31 @@
           return originalSetAttribute.call(this, name, value);
         };
         // Также перехватываем прямое присваивание href
-        Object.defineProperty(element, 'href', {
-          set: function(value) {
-            this.setAttribute('href', fixPath(value));
-          },
-          get: function() {
-            return this.getAttribute('href');
-          }
-        });
+        try {
+          Object.defineProperty(element, 'href', {
+            set: function(value) {
+              this.setAttribute('href', fixPath(value));
+            },
+            get: function() {
+              return this.getAttribute('href');
+            },
+            configurable: true
+          });
+        } catch (e) {
+          // Игнорируем ошибки определения свойства
+        }
       }
       return element;
+    };
+    
+    // Перехватываем добавление стилей для исправления путей в CSS
+    const originalInsertRule = CSSStyleSheet.prototype.insertRule;
+    CSSStyleSheet.prototype.insertRule = function(rule, index) {
+      if (typeof rule === 'string') {
+        rule = rule.replace(/url\(["']?https:\/\/ivanplat1\.github\.io\/assets\//g, 'url("https://ivanplat1.github.io/DrinkNote/_expo/static/');
+        rule = rule.replace(/url\(["']?\/assets\//g, 'url("/DrinkNote/_expo/static/');
+      }
+      return originalInsertRule.call(this, rule, index);
     };
   })();
   
