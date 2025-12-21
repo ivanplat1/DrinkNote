@@ -291,6 +291,19 @@ if (fs.existsSync(indexPath)) {
     const originalAppendChild = Node.prototype.appendChild;
     Node.prototype.appendChild = function(child) {
       if (child && child.tagName === 'LINK' && child.rel === 'stylesheet') {
+        const originalHref = child.href;
+        // Исправляем href ДО добавления элемента
+        if (originalHref) {
+          child.href = fixPath(originalHref);
+        }
+        const originalSetAttribute = child.setAttribute;
+        child.setAttribute = function(name, value) {
+          if (name === 'href') {
+            value = fixPath(value);
+          }
+          return originalSetAttribute.call(this, name, value);
+        };
+        // Также перехватываем onload для исправления путей в @font-face после загрузки
         const originalOnLoad = child.onload;
         child.onload = function() {
           // После загрузки CSS исправляем пути в @font-face
