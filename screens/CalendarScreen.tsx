@@ -307,6 +307,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
   totalsByDate,
   streakMaps,
   onDayPress,
+  dailyGoal,
+  lethalDose,
   screenWidth,
   screenHeight,
   insets,
@@ -315,6 +317,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
   totalsByDate: Record<string, number>;
   streakMaps: { currentStreakDays: Map<string, number>; bestStreakDays: Map<string, number>; bestCompletedStreak: { dates: string[]; length: number } | null };
   onDayPress: (date: string) => void;
+  dailyGoal: number | null;
+  lethalDose: number;
   screenWidth: number;
   screenHeight: number;
   insets: { top: number; bottom: number };
@@ -493,6 +497,25 @@ const YearCalendarView = React.memo(function YearCalendarView({
             const bestStreakDayNumber = bestStreakDays.get(iso);
             const isInBestStreak = bestStreakDayNumber !== undefined;
             
+            // Определяем тип серии для металлического эффекта
+            let streakType: 'bronze' | 'silver' | 'gold' | null = null;
+            let streakLength = 0;
+            
+            if (isInBestStreak && bestCompletedStreak) {
+              streakLength = bestCompletedStreak.length;
+            } else if (isInCurrentStreak && streakDayNumber) {
+              // Для текущей серии используем общее количество дней
+              streakLength = streakDayNumber;
+            }
+            
+            if (streakLength >= 30) {
+              streakType = 'gold';
+            } else if (streakLength >= 14) {
+              streakType = 'silver';
+            } else if (streakLength >= 7) {
+              streakType = 'bronze';
+            }
+            
             let cellStyle: any = {
               width: daySize,
               height: daySize,
@@ -505,11 +528,50 @@ const YearCalendarView = React.memo(function YearCalendarView({
               marginBottom: gapBetweenDays / 2,
             };
             
+            // Цветовая градация по количеству алкоголя
             if (isInCurrentStreak || isInBestStreak) {
-              cellStyle.backgroundColor = '#10b981';
+              // Серии воздержания - металлические цвета с обводкой
+              if (streakType === 'gold') {
+                cellStyle.backgroundColor = '#f4c430'; // Золото
+                cellStyle.borderWidth = 1.5;
+                cellStyle.borderColor = '#ffe680';
+              } else if (streakType === 'silver') {
+                cellStyle.backgroundColor = '#d3d3d3'; // Серебро
+                cellStyle.borderWidth = 1.5;
+                cellStyle.borderColor = '#ffffff';
+              } else if (streakType === 'bronze') {
+                cellStyle.backgroundColor = '#c08850'; // Бронза
+                cellStyle.borderWidth = 1.5;
+                cellStyle.borderColor = '#e8c4a0';
+              } else {
+                // Для коротких серий (менее 7 дней) используем зеленый с обводкой
+                cellStyle.backgroundColor = '#10b981';
+                cellStyle.borderWidth = 1.5;
+                cellStyle.borderColor = '#34d399';
+              }
               cellStyle.opacity = 1;
             } else if (total > 0) {
-              cellStyle.backgroundColor = '#f59e0b';
+              // Градация по количеству алкоголя
+              if (dailyGoal !== null && dailyGoal > 0) {
+                if (total <= dailyGoal * 0.5) {
+                  cellStyle.backgroundColor = '#22c55e'; // Светло-зеленый (низкое количество)
+                } else if (total <= dailyGoal) {
+                  cellStyle.backgroundColor = '#84cc16'; // Желто-зеленый (умеренное)
+                } else if (total <= dailyGoal * 1.5) {
+                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый (высокое)
+                } else if (total < lethalDose) {
+                  cellStyle.backgroundColor = '#ef4444'; // Красный (очень высокое)
+                } else {
+                  cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
+                }
+              } else {
+                // Если цель не установлена
+                if (total >= lethalDose) {
+                  cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
+                } else {
+                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый (по умолчанию)
+                }
+              }
               cellStyle.opacity = 1;
             }
             
@@ -526,28 +588,20 @@ const YearCalendarView = React.memo(function YearCalendarView({
               >
                 <Text style={{ 
                   fontSize: 8,
-                  color: colors.text,
+                  color: (isInCurrentStreak || isInBestStreak) 
+                    ? (streakType === 'gold' || streakType === 'bronze' ? '#ffffff' : '#000000')
+                    : (total > 0 && total >= lethalDose ? '#ffffff' : colors.text),
                   fontWeight: isToday ? '700' : '400'
                 }}>
                   {date.getDate()}
                 </Text>
-                {total > 0 && !isInCurrentStreak && !isInBestStreak && (
-                  <View style={{
-                    position: 'absolute',
-                    bottom: 0.5,
-                    width: 2,
-                    height: 2,
-                    borderRadius: 1,
-                    backgroundColor: '#dc2626',
-                  }} />
-                )}
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
     );
-  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress]);
+  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose]);
   
   const months = useMemo(() => {
     return monthNames.map((_, index) => index);
@@ -694,31 +748,39 @@ export default function CalendarScreen() {
     }
     
     // Считаем дни с последнего употребления (сегодня не считаем, только завершенные дни)
+    // Серии считаются ТОЛЬКО после первой записи о напитке
+    const allDates = Object.keys(totalsByDate);
+    
     if (lastDrinkDate) {
       const diffTime = today.getTime() - lastDrinkDate.getTime();
       const daysSinceLastDrink = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      // Вычитаем 1, чтобы не считать сегодняшний день
+      // Вычитаем 1, чтобы не считать сегодняшний день (только завершенные дни)
       currentStreak = Math.max(0, daysSinceLastDrink - 1);
+    } else if (allDates.length > 0) {
+      // Если не нашли употребление за 365 дней, но есть записи - считаем от первой записи
+      const sortedDates = allDates.sort();
+      const firstDate = new Date(sortedDates[0]);
+      const diffTime = today.getTime() - firstDate.getTime();
+      const daysSinceFirst = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      currentStreak = Math.max(0, daysSinceFirst - 1);
     } else {
-      // Если не нашли употребление за 365 дней, считаем что серия = 365+ (минус сегодня)
-      currentStreak = 364;
+      // Нет записей вообще - серия = 0
+      currentStreak = 0;
     }
     
-    // Считаем лучшую серию за все время (с учетом даты первого запуска)
-    // Находим диапазон дат
-    const allDates = Object.keys(totalsByDate);
-    
+    // Считаем лучшую серию за все время - ТОЛЬКО после первой записи о напитке
     if (allDates.length === 0) {
       // Если нет записей вообще, рекорд = 0
       bestStreak = 0;
     } else {
       const sortedDates = allDates.sort();
       const firstDate = new Date(sortedDates[0]);
-      const startDateFilter = appStartDateRef.current ? new Date(appStartDateRef.current) : firstDate;
-      // Начинаем с более РАННЕЙ даты (или с appStartDate если она установлена)
-      const effectiveStartDate = startDateFilter < firstDate ? startDateFilter : firstDate;
       
-      // Проходим по всем дням от startDate до вчерашнего дня (сегодня не считаем)
+      // Начинаем считать серии ТОЛЬКО с первой записи о напитке
+      // Не учитываем период до первой записи
+      const effectiveStartDate = firstDate;
+      
+      // Проходим по всем дням от первой записи до вчерашнего дня (сегодня не считаем)
       const currentDate = new Date(effectiveStartDate);
       const endDate = new Date(today);
       endDate.setDate(endDate.getDate() - 1); // Вчерашний день - последний завершенный
@@ -759,8 +821,10 @@ export default function CalendarScreen() {
   // Проверка и разблокировка достижений
   useEffect(() => {
     const checkAchievements = async () => {
-      if (sobrietyStats.currentStreak > 0) {
-        const newAchievements = await checkAndUnlockAchievements(sobrietyStats.currentStreak);
+      // Проверяем достижения только если есть записи о напитках
+      const hasAnyDrinks = all.length > 0;
+      if (sobrietyStats.currentStreak > 0 && hasAnyDrinks) {
+        const newAchievements = await checkAndUnlockAchievements(sobrietyStats.currentStreak, hasAnyDrinks);
         if (newAchievements.length > 0) {
           // Показываем уведомление о новом достижении
           const achievement = newAchievements[0];
@@ -773,22 +837,41 @@ export default function CalendarScreen() {
       }
     };
     checkAchievements();
-  }, [sobrietyStats.currentStreak]);
+  }, [sobrietyStats.currentStreak, all.length]);
 
   // Определяем серии дней без алкоголя для визуального выделения
+  // Серии считаются ТОЛЬКО после первой записи о напитке
   const streaksByDate = useMemo(() => {
     const map: Record<string, number> = {};
     const sortedDates = Object.keys(totalsByDate).sort();
     
+    if (sortedDates.length === 0) {
+      return map; // Нет записей - нет серий
+    }
+    
+    // Находим первую дату с записью о напитке
+    const firstDateStr = sortedDates[0];
+    const firstDate = new Date(firstDateStr + 'T00:00:00');
+    
+    // Проходим по всем дням от первой записи до сегодня
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     let currentStreak = 0;
-    for (const dateISO of sortedDates) {
+    let currentDate = new Date(firstDate);
+    
+    while (currentDate <= today) {
+      const dateISO = formatISO(currentDate);
       const total = totalsByDate[dateISO] ?? 0;
+      
       if (total === 0) {
         currentStreak++;
         map[dateISO] = currentStreak;
       } else {
         currentStreak = 0;
       }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
     }
     
     return map;
@@ -798,7 +881,23 @@ export default function CalendarScreen() {
   const streakMaps = useMemo(() => {
     const today = new Date();
     const todayISO = formatISO(today);
-    const startDate = appStartDateRef.current ? new Date(appStartDateRef.current) : new Date(0);
+    
+    // Находим первую дату с записью о напитке - серии считаются ТОЛЬКО после этой даты
+    const allDates = Object.keys(totalsByDate).sort();
+    if (allDates.length === 0) {
+      // Нет записей - возвращаем пустые Maps
+      return {
+        currentStreakDays: new Map<string, number>(),
+        bestStreakDays: new Map<string, number>(),
+        bestCompletedStreak: null,
+      };
+    }
+    
+    const firstDateStr = allDates[0];
+    const firstDate = new Date(firstDateStr + 'T00:00:00');
+    
+    // Начинаем считать серии ТОЛЬКО с первой записи о напитке
+    const startDate = firstDate;
     
     // Вычисляем все серии без алкоголя для поиска лучшей
     const allStreaks: { dates: string[]; length: number }[] = [];
@@ -1375,8 +1474,9 @@ export default function CalendarScreen() {
   const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
   // Мемоизируем вычисления размеров и дат для оптимизации
-  const cellWidth = useMemo(() => Math.floor(screenWidth / 7), [screenWidth]);
-  const weekWidth = useMemo(() => cellWidth * 7, [cellWidth]);
+  // Используем точную ширину экрана, чтобы избежать проблем с выравниванием
+  const cellWidth = useMemo(() => screenWidth / 7, [screenWidth]);
+  const weekWidth = useMemo(() => screenWidth, [screenWidth]);
   const todayISO = useMemo(() => formatISO(new Date()), []);
   
   // Рендер одной НЕДЕЛИ (7 дней). FlatList ниже работает поверх массива weeks.
@@ -1490,7 +1590,7 @@ export default function CalendarScreen() {
           key={`${iso}_${idx}`}
           style={[
             styles.cell,
-            { width: cellWidth - 4, height: cellHeight - 4 },
+            { width: cellWidth, height: cellHeight - 4, margin: 0 },
             isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
             cellColorStyle,
             isToday && styles.cellToday,
@@ -1723,6 +1823,8 @@ export default function CalendarScreen() {
               totalsByDate={totalsByDate}
               streakMaps={streakMaps}
               onDayPress={handleYearDayPress}
+              dailyGoal={dailyGoal}
+              lethalDose={lethalDose}
               screenWidth={screenWidth}
               screenHeight={screenHeight}
               insets={insets}
@@ -2138,8 +2240,8 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    overflow: 'hidden',
+    flexWrap: 'nowrap',
+    width: '100%',
   },
   cell: {
     paddingTop: 4,
@@ -2148,7 +2250,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     borderRadius: 10,
-    margin: 2,
+    margin: 0,
     borderWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
     borderRightColor: 'rgba(255, 255, 255, 0.1)',

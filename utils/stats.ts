@@ -292,20 +292,19 @@ export function getRecords(drinks: Drink[]): {
     }
   });
   
-  // Серии дней без алкоголя
+  // Серии дней без алкоголя - считаем ТОЛЬКО после первой записи о напитке
   const allDates = Array.from(dayMap.keys()).sort();
   const today = formatISO(new Date());
   
   let longestStreak = 0;
   let currentStreak = 0;
-  let currentStreakEnd = today;
   
   if (allDates.length > 0) {
     const firstDate = new Date(allDates[0] + 'T00:00:00');
     const lastDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
     const todayDate = new Date(today + 'T00:00:00');
     
-    // Проверяем серии между записями
+    // Проверяем серии между записями (только между существующими записями)
     for (let i = 0; i < allDates.length - 1; i++) {
       const current = new Date(allDates[i] + 'T00:00:00');
       const next = new Date(allDates[i + 1] + 'T00:00:00');
@@ -320,16 +319,16 @@ export function getRecords(drinks: Drink[]): {
     }
     
     // Проверяем текущую серию (от последней записи до сегодня)
+    // Считаем только завершенные дни (не включая сегодня)
     const lastRecordDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
     const daysSinceLastRecord = Math.floor((todayDate.getTime() - lastRecordDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSinceLastRecord > 0) {
-      currentStreak = daysSinceLastRecord;
+      // Вычитаем 1, чтобы не считать сегодняшний день (только завершенные дни)
+      currentStreak = daysSinceLastRecord - 1;
     }
     
-    // Проверяем серию до первой записи
-    const daysBeforeFirst = Math.floor((firstDate.getTime() - new Date('2020-01-01').getTime()) / (1000 * 60 * 60 * 24));
-    // Не учитываем это в longestStreak, так как это период до начала записей
+    // НЕ учитываем период до первой записи - серии считаются только после первого употребления
   }
   
   return {

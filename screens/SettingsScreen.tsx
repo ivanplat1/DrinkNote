@@ -1,10 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Platform, Share, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getDailyGoal, setDailyGoal, exportData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
+import * as DocumentPicker from 'expo-document-picker';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
+import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
 import { colors } from '../theme/colors';
 
 export default function SettingsScreen() {
@@ -22,6 +25,9 @@ export default function SettingsScreen() {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
   const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const importModalTranslateY = useSharedValue(0);
 
   const updateRecommendation = useCallback(async () => {
     const recommended = await getRecommendedDailyLimit();
@@ -136,6 +142,87 @@ export default function SettingsScreen() {
       Alert.alert('Ошибка', 'Не удалось экспортировать данные');
     }
   };
+
+  const handleImport = async (merge: boolean) => {
+    if (!importText.trim()) {
+      Alert.alert('Ошибка', 'Вставьте данные для импорта');
+      return;
+    }
+
+    try {
+      const result = await importData(importText, merge);
+      
+      if (result.success) {
+        Alert.alert(
+          'Импорт завершен',
+          `Успешно импортировано ${result.drinksCount} записей о напитках`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowImportModal(false);
+                setImportText('');
+                loadSettings();
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Ошибка импорта', result.error || 'Не удалось импортировать данные');
+      }
+    } catch (error) {
+      Alert.alert('Ошибка', 'Не удалось импортировать данные');
+    }
+  };
+
+  const handlePickFile = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Для веба используем скрытый input file
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.onchange = async (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            const text = await file.text();
+            setImportText(text);
+          }
+        };
+        input.click();
+      } else {
+        // Для мобильных используем expo-document-picker
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/json'],
+          copyToCacheDirectory: true,
+        });
+        
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const fileUri = result.assets[0].uri;
+          try {
+            const response = await fetch(fileUri);
+            const text = await response.text();
+            setImportText(text);
+          } catch (fetchError) {
+            // Если fetch не работает, попробуем прочитать через FileReader
+            Alert.alert('Ошибка', 'Не удалось прочитать файл. Попробуйте вставить данные вручную.');
+          }
+        }
+      }
+    } catch (error: any) {
+      if (DocumentPicker.isCancel(error)) {
+        // Пользователь отменил выбор файла
+        return;
+      }
+      Alert.alert('Ошибка', 'Не удалось выбрать файл');
+    }
+  };
+
+  const closeImportModal = useCallback(() => {
+    setShowImportModal(false);
+    setImportText('');
+    importModalTranslateY.value = 0;
+  }, []);
 
   const handleClearData = () => {
     Alert.alert(
@@ -359,11 +446,16 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Экспорт данных */}
+        {/* Экспорт и импорт данных */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
             <MaterialIcons name="file-download" size={24} color={colors.primary} />
             <Text style={styles.actionButtonText}>Экспорт данных</Text>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => setShowImportModal(true)}>
+            <MaterialIcons name="file-upload" size={24} color={colors.primary} />
+            <Text style={styles.actionButtonText}>Импорт данных</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
@@ -441,6 +533,125 @@ export default function SettingsScreen() {
               }}
             />
           </View>
+        </View>
+      </Modal>
+
+      {/* Модальное окно для импорта данных */}
+      <Modal
+        visible={showImportModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowImportModal(false);
+          setImportText('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={closeImportModal}
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.importModalContainer}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <GestureDetector gesture={Gesture.Pan()
+              .activeOffsetY([10, 100])
+              .failOffsetX([-50, 50])
+              .onUpdate((e) => {
+                importModalTranslateY.value = e.translationY;
+              })
+              .onEnd((e) => {
+                // Свайп вниз закрывает модальное окно
+                if (e.translationY > 50) {
+                  importModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                    runOnJS(closeImportModal)();
+                    importModalTranslateY.value = 0;
+                  });
+                } else {
+                  importModalTranslateY.value = withTiming(0, { duration: 200 });
+                }
+              })
+            }>
+              <Animated.View 
+                style={[
+                  styles.importModal,
+                  useAnimatedStyle(() => ({
+                    transform: [{ translateY: importModalTranslateY.value }]
+                  }))
+                ]}
+              >
+                <TouchableOpacity 
+                  style={styles.modalDragHandle}
+                  onPress={closeImportModal}
+                  activeOpacity={1}
+                >
+                  <View style={styles.modalDragBar} />
+                </TouchableOpacity>
+              
+              <View style={styles.importHeader}>
+                <Text style={styles.importTitle}>Импорт данных</Text>
+                <TouchableOpacity
+                  onPress={closeImportModal}
+                  style={styles.closeButton}
+                >
+                  <MaterialIcons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.importContentWrapper}>
+                <ScrollView
+                  style={styles.importScrollView}
+                  contentContainerStyle={styles.importScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  <Text style={styles.importHint}>
+                    Выберите файл или вставьте JSON данные из экспортированного файла
+                  </Text>
+                  
+                  <TouchableOpacity
+                    style={styles.filePickerButton}
+                    onPress={handlePickFile}
+                  >
+                    <MaterialIcons name="insert-drive-file" size={24} color={colors.primary} />
+                    <Text style={styles.filePickerButtonText}>Выбрать файл</Text>
+                  </TouchableOpacity>
+                  
+                  <TextInput
+                    style={styles.importTextInput}
+                    value={importText}
+                    onChangeText={setImportText}
+                    placeholder="Или вставьте JSON данные здесь..."
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </ScrollView>
+                
+                <View style={styles.importButtonsContainer}>
+                  <TouchableOpacity
+                    style={[styles.importButton, styles.importButtonReplace, !importText.trim() && styles.importButtonDisabled]}
+                    onPress={() => handleImport(false)}
+                    disabled={!importText.trim()}
+                  >
+                    <Text style={styles.importButtonText}>Заменить все</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.importButton, styles.importButtonMerge, !importText.trim() && styles.importButtonDisabled]}
+                    onPress={() => handleImport(true)}
+                    disabled={!importText.trim()}
+                  >
+                    <Text style={styles.importButtonText}>Добавить</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              </Animated.View>
+            </GestureDetector>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -865,6 +1076,138 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
     textAlign: 'right',
+  },
+  importModalContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    top: '15%',
+    width: '100%',
+  },
+  importModal: {
+    backgroundColor: colors.backgroundCard,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    flex: 1,
+  },
+  modalDragHandle: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+    minHeight: 24,
+  },
+  modalDragBar: {
+    width: 40,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.textTertiary,
+    alignSelf: 'center',
+  },
+  importContentWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  importScrollView: {
+    flex: 1,
+  },
+  importScrollContent: {
+    paddingBottom: 20,
+    paddingTop: 8,
+    flexGrow: 1,
+  },
+  filePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  filePickerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 8,
+  },
+  importHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  importTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text,
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  importHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  importTextInput: {
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginVertical: 12,
+    minHeight: 200,
+    maxHeight: 300,
+    fontSize: 14,
+    color: colors.text,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+  },
+  importButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.select({ ios: 34, android: 20 }),
+    gap: 12,
+    backgroundColor: colors.backgroundCard,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  importButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  importButtonReplace: {
+    backgroundColor: colors.primary,
+  },
+  importButtonMerge: {
+    backgroundColor: colors.primaryDark,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  importButtonDisabled: {
+    opacity: 0.5,
+  },
+  importButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
 

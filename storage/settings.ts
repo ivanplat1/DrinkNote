@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAllDrinks } from './drinks';
+import { setAllDrinks } from './drinks';
 import { Drink } from '../types/drink';
 
 const SETTINGS_KEY = 'app_settings_v1';
@@ -58,6 +59,71 @@ export async function exportData(): Promise<string> {
   };
   
   return JSON.stringify(exportData, null, 2);
+}
+
+export interface ImportData {
+  version?: string;
+  exportDate?: string;
+  drinks?: Drink[];
+  settings?: {
+    dailyGoalUnits?: number | null;
+    weight?: number | null;
+    gender?: Gender | null;
+    birthYear?: number | null;
+  };
+}
+
+export async function importData(jsonString: string, merge: boolean = false): Promise<{ success: boolean; drinksCount: number; error?: string }> {
+  try {
+    const parsed = JSON.parse(jsonString) as ImportData;
+    
+    // Валидация структуры
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, drinksCount: 0, error: 'Неверный формат данных' };
+    }
+    
+    // Импорт напитков
+    if (parsed.drinks && Array.isArray(parsed.drinks)) {
+      if (merge) {
+        // Объединяем с существующими
+        const existing = await getAllDrinks();
+        const existingIds = new Set(existing.map(d => d.id));
+        
+        // Добавляем только новые напитки (по ID)
+        const newDrinks = parsed.drinks.filter(d => !existingIds.has(d.id));
+        const merged = [...existing, ...newDrinks];
+        await setAllDrinks(merged);
+      } else {
+        // Заменяем все
+        await setAllDrinks(parsed.drinks);
+      }
+    }
+    
+    // Импорт настроек
+    if (parsed.settings) {
+      if (parsed.settings.dailyGoalUnits !== undefined) {
+        await setDailyGoal(parsed.settings.dailyGoalUnits);
+      }
+      if (parsed.settings.weight !== undefined) {
+        await setUserWeight(parsed.settings.weight);
+      }
+      if (parsed.settings.gender !== undefined) {
+        await setUserGender(parsed.settings.gender);
+      }
+      if (parsed.settings.birthYear !== undefined) {
+        await setBirthYear(parsed.settings.birthYear);
+      }
+    }
+    
+    const drinksCount = parsed.drinks?.length || 0;
+    return { success: true, drinksCount };
+  } catch (error) {
+    return { 
+      success: false, 
+      drinksCount: 0, 
+      error: error instanceof Error ? error.message : 'Ошибка при импорте данных' 
+    };
+  }
 }
 
 export async function getUserWeight(): Promise<number | null> {
@@ -311,8 +377,13 @@ export async function unlockAchievement(achievementId: string): Promise<void> {
   await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(achievements));
 }
 
-export async function checkAndUnlockAchievements(currentStreak: number): Promise<Achievement[]> {
+export async function checkAndUnlockAchievements(currentStreak: number, hasAnyDrinks: boolean = true): Promise<Achievement[]> {
   const newlyUnlocked: Achievement[] = [];
+  
+  // Не выдаем достижения, если нет записей о напитках
+  if (!hasAnyDrinks || currentStreak <= 0) {
+    return newlyUnlocked;
+  }
   
   const thresholds = [
     { days: 1, id: 'first_day' },

@@ -92,4 +92,9 @@ export async function updateDrink(id: string, updated: Partial<Drink>): Promise<
   return next;
 }
 
+// Заменяет все напитки новым списком (для импорта)
+export async function setAllDrinks(drinks: Drink[]): Promise<void> {
+  await AsyncStorage.setItem(DRINKS_KEY, JSON.stringify(drinks));
+}
+
 
