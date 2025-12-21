@@ -261,20 +261,26 @@ if (fs.existsSync(jsDir)) {
     const jsPath = path.join(jsDir, jsFile);
     let jsContent = fs.readFileSync(jsPath, 'utf8');
     
-    // Заменяем полные URL к ресурсам
+    // Заменяем полные URL к ресурсам (разные варианты)
     jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
     jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
     
     // Заменяем относительные пути к ресурсам
     jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/DrinkNote\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
     jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/DrinkNote\/assets\//g, '/DrinkNote/_expo/static/');
     
     // Заменяем пути в url() функциях (включая кавычки)
     jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
       return match.replace(/^\//, '/DrinkNote/_expo/static/');
     });
     
-    // Заменяем пути в строках (включая полные URL)
+    // Заменяем пути в строках (включая полные URL и разные форматы кавычек)
+    jsContent = jsContent.replace(/"https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, '"https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/'https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, "'https://ivanplat1.github.io/DrinkNote/_expo/static/");
     jsContent = jsContent.replace(/"\/assets\/node_modules\//g, '"/DrinkNote/_expo/static/');
     jsContent = jsContent.replace(/'\/assets\/node_modules\//g, "'/DrinkNote/_expo/static/");
     jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/_expo/static/');
