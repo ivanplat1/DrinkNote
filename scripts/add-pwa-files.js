@@ -261,18 +261,24 @@ if (fs.existsSync(jsDir)) {
     const jsPath = path.join(jsDir, jsFile);
     let jsContent = fs.readFileSync(jsPath, 'utf8');
     
-    // Заменяем пути к ресурсам, которые начинаются с "/assets/" на "/DrinkNote/_expo/static/"
-    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
-    
-    // Заменяем пути к node_modules ресурсам
-    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+    // Заменяем полные URL к ресурсам
     jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
     jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
     
-    // Заменяем пути в url() функциях
+    // Заменяем относительные пути к ресурсам
+    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+    
+    // Заменяем пути в url() функциях (включая кавычки)
     jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
       return match.replace(/^\//, '/DrinkNote/_expo/static/');
     });
+    
+    // Заменяем пути в строках (включая полные URL)
+    jsContent = jsContent.replace(/"\/assets\/node_modules\//g, '"/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/'\/assets\/node_modules\//g, "'/DrinkNote/_expo/static/");
+    jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/'\/assets\//g, "'/DrinkNote/_expo/static/");
     
     fs.writeFileSync(jsPath, jsContent);
     console.log(`✅ Обновлен ${jsFile}`);
