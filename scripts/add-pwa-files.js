@@ -241,8 +241,8 @@ if (fs.existsSync(indexPath)) {
       // Сначала убираем все дублирования /DrinkNote/DrinkNote/...
       url = url.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
       
-      // Если путь уже содержит /DrinkNote/ в правильном месте, возвращаем его
-      if (url.includes('/DrinkNote/') && !url.match(/\/DrinkNote\/DrinkNote/)) {
+      // Если путь уже содержит /DrinkNote/ перед /assets/, не трогаем его
+      if (url.match(/\/DrinkNote\/assets\//) || url.match(/\/DrinkNote\/_expo\//)) {
         return url;
       }
       
@@ -253,8 +253,8 @@ if (fs.existsSync(indexPath)) {
         return url;
       }
       
-      // Исправляем относительные пути (только если они начинаются с /assets/)
-      if (url.startsWith('/assets/')) {
+      // Исправляем относительные пути (только если они начинаются с /assets/ и не содержат /DrinkNote/)
+      if (url.startsWith('/assets/') && !url.startsWith('/DrinkNote/')) {
         url = '/DrinkNote' + url;
         return url;
       }
