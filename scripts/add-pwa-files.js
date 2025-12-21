@@ -253,5 +253,23 @@ if (fs.existsSync(indexPath)) {
   console.log('✅ Обновлен index.html');
 }
 
+// Исправляем пути в JavaScript бандле
+const jsFiles = fs.readdirSync(path.join(distDir, '_expo', 'static', 'js', 'web')).filter(f => f.endsWith('.js'));
+jsFiles.forEach(jsFile => {
+  const jsPath = path.join(distDir, '_expo', 'static', 'js', 'web', jsFile);
+  let jsContent = fs.readFileSync(jsPath, 'utf8');
+  
+  // Заменяем пути к ресурсам, которые начинаются с "/assets/" на "/DrinkNote/_expo/static/"
+  jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+  
+  // Также заменяем другие возможные пути
+  jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
+    return match.replace(/^\//, '/DrinkNote/');
+  });
+  
+  fs.writeFileSync(jsPath, jsContent);
+  console.log(`✅ Обновлен ${jsFile}`);
+});
+
 console.log('✅ PWA файлы успешно добавлены!');
 
