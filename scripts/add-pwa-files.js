@@ -1,0 +1,248 @@
+#!/usr/bin/env node
+
+/**
+ * Скрипт для добавления PWA файлов (manifest.json и sw.js) после сборки
+ * Запускать после: npx expo export --platform web
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const distDir = path.join(__dirname, '..', 'dist');
+const indexPath = path.join(distDir, 'index.html');
+
+if (!fs.existsSync(distDir)) {
+  console.error('❌ Папка dist не найдена. Сначала выполните: npx expo export --platform web');
+  process.exit(1);
+}
+
+// Копируем иконки для PWA
+const assetsDir = path.join(__dirname, '..', 'assets');
+const distAssetsDir = path.join(distDir, 'assets');
+const iconPath = path.join(assetsDir, 'icon.png');
+const faviconPath = path.join(assetsDir, 'favicon.png');
+
+// Создаем папку для иконок если её нет
+if (!fs.existsSync(distAssetsDir)) {
+  fs.mkdirSync(distAssetsDir, { recursive: true });
+}
+
+// Копируем иконки
+const icons = [];
+if (fs.existsSync(iconPath)) {
+  // Копируем основную иконку
+  const icon192Path = path.join(distAssetsDir, 'icon-192.png');
+  const icon512Path = path.join(distAssetsDir, 'icon-512.png');
+  
+  // Используем sips (macOS) или convert (ImageMagick) для изменения размера
+  const { execSync } = require('child_process');
+  
+  try {
+    // Пробуем использовать sips (macOS)
+    execSync(`sips -z 192 192 "${iconPath}" --out "${icon192Path}"`, { stdio: 'ignore' });
+    execSync(`sips -z 512 512 "${iconPath}" --out "${icon512Path}"`, { stdio: 'ignore' });
+  } catch (e) {
+    // Если sips не работает, пробуем ImageMagick
+    try {
+      execSync(`convert "${iconPath}" -resize 192x192 "${icon192Path}"`, { stdio: 'ignore' });
+      execSync(`convert "${iconPath}" -resize 512x512 "${icon512Path}"`, { stdio: 'ignore' });
+    } catch (e2) {
+      // Если ничего не работает, просто копируем
+      fs.copyFileSync(iconPath, icon192Path);
+      fs.copyFileSync(iconPath, icon512Path);
+    }
+  }
+  
+  icons.push(
+    {
+      src: '/assets/icon-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'any'
+    },
+    {
+      src: '/assets/icon-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'any'
+    }
+  );
+}
+
+// Добавляем favicon если есть
+if (fs.existsSync(faviconPath)) {
+  const faviconDest = path.join(distAssetsDir, 'favicon.png');
+  fs.copyFileSync(faviconPath, faviconDest);
+  icons.push({
+    src: '/assets/favicon.png',
+    sizes: '48x48',
+    type: 'image/png'
+  });
+}
+
+// Создаем manifest.json
+const manifest = {
+  name: 'DrinkNote',
+  short_name: 'DrinkNote',
+  description: 'Трекер потребления алкоголя',
+  start_url: '/',
+  display: 'standalone',
+  background_color: '#000000',
+  theme_color: '#1a1a1a',
+  orientation: 'portrait',
+  scope: '/',
+  icons: icons.length > 0 ? icons : [
+    {
+      src: '/favicon.ico',
+      sizes: '64x64 32x32 24x24 16x16',
+      type: 'image/x-icon'
+    }
+  ]
+};
+
+fs.writeFileSync(
+  path.join(distDir, 'manifest.json'),
+  JSON.stringify(manifest, null, 2)
+);
+console.log('✅ Создан manifest.json');
+
+// Создаем Service Worker
+const swContent = `// Service Worker для DrinkNote PWA
+const CACHE_NAME = 'drinknote-v1';
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/manifest.json'
+];
+
+// Установка Service Worker
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(urlsToCache).catch((err) => {
+          console.log('Cache addAll failed:', err);
+        });
+      })
+  );
+  self.skipWaiting();
+});
+
+// Активация Service Worker
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim();
+});
+
+// Перехват запросов для офлайн-режима
+self.addEventListener('fetch', (event) => {
+  // Пропускаем не-GET запросы
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  const url = new URL(event.request.url);
+  
+  // Пропускаем запросы к Service Worker и манифесту
+  if (url.pathname.includes('/sw.js') || url.pathname.includes('/manifest.json')) {
+    return;
+  }
+  
+  // Пропускаем запросы к статическим ресурсам (шрифты, изображения) - пусть проходят напрямую
+  // Это предотвращает ошибки 503/404 для файлов, которые могут не существовать
+  const staticExtensions = ['.ttf', '.woff', '.woff2', '.eot', '.otf', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
+  const isStaticResource = staticExtensions.some(ext => url.pathname.toLowerCase().endsWith(ext));
+  
+  if (isStaticResource) {
+    // Для статических ресурсов НЕ перехватываем запросы - пусть проходят напрямую к серверу
+    // Это позволяет браузеру обрабатывать 404 естественным образом
+    return;
+  }
+  
+  // Для остальных запросов используем стратегию "сеть сначала, потом кэш"
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Если запрос успешен, кэшируем его
+        if (response && response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache).catch(() => {
+              // Игнорируем ошибки кэширования
+            });
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Если сеть недоступна, пробуем кэш
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // Если это запрос документа и нет в кэше, возвращаем index.html
+          if (event.request.destination === 'document' || event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+          
+          // Для других запросов возвращаем пустой ответ
+          return new Response('', { status: 404 });
+        });
+      })
+  );
+});
+`;
+
+fs.writeFileSync(path.join(distDir, 'sw.js'), swContent);
+console.log('✅ Создан sw.js');
+
+// Обновляем index.html
+if (fs.existsSync(indexPath)) {
+  let html = fs.readFileSync(indexPath, 'utf8');
+  
+  // Проверяем, не добавлены ли уже теги
+  if (!html.includes('manifest.json')) {
+    // Добавляем ссылку на манифест перед закрывающим тегом head
+    html = html.replace(
+      /<\/head>/,
+      '  <link rel="manifest" href="/manifest.json" />\n</head>'
+    );
+  }
+  
+  if (!html.includes('sw.js')) {
+    // Добавляем регистрацию Service Worker перед закрывающим тегом body
+    const swScript = `
+<script>
+  // Регистрация Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    });
+  }
+</script>`;
+    html = html.replace('</body>', `${swScript}\n</body>`);
+  }
+  
+  fs.writeFileSync(indexPath, html);
+  console.log('✅ Обновлен index.html');
+}
+
+console.log('✅ PWA файлы успешно добавлены!');
+
