@@ -229,11 +229,11 @@ if (fs.existsSync(indexPath)) {
     );
   }
   
-  if (!html.includes('sw.js')) {
-    // Добавляем регистрацию Service Worker и исправление путей перед закрывающим тегом body
-    const swScript = `
+  // Добавляем исправление путей в <head> ДО загрузки основного скрипта
+  if (!html.includes('fixPath')) {
+    const pathFixScript = `
 <script>
-  // Исправляем пути к ресурсам для GitHub Pages
+  // Исправляем пути к ресурсам для GitHub Pages (выполняется немедленно)
   (function() {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
@@ -246,7 +246,7 @@ if (fs.existsSync(indexPath)) {
       return url;
     }
     
-    // Перехватываем fetch
+    // Перехватываем fetch ДО загрузки основного скрипта
     const originalFetch = window.fetch;
     window.fetch = function(...args) {
       if (typeof args[0] === 'string') {
@@ -287,6 +287,40 @@ if (fs.existsSync(indexPath)) {
       return element;
     };
     
+    // Перехватываем загрузку CSS файлов и исправляем пути в них
+    const originalAppendChild = Node.prototype.appendChild;
+    Node.prototype.appendChild = function(child) {
+      if (child && child.tagName === 'LINK' && child.rel === 'stylesheet') {
+        const originalOnLoad = child.onload;
+        child.onload = function() {
+          // После загрузки CSS исправляем пути в @font-face
+          try {
+            const sheets = document.styleSheets;
+            for (let i = 0; i < sheets.length; i++) {
+              try {
+                const rules = sheets[i].cssRules || sheets[i].rules;
+                for (let j = 0; j < rules.length; j++) {
+                  if (rules[j].type === CSSRule.FONT_FACE_RULE) {
+                    const src = rules[j].style.src;
+                    if (src) {
+                      rules[j].style.src = src.replace(/url\\(["']?https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'url("https://ivanplat1.github.io/DrinkNote/_expo/static/');
+                      rules[j].style.src = rules[j].style.src.replace(/url\\(["']?\\/assets\\//g, 'url("/DrinkNote/_expo/static/');
+                    }
+                  }
+                }
+              } catch (e) {
+                // Игнорируем ошибки доступа к правилам (CORS)
+              }
+            }
+          } catch (e) {
+            // Игнорируем ошибки
+          }
+          if (originalOnLoad) originalOnLoad.call(this);
+        };
+      }
+      return originalAppendChild.call(this, child);
+    };
+    
     // Перехватываем добавление стилей для исправления путей в CSS
     const originalInsertRule = CSSStyleSheet.prototype.insertRule;
     CSSStyleSheet.prototype.insertRule = function(rule, index) {
@@ -297,7 +331,14 @@ if (fs.existsSync(indexPath)) {
       return originalInsertRule.call(this, rule, index);
     };
   })();
+</script>`;
+    html = html.replace('</head>', `${pathFixScript}\n</head>`);
+  }
   
+  if (!html.includes('sw.js')) {
+    // Добавляем регистрацию Service Worker перед закрывающим тегом body
+    const swScript = `
+<script>
   // Регистрация Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
