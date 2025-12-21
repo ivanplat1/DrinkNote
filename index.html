@@ -69,7 +69,29 @@
       #root {
         margin: 0;
         padding: 0;
-        border: 2px solid purple !important; /* Отладка: фиолетовая рамка для root */
+        border: 3px solid purple !important; /* Отладка: фиолетовая рамка для root */
+        box-sizing: border-box;
+      }
+      
+      /* Отладка: добавляем рамки ко всем fixed элементам */
+      [style*="position: fixed"],
+      [style*="position:fixed"] {
+        border: 2px solid orange !important;
+        box-sizing: border-box;
+      }
+      
+      /* Отладка: добавляем рамки к элементам внизу экрана */
+      nav[role="tablist"],
+      [data-testid="tab-bar"],
+      .tab-bar {
+        border: 2px solid cyan !important;
+        box-sizing: border-box;
+      }
+      
+      /* Отладка: добавляем рамки ко всем div элементам (легкие) */
+      div {
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-sizing: border-box;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
