@@ -55,13 +55,13 @@ if (fs.existsSync(iconPath)) {
   
   icons.push(
     {
-      src: '/assets/icon-192.png',
+      src: '/DrinkNote/assets/icon-192.png',
       sizes: '192x192',
       type: 'image/png',
       purpose: 'any'
     },
     {
-      src: '/assets/icon-512.png',
+      src: '/DrinkNote/assets/icon-512.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any'
@@ -74,7 +74,7 @@ if (fs.existsSync(faviconPath)) {
   const faviconDest = path.join(distAssetsDir, 'favicon.png');
   fs.copyFileSync(faviconPath, faviconDest);
   icons.push({
-    src: '/assets/favicon.png',
+      src: '/DrinkNote/assets/favicon.png',
     sizes: '48x48',
     type: 'image/png'
   });
@@ -238,11 +238,12 @@ if (fs.existsSync(indexPath)) {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
       // Исправляем полные URL (разные варианты)
-      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
-      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+      // Файлы находятся в /assets/node_modules/, а не в _expo/static/
+      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+      url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
       // Исправляем относительные пути
-      url = url.replace(/\\/assets\\/node_modules\\//g, '/DrinkNote/_expo/static/');
-      url = url.replace(/\\/assets\\//g, '/DrinkNote/_expo/static/');
+      url = url.replace(/\\/assets\\/node_modules\\//g, '/DrinkNote/assets/node_modules/');
+      url = url.replace(/\\/assets\\//g, '/DrinkNote/assets/');
       return url;
     }
     
@@ -316,8 +317,8 @@ if (fs.existsSync(indexPath)) {
                   if (rules[j].type === CSSRule.FONT_FACE_RULE) {
                     const src = rules[j].style.src;
                     if (src) {
-                      rules[j].style.src = src.replace(/url\\(["']?https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'url("https://ivanplat1.github.io/DrinkNote/_expo/static/');
-                      rules[j].style.src = rules[j].style.src.replace(/url\\(["']?\\/assets\\//g, 'url("/DrinkNote/_expo/static/');
+                      rules[j].style.src = src.replace(/url\\(["']?https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'url("https://ivanplat1.github.io/DrinkNote/assets/');
+                      rules[j].style.src = rules[j].style.src.replace(/url\\(["']?\\/assets\\//g, 'url("/DrinkNote/assets/');
                     }
                   }
                 }
