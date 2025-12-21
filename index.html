@@ -319,10 +319,21 @@
               element.style.paddingBottom = safeAreaBottom;
             }
             
+            // Увеличиваем минимальную высоту панели вкладок
+            const currentMinHeight = style.minHeight || '49px';
+            const currentMinHeightValue = parseInt(currentMinHeight) || 49;
+            element.style.minHeight = `calc(${currentMinHeightValue}px + ${safeAreaBottom})`;
+            
+            // Также увеличиваем высоту, если она задана явно
+            if (style.height && style.height !== 'auto') {
+              const currentHeightValue = parseInt(style.height) || currentMinHeightValue;
+              element.style.height = `calc(${currentHeightValue}px + ${safeAreaBottom})`;
+            }
+            
             // Добавляем цветной фон для отладки
             element.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
             
-            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'isStandalone:', isStandalone, 'rect:', rect, 'viewportHeight:', viewportHeight);
+            console.log('Applied safe area to tab bar:', element, 'padding-bottom:', element.style.paddingBottom, 'min-height:', element.style.minHeight, 'isStandalone:', isStandalone, 'rect:', rect, 'viewportHeight:', viewportHeight);
           } else {
             // В браузере не применяем padding, но все равно добавляем рамку для отладки
             element.style.paddingBottom = currentPaddingBottom;
