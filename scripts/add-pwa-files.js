@@ -237,27 +237,28 @@ if (fs.existsSync(indexPath)) {
   (function() {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
-      // Проверяем, не исправлен ли уже путь (чтобы избежать дублирования)
-      if (url.includes('/DrinkNote/DrinkNote/')) {
-        // Убираем лишние дублирования
-        url = url.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
+      
+      // Сначала убираем все дублирования /DrinkNote/DrinkNote/...
+      url = url.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
+      
+      // Если путь уже содержит /DrinkNote/ в правильном месте, возвращаем его
+      if (url.includes('/DrinkNote/') && !url.match(/\/DrinkNote\/DrinkNote/)) {
         return url;
       }
-      // Если путь уже содержит /DrinkNote/, не трогаем его
-      if (url.includes('/DrinkNote/')) {
-        return url;
-      }
+      
       // Исправляем полные URL (разные варианты)
       // Файлы находятся в /assets/node_modules/, а не в _expo/static/
-      // Только если путь еще не содержит /DrinkNote/
-      if (!url.includes('/DrinkNote/')) {
-        url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
-        url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
-        // Исправляем относительные пути (только если они начинаются с /assets/)
-        if (url.startsWith('/assets/')) {
-          url = '/DrinkNote' + url;
-        }
+      if (url.startsWith('https://ivanplat1.github.io/assets/')) {
+        url = url.replace('https://ivanplat1.github.io/assets/', 'https://ivanplat1.github.io/DrinkNote/assets/');
+        return url;
       }
+      
+      // Исправляем относительные пути (только если они начинаются с /assets/)
+      if (url.startsWith('/assets/')) {
+        url = '/DrinkNote' + url;
+        return url;
+      }
+      
       return url;
     }
     
