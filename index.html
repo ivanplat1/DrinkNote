@@ -24,7 +24,7 @@
       }
     </style>
   <meta name="theme-color" content="#1a1a1a">
-<link rel="icon" href="./favicon.ico" />  <link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="/favicon.ico" />  <link rel="manifest" href="/manifest.json" />
 </head>
 
   <body>
@@ -34,13 +34,13 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="./_expo/static/js/web/index-a7a4c92c9190020e1747e42928e660c0.js" defer></script>
+  <script src="/_expo/static/js/web/index-a7a4c92c9190020e1747e42928e660c0.js" defer></script>
 
 <script>
   // Регистрация Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
+      navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
           console.log('SW registered: ', registration);
         })
