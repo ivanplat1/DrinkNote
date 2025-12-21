@@ -47,7 +47,6 @@
         background-color: #000000;
         margin: 0;
         padding: 0;
-        border: 2px solid blue !important; /* Отладка: синяя рамка для body */
       }
       
       /* В standalone режиме расширяем body до низа экрана, чтобы покрыть home indicator */
@@ -62,36 +61,12 @@
         background-color: #000000;
         margin: 0;
         padding: 0;
-        border: 2px solid yellow !important; /* Отладка: желтая рамка для html */
       }
       
       /* Для black-translucent НЕ добавляем padding-top к root - контент должен быть под статус-баром */
       #root {
         margin: 0;
         padding: 0;
-        border: 3px solid purple !important; /* Отладка: фиолетовая рамка для root */
-        box-sizing: border-box;
-      }
-      
-      /* Отладка: добавляем рамки ко всем fixed элементам */
-      [style*="position: fixed"],
-      [style*="position:fixed"] {
-        border: 2px solid orange !important;
-        box-sizing: border-box;
-      }
-      
-      /* Отладка: добавляем рамки к элементам внизу экрана */
-      nav[role="tablist"],
-      [data-testid="tab-bar"],
-      .tab-bar {
-        border: 2px solid cyan !important;
-        box-sizing: border-box;
-      }
-      
-      /* Отладка: добавляем рамки ко всем div элементам (легкие) */
-      div {
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        box-sizing: border-box;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
@@ -353,24 +328,6 @@
         // Проверяем fixed элементы внизу экрана
         if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
           applyPadding(el);
-        }
-        
-        // Добавляем отладочные рамки ко ВСЕМ элементам внизу экрана (в пределах 150px от низа)
-        if (rect.bottom >= viewportHeight - 150 && rect.top < viewportHeight) {
-          // Добавляем рамку, если её еще нет
-          if (!el.dataset.debugBorderAdded) {
-            el.style.border = '3px solid pink';
-            el.style.boxSizing = 'border-box';
-            el.style.outline = '2px solid white';
-            el.style.backgroundColor = 'rgba(255, 192, 203, 0.3)';
-            el.dataset.debugBorderAdded = 'true';
-            console.log('Debug border added to element at bottom:', el.tagName, el.className, 'rect:', rect, 'viewportHeight:', viewportHeight, 'style:', {
-              position: style.position,
-              bottom: style.bottom,
-              marginBottom: style.marginBottom,
-              paddingBottom: style.paddingBottom
-            });
-          }
         }
       });
       
