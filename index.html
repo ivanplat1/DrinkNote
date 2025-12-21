@@ -189,6 +189,63 @@
       }
       return originalInsertRule.call(this, rule, index);
     };
+    
+    // Применяем safe area insets к таб-бару после загрузки DOM
+    function applySafeAreaToTabBar() {
+      // Ищем таб-бар React Navigation (он обычно имеет role="tablist" или находится внизу экрана)
+      const tabBarSelectors = [
+        'nav[role="tablist"]',
+        '[data-testid="tab-bar"]',
+        '.tab-bar',
+        // React Navigation Bottom Tabs обычно имеет position: fixed и bottom: 0
+        'div[style*="position: fixed"][style*="bottom"]',
+      ];
+      
+      tabBarSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+          const style = window.getComputedStyle(el);
+          // Проверяем, что элемент действительно внизу экрана
+          if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
+            const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
+            el.style.paddingBottom = `calc(${safeAreaBottom} + ${el.style.paddingBottom || '0px'})`;
+            el.style.marginBottom = '0';
+          }
+        });
+      });
+      
+      // Также применяем через MutationObserver для динамически созданных элементов
+      const tabBarObserver = new MutationObserver(() => {
+        tabBarSelectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
+              if (!el.dataset.safeAreaApplied) {
+                const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
+                el.style.paddingBottom = `calc(${safeAreaBottom} + ${el.style.paddingBottom || '0px'})`;
+                el.style.marginBottom = '0';
+                el.dataset.safeAreaApplied = 'true';
+              }
+            }
+          });
+        });
+      });
+      
+      tabBarObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    
+    // Применяем после загрузки DOM
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applySafeAreaToTabBar);
+    } else {
+      applySafeAreaToTabBar();
+    }
+    
+    // Также применяем после полной загрузки страницы
+    window.addEventListener('load', () => {
+      setTimeout(applySafeAreaToTabBar, 100);
+    });
   })();
 </script>
 </head>
