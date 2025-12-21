@@ -338,6 +338,20 @@
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(applySafeAreaToTabBar, 100);
+      setTimeout(applySafeAreaToTabBar, 500);
+      setTimeout(applySafeAreaToTabBar, 1000);
+    });
+    
+    // Также применяем при изменении размера окна (для поворота экрана)
+    window.addEventListener('resize', () => {
+      setTimeout(applySafeAreaToTabBar, 100);
+    });
+    
+    // Применяем при изменении видимости (когда приложение становится активным)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        setTimeout(applySafeAreaToTabBar, 100);
+      }
     });
   })();
 </script>
