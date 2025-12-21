@@ -454,6 +454,11 @@ if (fs.existsSync(indexPath)) {
     
     // Применяем safe area insets к таб-бару после загрузки DOM
     function applySafeAreaToTabBar() {
+      // Проверяем, находимся ли мы в standalone режиме (PWA через домашний экран)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone || 
+                          document.referrer.includes('android-app://');
+      
       // Получаем значение safe area insets
       const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || 'env(safe-area-inset-bottom)';
       
@@ -476,27 +481,26 @@ if (fs.existsSync(indexPath)) {
                               element.textContent.includes('Настройки');
         
         if (isAtBottom || hasNavContent) {
-          // Ищем внутренний контейнер с контентом (обычно это первый дочерний элемент)
-          const contentContainer = element.firstElementChild || element;
-          
-          // Применяем padding к внутреннему контейнеру, а не к самому таб-бару
-          // Это предотвращает появление полоски цвета фона таб-бара
-          const containerStyle = window.getComputedStyle(contentContainer);
-          const currentPaddingBottom = containerStyle.paddingBottom || '0px';
-          const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
-          
-          // Применяем safe area insets к внутреннему контейнеру
-          if (currentPaddingBottomValue > 0) {
-            contentContainer.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
+          // Применяем padding только в standalone режиме
+          if (isStandalone) {
+            // Применяем padding-bottom напрямую к таб-бару
+            // Это создаст пространство для home indicator
+            const currentPaddingBottom = style.paddingBottom || '0px';
+            const currentPaddingBottomValue = parseInt(currentPaddingBottom) || 0;
+            
+            // Применяем safe area insets
+            if (currentPaddingBottomValue > 0) {
+              element.style.paddingBottom = \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`;
+            } else {
+              element.style.paddingBottom = safeAreaBottom;
+            }
           } else {
-            contentContainer.style.paddingBottom = safeAreaBottom;
+            // В браузере не применяем padding, чтобы не было лишнего пространства
+            element.style.paddingBottom = '0';
           }
           
-          // Также убеждаемся, что сам таб-бар не имеет лишних отступов
           element.style.marginBottom = '0';
-          element.style.paddingBottom = '0';
           element.dataset.safeAreaApplied = 'true';
-          contentContainer.dataset.safeAreaApplied = 'true';
         }
       }
       
