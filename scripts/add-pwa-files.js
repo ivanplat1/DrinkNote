@@ -295,6 +295,7 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
+        border: 2px solid blue !important; /* Отладка: синяя рамка для body */
       }
       
       /* Убеждаемся, что статус-бар имеет правильный цвет фона */
@@ -302,12 +303,14 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
+        border: 2px solid yellow !important; /* Отладка: желтая рамка для html */
       }
       
       /* Для black-translucent НЕ добавляем padding-top к root - контент должен быть под статус-баром */
       #root {
         margin: 0;
         padding: 0;
+        border: 2px solid purple !important; /* Отладка: фиолетовая рамка для root */
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
