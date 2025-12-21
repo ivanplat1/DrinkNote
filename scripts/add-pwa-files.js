@@ -338,8 +338,8 @@ if (fs.existsSync(indexPath)) {
     const originalInsertRule = CSSStyleSheet.prototype.insertRule;
     CSSStyleSheet.prototype.insertRule = function(rule, index) {
       if (typeof rule === 'string') {
-        rule = rule.replace(/url\\(["']?https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'url("https://ivanplat1.github.io/DrinkNote/_expo/static/');
-        rule = rule.replace(/url\\(["']?\\/assets\\//g, 'url("/DrinkNote/_expo/static/');
+        rule = rule.replace(/url\\(["']?https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'url("https://ivanplat1.github.io/DrinkNote/assets/');
+        rule = rule.replace(/url\\(["']?\\/assets\\//g, 'url("/DrinkNote/assets/');
       }
       return originalInsertRule.call(this, rule, index);
     };
@@ -381,35 +381,36 @@ if (fs.existsSync(jsDir)) {
     let jsContent = fs.readFileSync(jsPath, 'utf8');
     
     // Заменяем полные URL к ресурсам (разные варианты)
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/_expo/static/');
+    // Файлы находятся в /assets/node_modules/, а не в _expo/static/
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\/node_modules\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/https:\/\/ivanplat1\.github\.io\/DrinkNote\/assets\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
     
     // Заменяем относительные пути к ресурсам
-    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/\/DrinkNote\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/\/DrinkNote\/assets\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/\/DrinkNote\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/assets/');
+    jsContent = jsContent.replace(/\/DrinkNote\/assets\//g, '/DrinkNote/assets/');
     
     // Заменяем пути в url() функциях (включая кавычки)
     jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
-      return match.replace(/^\//, '/DrinkNote/_expo/static/');
+      return match.replace(/^\//, '/DrinkNote/');
     });
     
     // Заменяем пути в строках (включая полные URL и разные форматы кавычек)
-    jsContent = jsContent.replace(/"https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, '"https://ivanplat1.github.io/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/'https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, "'https://ivanplat1.github.io/DrinkNote/_expo/static/");
-    jsContent = jsContent.replace(/"\/assets\/node_modules\//g, '"/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/'\/assets\/node_modules\//g, "'/DrinkNote/_expo/static/");
-    jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/'\/assets\//g, "'/DrinkNote/_expo/static/");
+    jsContent = jsContent.replace(/"https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, '"https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/'https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, "'https://ivanplat1.github.io/DrinkNote/assets/node_modules/");
+    jsContent = jsContent.replace(/"\/assets\/node_modules\//g, '"/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/'\/assets\/node_modules\//g, "'/DrinkNote/assets/node_modules/");
+    jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/assets/');
+    jsContent = jsContent.replace(/'\/assets\//g, "'/DrinkNote/assets/");
     
     // Также заменяем пути без кавычек (если они есть в коде)
     // Это должно быть последним, чтобы не конфликтовать с предыдущими заменами
     const beforeReplace = jsContent;
-    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/_expo/static/');
-    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/_expo/static/');
+    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/assets/');
     
     // Проверяем, были ли замены
     if (beforeReplace !== jsContent) {
