@@ -237,13 +237,24 @@ if (fs.existsSync(indexPath)) {
   (function() {
     function fixPath(url) {
       if (typeof url !== 'string') return url;
+      // Проверяем, не исправлен ли уже путь (чтобы избежать дублирования)
+      if (url.includes('/DrinkNote/DrinkNote/')) {
+        // Убираем лишние дублирования
+        url = url.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
+        return url;
+      }
+      // Если путь уже содержит /DrinkNote/, не трогаем его
+      if (url.includes('/DrinkNote/')) {
+        return url;
+      }
       // Исправляем полные URL (разные варианты)
       // Файлы находятся в /assets/node_modules/, а не в _expo/static/
       url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\/node_modules\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
       url = url.replace(/https:\\/\\/ivanplat1\\.github\\.io\\/assets\\//g, 'https://ivanplat1.github.io/DrinkNote/assets/');
-      // Исправляем относительные пути
-      url = url.replace(/\\/assets\\/node_modules\\//g, '/DrinkNote/assets/node_modules/');
-      url = url.replace(/\\/assets\\//g, '/DrinkNote/assets/');
+      // Исправляем относительные пути (только если они начинаются с /assets/)
+      if (url.startsWith('/assets/')) {
+        url = '/DrinkNote' + url;
+      }
       return url;
     }
     
@@ -396,22 +407,27 @@ if (fs.existsSync(jsDir)) {
     
     // Заменяем пути в url() функциях (включая кавычки)
     jsContent = jsContent.replace(/url\(["']?\/(assets|node_modules)/g, (match) => {
+      // Проверяем, не содержит ли уже путь /DrinkNote/
+      if (match.includes('/DrinkNote/')) {
+        return match;
+      }
       return match.replace(/^\//, '/DrinkNote/');
     });
     
     // Заменяем пути в строках (включая полные URL и разные форматы кавычек)
-    jsContent = jsContent.replace(/"https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, '"https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
-    jsContent = jsContent.replace(/'https:\/\/ivanplat1\.github\.io\/assets\/node_modules\//g, "'https://ivanplat1.github.io/DrinkNote/assets/node_modules/");
-    jsContent = jsContent.replace(/"\/assets\/node_modules\//g, '"/DrinkNote/assets/node_modules/');
-    jsContent = jsContent.replace(/'\/assets\/node_modules\//g, "'/DrinkNote/assets/node_modules/");
-    jsContent = jsContent.replace(/"\/assets\//g, '"/DrinkNote/assets/');
-    jsContent = jsContent.replace(/'\/assets\//g, "'/DrinkNote/assets/");
+    // Только если они еще не содержат /DrinkNote/
+    jsContent = jsContent.replace(/"https:\/\/ivanplat1\.github\.io\/(?!DrinkNote\/)assets\/node_modules\//g, '"https://ivanplat1.github.io/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/'https:\/\/ivanplat1\.github\.io\/(?!DrinkNote\/)assets\/node_modules\//g, "'https://ivanplat1.github.io/DrinkNote/assets/node_modules/");
+    jsContent = jsContent.replace(/"\/(?!DrinkNote\/)assets\/node_modules\//g, '"/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/'\/(?!DrinkNote\/)assets\/node_modules\//g, "'/DrinkNote/assets/node_modules/");
+    jsContent = jsContent.replace(/"\/(?!DrinkNote\/)assets\//g, '"/DrinkNote/assets/');
+    jsContent = jsContent.replace(/'\/(?!DrinkNote\/)assets\//g, "'/DrinkNote/assets/");
     
     // Также заменяем пути без кавычек (если они есть в коде)
     // Это должно быть последним, чтобы не конфликтовать с предыдущими заменами
     const beforeReplace = jsContent;
-    jsContent = jsContent.replace(/\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
-    jsContent = jsContent.replace(/\/assets\//g, '/DrinkNote/assets/');
+    jsContent = jsContent.replace(/(?<!\/DrinkNote)\/assets\/node_modules\//g, '/DrinkNote/assets/node_modules/');
+    jsContent = jsContent.replace(/(?<!\/DrinkNote)\/assets\//g, '/DrinkNote/assets/');
     
     // Проверяем, были ли замены
     if (beforeReplace !== jsContent) {
