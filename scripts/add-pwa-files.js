@@ -329,12 +329,24 @@ if (fs.existsSync(indexPath)) {
       #root {
         margin: 0;
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
-        /* НЕ расширяем #root - это создает перекрытие с панелью вкладок */
-        /* Вместо этого расширяем body для покрытия home indicator */
+        /* Добавляем padding-bottom к основному контейнеру, чтобы контент не перекрывался панелью вкладок */
+        #root {
+          padding-bottom: calc(70px + env(safe-area-inset-bottom));
+          box-sizing: border-box;
+        }
+        
+        /* Убеждаемся, что ScrollView и контент учитывают высоту панели */
+        [data-testid="tab-bar"] ~ *,
+        nav[role="tablist"] ~ * {
+          margin-bottom: calc(70px + env(safe-area-inset-bottom));
+        }
         
         nav[role="tablist"],
         [data-testid="tab-bar"],
@@ -569,6 +581,49 @@ if (fs.existsSync(indexPath)) {
         });
       }
     
+    // Функция для добавления padding-bottom к контенту, чтобы он не перекрывался панелью вкладок
+    function addContentPadding() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator && window.navigator.standalone) || 
+                          document.referrer.includes('android-app://');
+      
+      if (!isStandalone) return;
+      
+      // Находим основной контейнер контента (обычно это div внутри #root)
+      const root = document.getElementById('root');
+      if (!root) return;
+      
+      // Находим контейнеры с контентом (ScrollView, View и т.д.)
+      const contentContainers = root.querySelectorAll('div[style*="flex"], div[style*="height"], [data-testid], main, section');
+      
+      contentContainers.forEach(container => {
+        // Пропускаем панель вкладок
+        const isTabBar = container.closest('nav[role="tablist"]') || 
+                        container.closest('[data-testid="tab-bar"]') ||
+                        container.querySelector('nav[role="tablist"]') ||
+                        container.querySelector('[data-testid="tab-bar"]');
+        
+        if (isTabBar) return;
+        
+        const style = window.getComputedStyle(container);
+        const computedStyle = window.getComputedStyle(container);
+        
+        // Проверяем, что это не панель вкладок (не fixed внизу)
+        const isFixedBottom = computedStyle.position === 'fixed' && 
+                             (computedStyle.bottom === '0px' || computedStyle.bottom === '0');
+        
+        if (isFixedBottom) return;
+        
+        // Добавляем padding-bottom, если его еще нет или он слишком маленький
+        const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+        const minPaddingBottom = 80; // Минимальный отступ для панели вкладок
+        
+        if (currentPaddingBottom < minPaddingBottom) {
+          container.style.paddingBottom = \`calc(\${minPaddingBottom}px + env(safe-area-inset-bottom))\`;
+        }
+      });
+    }
+    
     // Применяем safe area insets к таб-бару после загрузки DOM
     function applySafeAreaToTabBar() {
       // Проверяем, находимся ли мы в standalone режиме (PWA через домашний экран)
@@ -791,11 +846,13 @@ if (fs.existsSync(indexPath)) {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        addContentPadding();
         initObservers();
       });
     } else {
       applySafeAreaToTabBar();
       fixTabBarLabels();
+      addContentPadding();
       initObservers();
     }
     
@@ -804,6 +861,7 @@ if (fs.existsSync(indexPath)) {
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        addContentPadding();
         initObservers();
       }, 100);
     });
@@ -815,6 +873,7 @@ if (fs.existsSync(indexPath)) {
       resizeTimeout = setTimeout(() => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        addContentPadding();
       }, 200);
     });
     
@@ -824,6 +883,7 @@ if (fs.existsSync(indexPath)) {
         setTimeout(() => {
           applySafeAreaToTabBar();
           fixTabBarLabels();
+          addContentPadding();
         }, 100);
       }
     });
