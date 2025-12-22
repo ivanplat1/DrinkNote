@@ -119,6 +119,8 @@
           /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
           /* Увеличиваем базовую высоту с 49px до 70px для лучшего размещения текста */
           min-height: calc(70px + env(safe-area-inset-bottom)) !important;
+          /* Убеждаемся, что панель вкладок поверх всего контента */
+          z-index: 1000 !important;
         }
         
         /* Увеличиваем высоту элементов внутри панели вкладок */
@@ -520,6 +522,12 @@
                 const btnPaddingBottom = btnStyle.paddingBottom || '8px';
                 btn.style.paddingTop = btnPaddingTop;
                 btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
+                
+                // Убеждаемся, что панель вкладок поверх всего
+                if (isStandalone) {
+                  child.style.zIndex = '1000';
+                  child.style.position = 'relative';
+                }
                 
                 // Уменьшаем размер шрифта подписей вкладок
                 const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"], div[class*="r-dnmrzs"]');
