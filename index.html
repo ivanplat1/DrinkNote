@@ -104,6 +104,23 @@
           min-height: 70px !important;
           padding-top: 8px !important;
           padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          align-items: center !important;
+        }
+        
+        /* Убеждаемся, что текст в кнопках вкладок не обрезается */
+        nav[role="tablist"] button *,
+        nav[role="tablist"] a *,
+        [data-testid="tab-bar"] button *,
+        [data-testid="tab-bar"] a *,
+        .tab-bar button *,
+        .tab-bar a * {
+          white-space: nowrap !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          line-height: 1.2 !important;
         }
       }
       
