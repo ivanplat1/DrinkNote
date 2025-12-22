@@ -309,17 +309,26 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
-        /* Отключаем только overscroll, но не весь скролл */
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        /* Отключаем overscroll */
         overscroll-behavior: none;
         overscroll-behavior-y: none;
         -webkit-overflow-scrolling: touch;
       }
       
-      /* В standalone режиме расширяем body до низа экрана, чтобы покрыть home indicator */
+      /* В standalone режиме фиксируем body на 100vh */
       @media (display-mode: standalone) {
         body {
-          min-height: calc(100vh + env(safe-area-inset-bottom));
-          /* Отключаем только overscroll, но не весь скролл */
+          height: 100vh;
+          max-height: 100vh;
+          overflow: hidden;
+          position: fixed;
+          width: 100%;
+          /* Отключаем overscroll */
           overscroll-behavior: none;
           overscroll-behavior-y: none;
         }
@@ -330,7 +339,10 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
-        /* Отключаем только overscroll, но не весь скролл */
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+        /* Отключаем overscroll */
         overscroll-behavior: none;
         overscroll-behavior-y: none;
       }
