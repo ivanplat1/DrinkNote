@@ -83,7 +83,15 @@
           padding-bottom: env(safe-area-inset-bottom) !important;
           margin-bottom: 0 !important;
           /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
-          min-height: calc(49px + env(safe-area-inset-bottom)) !important;
+          /* Увеличиваем базовую высоту с 49px до 60px для лучшего размещения текста */
+          min-height: calc(60px + env(safe-area-inset-bottom)) !important;
+        }
+        
+        /* Увеличиваем высоту элементов внутри панели вкладок */
+        nav[role="tablist"] > *,
+        [data-testid="tab-bar"] > *,
+        .tab-bar > * {
+          min-height: calc(60px + env(safe-area-inset-bottom)) !important;
         }
       }
       
@@ -277,15 +285,43 @@
             }
             
             // Увеличиваем минимальную высоту панели вкладок
-            const currentMinHeight = style.minHeight || '49px';
-            const currentMinHeightValue = parseInt(currentMinHeight) || 49;
+            // Используем базовую высоту 60px вместо 49px для лучшего размещения текста
+            const currentMinHeight = style.minHeight || '60px';
+            let currentMinHeightValue = parseInt(currentMinHeight) || 60;
+            // Если текущая высота меньше 60px, увеличиваем до 60px
+            if (currentMinHeightValue < 60) {
+              currentMinHeightValue = 60;
+            }
             element.style.minHeight = `calc(${currentMinHeightValue}px + ${safeAreaBottom})`;
             
             // Также увеличиваем высоту, если она задана явно
             if (style.height && style.height !== 'auto') {
-              const currentHeightValue = parseInt(style.height) || currentMinHeightValue;
+              let currentHeightValue = parseInt(style.height) || currentMinHeightValue;
+              // Если текущая высота меньше 60px, увеличиваем до 60px
+              if (currentHeightValue < 60) {
+                currentHeightValue = 60;
+              }
               element.style.height = `calc(${currentHeightValue}px + ${safeAreaBottom})`;
             }
+            
+            // Увеличиваем высоту дочерних элементов панели вкладок
+            Array.from(element.children).forEach(child => {
+              const childStyle = window.getComputedStyle(child);
+              const childMinHeight = childStyle.minHeight || '60px';
+              let childMinHeightValue = parseInt(childMinHeight) || 60;
+              if (childMinHeightValue < 60) {
+                childMinHeightValue = 60;
+              }
+              child.style.minHeight = `calc(${childMinHeightValue}px + ${safeAreaBottom})`;
+              
+              if (childStyle.height && childStyle.height !== 'auto') {
+                let childHeightValue = parseInt(childStyle.height) || childMinHeightValue;
+                if (childHeightValue < 60) {
+                  childHeightValue = 60;
+                }
+                child.style.height = `calc(${childHeightValue}px + ${safeAreaBottom})`;
+              }
+            });
           } else {
             // В браузере не применяем padding
             const currentPaddingBottom = style.paddingBottom || '0px';
