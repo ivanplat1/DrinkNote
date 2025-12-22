@@ -402,7 +402,7 @@ if (fs.existsSync(indexPath)) {
         .tab-bar a {
           min-height: 70px !important;
           padding-top: 8px !important;
-          padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+          padding-bottom: calc(20px + env(safe-area-inset-bottom) + 12px) !important;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
@@ -791,7 +791,7 @@ if (fs.existsSync(indexPath)) {
                 const btnPaddingTop = btnStyle.paddingTop || '8px';
                 const btnPaddingBottom = btnStyle.paddingBottom || '8px';
                 btn.style.paddingTop = btnPaddingTop;
-                btn.style.paddingBottom = \`calc(\${btnPaddingBottom} + \${safeAreaBottom})\`;
+                btn.style.paddingBottom = \`calc(20px + \${safeAreaBottom} + 12px)\`;
                 
                 // Убеждаемся, что панель вкладок поверх всего
                 if (isStandalone) {
