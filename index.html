@@ -117,10 +117,12 @@
         nav[role="tablist"] div[class*="css-146c3p1"],
         [data-testid="tab-bar"] div[class*="css-146c3p1"],
         .tab-bar div[class*="css-146c3p1"] {
-          font-size: 10px !important;
-          line-height: 1.2 !important;
+          font-size: 9px !important;
+          line-height: 1.1 !important;
           padding: 0 !important;
           margin: 0 !important;
+          white-space: nowrap !important;
+          overflow: visible !important;
         }
         
       }
@@ -366,85 +368,16 @@
                 // Уменьшаем размер шрифта надписей в таб-баре
                 const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"]');
                 textDivs.forEach(textDiv => {
-                  textDiv.style.setProperty('font-size', '10px', 'important');
-                  textDiv.style.setProperty('line-height', '1.2', 'important');
-                  textDiv.style.setProperty('padding', '0', 'important');
-                  textDiv.style.setProperty('margin', '0', 'important');
-                });
-                
-                // Агрессивно скрываем все текстовые элементы
-                btn.style.setProperty('font-size', '0', 'important');
-                btn.style.setProperty('line-height', '0', 'important');
-                btn.style.setProperty('color', 'transparent', 'important');
-                
-                // Скрываем все дочерние элементы, кроме иконок
-                const allChildren = btn.querySelectorAll('*');
-                allChildren.forEach(child => {
-                  const tagName = child.tagName.toLowerCase();
-                  const className = child.className && typeof child.className === 'string' ? child.className : '';
-                  const hasIconClass = className.includes('icon') || className.includes('Icon');
-                  const isSvg = tagName === 'svg';
-                  const hasSvgChild = child.querySelector('svg');
-                  const hasText = child.textContent && child.textContent.trim();
-                  const isTextElement = hasText && !hasIconClass && !isSvg && !hasSvgChild;
-                  
-                  // Специальная проверка для div элементов с текстом (как "Статистика")
-                  const isTextDiv = tagName === 'div' && hasText && !hasIconClass && !hasSvgChild;
-                  
-                  // Если это не иконка и содержит текст - скрываем агрессивно
-                  if (isTextElement || isTextDiv) {
-                    child.style.setProperty('display', 'none', 'important');
-                    child.style.setProperty('visibility', 'hidden', 'important');
-                    child.style.setProperty('opacity', '0', 'important');
-                    child.style.setProperty('height', '0', 'important');
-                    child.style.setProperty('width', '0', 'important');
-                    child.style.setProperty('overflow', 'hidden', 'important');
-                    child.style.setProperty('font-size', '0', 'important');
-                    child.style.setProperty('line-height', '0', 'important');
-                    child.style.setProperty('color', 'transparent', 'important');
-                    child.style.setProperty('position', 'absolute', 'important');
-                    child.style.setProperty('left', '-9999px', 'important');
-                    child.style.setProperty('text-indent', '-9999px', 'important');
-                    child.style.setProperty('margin', '0', 'important');
-                    child.style.setProperty('padding', '0', 'important');
-                    // Также очищаем textContent для надежности
-                    if (hasText && !hasIconClass && !isSvg && !hasSvgChild) {
-                      child.textContent = '';
-                    }
+                  // Проверяем, что это не иконка (нет svg внутри)
+                  if (!textDiv.querySelector('svg')) {
+                    textDiv.style.setProperty('font-size', '9px', 'important');
+                    textDiv.style.setProperty('line-height', '1.1', 'important');
+                    textDiv.style.setProperty('padding', '0', 'important');
+                    textDiv.style.setProperty('margin', '0', 'important');
+                    textDiv.style.setProperty('white-space', 'nowrap', 'important');
+                    textDiv.style.setProperty('overflow', 'visible', 'important');
                   }
                 });
-                
-                // Показываем иконки
-                const icons = btn.querySelectorAll('svg, [class*="icon"], [class*="Icon"]');
-                icons.forEach(icon => {
-                  icon.style.display = 'block';
-                  icon.style.visibility = 'visible';
-                  icon.style.opacity = '1';
-                  icon.style.fontSize = '24px';
-                  icon.style.width = '24px';
-                  icon.style.height = '24px';
-                  icon.style.color = 'inherit';
-                });
-                
-                // Скрываем прямые текстовые узлы
-                const walker = document.createTreeWalker(
-                  btn,
-                  NodeFilter.SHOW_TEXT,
-                  null,
-                  false
-                );
-                
-                let textNode;
-                while (textNode = walker.nextNode()) {
-                  const text = textNode.textContent.trim();
-                  if (text && text.length > 0) {
-                    const parent = textNode.parentElement;
-                    const hasIconParent = parent && parent.className && typeof parent.className === 'string' && (parent.className.includes('icon') || parent.className.includes('Icon'));
-                    if (!hasIconParent) {
-                      textNode.textContent = '';
-                    }
-                  }
-                }
               });
             });
           } else {
@@ -484,10 +417,12 @@
         textDivs.forEach(textDiv => {
           // Проверяем, что это не иконка (нет svg внутри)
           if (!textDiv.querySelector('svg')) {
-            textDiv.style.setProperty('font-size', '10px', 'important');
-            textDiv.style.setProperty('line-height', '1.2', 'important');
+            textDiv.style.setProperty('font-size', '9px', 'important');
+            textDiv.style.setProperty('line-height', '1.1', 'important');
             textDiv.style.setProperty('padding', '0', 'important');
             textDiv.style.setProperty('margin', '0', 'important');
+            textDiv.style.setProperty('white-space', 'nowrap', 'important');
+            textDiv.style.setProperty('overflow', 'visible', 'important');
           }
         });
       }
