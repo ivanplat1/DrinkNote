@@ -392,10 +392,10 @@ if (fs.existsSync(indexPath)) {
       if (typeof url !== 'string') return url;
       
       // Сначала убираем все дублирования /DrinkNote/DrinkNote/...
-      url = url.replace(/\/DrinkNote\/DrinkNote\/+/g, '/DrinkNote/');
+      url = url.replace(/\\/DrinkNote\\/DrinkNote\\/+/g, '/DrinkNote/');
       
       // Если путь уже содержит /DrinkNote/ перед /assets/, не трогаем его
-      if (url.match(/\/DrinkNote\/assets\//) || url.match(/\/DrinkNote\/_expo\//)) {
+      if (url.match(/\\/DrinkNote\\/assets\\//) || url.match(/\\/DrinkNote\\/_expo\\//)) {
         return url;
       }
       
