@@ -443,7 +443,13 @@ if (fs.existsSync(indexPath)) {
         [data-testid="tab-bar"] button div[class*="css-"],
         [data-testid="tab-bar"] a div[class*="css-"],
         .tab-bar button div[class*="css-"],
-        .tab-bar a div[class*="css-"] {
+        .tab-bar a div[class*="css-"],
+        nav[role="tablist"] button div[class*="r-"],
+        nav[role="tablist"] a div[class*="r-"],
+        [data-testid="tab-bar"] button div[class*="r-"],
+        [data-testid="tab-bar"] a div[class*="r-"],
+        .tab-bar button div[class*="r-"],
+        .tab-bar a div[class*="r-"] {
           display: none !important;
           visibility: hidden !important;
           opacity: 0 !important;
@@ -455,6 +461,9 @@ if (fs.existsSync(indexPath)) {
           color: transparent !important;
           position: absolute !important;
           left: -9999px !important;
+          text-indent: -9999px !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         
         /* Исключаем SVG и иконки из скрытия */
