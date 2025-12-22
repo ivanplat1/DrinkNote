@@ -778,13 +778,12 @@ if (fs.existsSync(indexPath)) {
               }
             }
             
-            // Применяем safe area insets с дополнительным отступом
+            // Применяем safe area insets без дополнительного отступа
             // Используем calc() для правильного расчета
-            const additionalPadding = 32; // Дополнительный отступ от Home индикатора
             if (currentPaddingBottomValue > 0) {
-              element.style.setProperty('padding-bottom', \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px + \${additionalPadding}px)\`, 'important');
+              element.style.setProperty('padding-bottom', \`calc(\${safeAreaBottom} + \${currentPaddingBottomValue}px)\`, 'important');
             } else {
-              element.style.setProperty('padding-bottom', \`calc(\${safeAreaBottom} + \${additionalPadding}px)\`, 'important');
+              element.style.setProperty('padding-bottom', safeAreaBottom, 'important');
             }
             
             // Увеличиваем минимальную высоту панели вкладок
@@ -834,7 +833,7 @@ if (fs.existsSync(indexPath)) {
                 const btnPaddingTop = btnStyle.paddingTop || '8px';
                 const btnPaddingBottom = btnStyle.paddingBottom || '8px';
                 btn.style.paddingTop = btnPaddingTop;
-                btn.style.paddingBottom = \`calc(20px + \${safeAreaBottom} + 12px)\`;
+                btn.style.paddingBottom = \`calc(8px + \${safeAreaBottom})\`;
                 
                 // Убеждаемся, что панель вкладок поверх всего
                 if (isStandalone) {
