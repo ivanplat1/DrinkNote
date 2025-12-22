@@ -381,19 +381,26 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
 
-        /* Уменьшаем размер шрифта надписей в таб-баре, чтобы они помещались */
+        /* Скрываем подписи вкладок, оставляем только иконки */
         nav[role="tablist"] div[dir="auto"],
         [data-testid="tab-bar"] div[dir="auto"],
         .tab-bar div[dir="auto"],
         nav[role="tablist"] div[class*="css-146c3p1"],
         [data-testid="tab-bar"] div[class*="css-146c3p1"],
-        .tab-bar div[class*="css-146c3p1"] {
-          font-size: 9px !important;
-          line-height: 1.1 !important;
+        .tab-bar div[class*="css-146c3p1"],
+        nav[role="tablist"] div[class*="r-dnmrzs"],
+        [data-testid="tab-bar"] div[class*="r-dnmrzs"],
+        .tab-bar div[class*="r-dnmrzs"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
+          font-size: 0 !important;
+          line-height: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
-          white-space: nowrap !important;
-          overflow: visible !important;
         }
         
       }
@@ -536,21 +543,32 @@ if (fs.existsSync(indexPath)) {
       return originalInsertRule.call(this, rule, index);
     };
     
-    // Функция для уменьшения размера шрифта надписей в таб-баре
-    function fixTabBarLabels() {
-      const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"]');
-      textDivs.forEach(textDiv => {
-        // Проверяем, что это не иконка (нет svg внутри)
-        if (!textDiv.querySelector('svg')) {
-          textDiv.style.setProperty('font-size', '9px', 'important');
-          textDiv.style.setProperty('line-height', '1.1', 'important');
-          textDiv.style.setProperty('padding', '0', 'important');
-          textDiv.style.setProperty('margin', '0', 'important');
-          textDiv.style.setProperty('white-space', 'nowrap', 'important');
-          textDiv.style.setProperty('overflow', 'visible', 'important');
-        }
-      });
-    }
+      // Функция для удаления подписей вкладок, оставляем только иконки
+      function fixTabBarLabels() {
+        const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"], nav[role="tablist"] div[class*="r-dnmrzs"], [data-testid="tab-bar"] div[class*="r-dnmrzs"], .tab-bar div[class*="r-dnmrzs"]');
+        textDivs.forEach(textDiv => {
+          // Проверяем, что это не иконка (нет svg внутри и нет ionicons класса)
+          const hasSvg = textDiv.querySelector('svg');
+          const hasIconClass = textDiv.className && typeof textDiv.className === 'string' && (textDiv.className.includes('ionicons') || textDiv.className.includes('icon'));
+          const isIcon = hasSvg || hasIconClass;
+          
+          if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
+            // Удаляем элемент с текстом
+            textDiv.style.setProperty('display', 'none', 'important');
+            textDiv.style.setProperty('visibility', 'hidden', 'important');
+            textDiv.style.setProperty('opacity', '0', 'important');
+            textDiv.style.setProperty('height', '0', 'important');
+            textDiv.style.setProperty('width', '0', 'important');
+            textDiv.style.setProperty('overflow', 'hidden', 'important');
+            textDiv.style.setProperty('font-size', '0', 'important');
+            textDiv.style.setProperty('line-height', '0', 'important');
+            textDiv.style.setProperty('padding', '0', 'important');
+            textDiv.style.setProperty('margin', '0', 'important');
+            // Также очищаем textContent для надежности
+            textDiv.textContent = '';
+          }
+        });
+      }
     
     // Применяем safe area insets к таб-бару после загрузки DOM
     function applySafeAreaToTabBar() {
