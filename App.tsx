@@ -58,6 +58,7 @@ export default function App() {
               fontWeight: '600',
               fontSize: 12,
             },
+            tabBarShowLabel: false, // Скрываем подписи вкладок, оставляем только иконки
           }}
         >
           <Tab.Screen 
