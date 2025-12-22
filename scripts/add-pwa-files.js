@@ -390,6 +390,28 @@ if (fs.existsSync(indexPath)) {
           z-index: 1000 !important;
         }
         
+        /* Скрываем кнопки удаления при загрузке PWA */
+        @media (display-mode: standalone) {
+          /* Скрываем все контейнеры с position: absolute/fixed, которые могут быть кнопками удаления */
+          div[style*="position: absolute"][style*="right: 0"],
+          div[style*="position: fixed"][style*="right: 0"] {
+            width: 0 !important;
+            overflow: hidden !important;
+            max-width: 0 !important;
+          }
+          
+          /* Скрываем элементы с иконками удаления (красный цвет) */
+          div[style*="rgb(239, 68, 68)"],
+          div[style*="color: rgb(239, 68, 68)"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+          }
+        }
+        
         /* Увеличиваем высоту элементов внутри панели вкладок */
         nav[role="tablist"] > *,
         [data-testid="tab-bar"] > *,
@@ -628,36 +650,102 @@ if (fs.existsSync(indexPath)) {
       
       if (!isStandalone) return;
       
-      // Ищем все элементы с иконкой удаления (Material Icons delete-sweep)
+      // Стратегия 1: Ищем все элементы с иконкой удаления (Material Icons delete-sweep)
       // Иконка имеет цвет rgb(239, 68, 68) и размер 28px
-      const deleteButtons = document.querySelectorAll('div[style*="rgb(239, 68, 68)"], div[style*="color: rgb(239, 68, 68)"]');
+      const deleteButtons = document.querySelectorAll('div[style*="rgb(239, 68, 68)"], div[style*="color: rgb(239, 68, 68)"], div[style*="239, 68, 68"]');
       deleteButtons.forEach(btn => {
         // Проверяем, что это действительно иконка удаления (имеет font-family: material)
         const style = window.getComputedStyle(btn);
         if (style.fontFamily && style.fontFamily.includes('material')) {
+          // Скрываем сам элемент
+          btn.style.setProperty('display', 'none', 'important');
+          btn.style.setProperty('visibility', 'hidden', 'important');
+          btn.style.setProperty('opacity', '0', 'important');
+          btn.style.setProperty('width', '0', 'important');
+          btn.style.setProperty('height', '0', 'important');
+          btn.style.setProperty('overflow', 'hidden', 'important');
+          
           // Ищем родительский контейнер кнопки удаления
           let container = btn.parentElement;
-          while (container && container !== document.body) {
-            // Проверяем, является ли это контейнером кнопки удаления
+          let depth = 0;
+          while (container && container !== document.body && depth < 5) {
             const containerStyle = window.getComputedStyle(container);
+            // Проверяем, является ли это контейнером кнопки удаления
             if (containerStyle.position === 'absolute' || containerStyle.position === 'fixed') {
-              // Скрываем контейнер, устанавливая width: 0
+              // Скрываем контейнер
               container.style.setProperty('width', '0', 'important');
+              container.style.setProperty('max-width', '0', 'important');
               container.style.setProperty('overflow', 'hidden', 'important');
-              break;
+              container.style.setProperty('display', 'none', 'important');
+              container.style.setProperty('visibility', 'hidden', 'important');
+              container.style.setProperty('opacity', '0', 'important');
             }
             container = container.parentElement;
+            depth++;
           }
         }
       });
       
-      // Также ищем элементы с классом deleteButtonContainer или похожими
+      // Стратегия 2: Ищем элементы с классом deleteButtonContainer или похожими
       const deleteContainers = document.querySelectorAll('[class*="delete"], [class*="Delete"]');
       deleteContainers.forEach(container => {
         const style = window.getComputedStyle(container);
         if (style.position === 'absolute' || style.position === 'fixed') {
           container.style.setProperty('width', '0', 'important');
+          container.style.setProperty('max-width', '0', 'important');
           container.style.setProperty('overflow', 'hidden', 'important');
+          container.style.setProperty('display', 'none', 'important');
+          container.style.setProperty('visibility', 'hidden', 'important');
+          container.style.setProperty('opacity', '0', 'important');
+        }
+      });
+      
+      // Стратегия 3: Ищем контейнеры с position: absolute/fixed справа от элементов списка
+      // которые могут быть кнопками удаления
+      const allDivs = document.querySelectorAll('div');
+      allDivs.forEach(div => {
+        const style = window.getComputedStyle(div);
+        const inlineStyle = div.getAttribute('style') || '';
+        
+        // Проверяем, является ли это контейнером кнопки удаления
+        if ((style.position === 'absolute' || style.position === 'fixed') && 
+            (style.right === '0px' || style.right === '0' || inlineStyle.includes('right: 0'))) {
+          // Проверяем, есть ли внутри красные элементы (иконки удаления)
+          const hasRedIcon = div.querySelector('div[style*="239, 68, 68"], div[style*="rgb(239, 68, 68)"]');
+          if (hasRedIcon) {
+            div.style.setProperty('width', '0', 'important');
+            div.style.setProperty('max-width', '0', 'important');
+            div.style.setProperty('overflow', 'hidden', 'important');
+            div.style.setProperty('display', 'none', 'important');
+            div.style.setProperty('visibility', 'hidden', 'important');
+            div.style.setProperty('opacity', '0', 'important');
+          }
+        }
+      });
+      
+      // Стратегия 4: Ищем элементы с transform: translateX (отрицательное значение)
+      // которые могут быть карточками в состоянии свайпа
+      allDivs.forEach(div => {
+        const style = window.getComputedStyle(div);
+        const transform = style.transform;
+        if (transform && transform.includes('translateX') && transform.includes('-')) {
+          // Это может быть карточка в состоянии свайпа
+          // Ищем рядом контейнер кнопки удаления
+          const parent = div.parentElement;
+          if (parent) {
+            const siblings = Array.from(parent.children);
+            siblings.forEach(sibling => {
+              if (sibling !== div) {
+                const siblingStyle = window.getComputedStyle(sibling);
+                if (siblingStyle.position === 'absolute' || siblingStyle.position === 'fixed') {
+                  // Возможно, это кнопка удаления
+                  sibling.style.setProperty('width', '0', 'important');
+                  sibling.style.setProperty('max-width', '0', 'important');
+                  sibling.style.setProperty('overflow', 'hidden', 'important');
+                }
+              }
+            });
+          }
         }
       });
     }
