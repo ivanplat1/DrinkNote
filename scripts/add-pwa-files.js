@@ -739,6 +739,21 @@ if (fs.existsSync(indexPath)) {
         }
       });
       
+      // Функция для переопределения padding у элементов с классом r-1uu6nss
+      function fixR1uu6nssPadding() {
+        const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
+        const r1uu6nssElements = document.querySelectorAll('.r-1uu6nss');
+        r1uu6nssElements.forEach(el => {
+          if (el.tagName === 'A' || el.tagName === 'BUTTON' || el.getAttribute('role') === 'tab') {
+            el.style.setProperty('padding', '8px 0', 'important');
+            el.style.setProperty('padding-top', '8px', 'important');
+            el.style.setProperty('padding-bottom', \`calc(8px + \${safeAreaBottom})\`, 'important');
+            el.style.setProperty('padding-left', '0', 'important');
+            el.style.setProperty('padding-right', '0', 'important');
+          }
+        });
+      }
+      
       // Также ищем все fixed элементы внизу экрана
       const allElements = document.querySelectorAll('*');
       const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -752,6 +767,9 @@ if (fs.existsSync(indexPath)) {
           applyPadding(el);
         }
       });
+      
+      // Применяем исправление padding для r-1uu6nss
+      fixR1uu6nssPadding();
       
       // Также применяем через MutationObserver для динамически созданных элементов
       const tabBarObserver = new MutationObserver(() => {
@@ -772,6 +790,9 @@ if (fs.existsSync(indexPath)) {
             applyPadding(el);
           }
         });
+        
+        // Исправляем padding для новых элементов r-1uu6nss
+        fixR1uu6nssPadding();
       });
       
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
@@ -781,21 +802,26 @@ if (fs.existsSync(indexPath)) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
+        fixR1uu6nssPadding();
       });
     } else {
       applySafeAreaToTabBar();
+      fixR1uu6nssPadding();
     }
     
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
+        fixR1uu6nssPadding();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
+        fixR1uu6nssPadding();
       }, 500);
       setTimeout(() => {
         applySafeAreaToTabBar();
+        fixR1uu6nssPadding();
       }, 1000);
     });
     
@@ -803,6 +829,7 @@ if (fs.existsSync(indexPath)) {
     window.addEventListener('resize', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
+        fixR1uu6nssPadding();
       }, 100);
     });
     
@@ -811,6 +838,7 @@ if (fs.existsSync(indexPath)) {
       if (!document.hidden) {
         setTimeout(() => {
           applySafeAreaToTabBar();
+          fixR1uu6nssPadding();
         }, 100);
       }
     });
