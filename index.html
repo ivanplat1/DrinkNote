@@ -774,12 +774,14 @@
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
         initObservers();
       });
     } else {
+      hideDeleteButtons();
       applySafeAreaToTabBar();
       fixTabBarLabels();
       addContentPadding();
@@ -789,6 +791,7 @@
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(() => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
@@ -801,6 +804,7 @@
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
@@ -811,6 +815,7 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         setTimeout(() => {
+          hideDeleteButtons();
           applySafeAreaToTabBar();
           fixTabBarLabels();
           addContentPadding();
