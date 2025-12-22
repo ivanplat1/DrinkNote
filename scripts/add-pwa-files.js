@@ -390,6 +390,7 @@ if (fs.existsSync(indexPath)) {
         [data-testid="tab-bar"] > *,
         .tab-bar > * {
           min-height: calc(70px + env(safe-area-inset-bottom)) !important;
+          z-index: 1001 !important;
         }
         
         /* Увеличиваем высоту кнопок вкладок и их контейнеров */
@@ -406,6 +407,7 @@ if (fs.existsSync(indexPath)) {
           flex-direction: column !important;
           justify-content: center !important;
           align-items: center !important;
+          z-index: 1002 !important;
         }
 
         /* Уменьшаем размер шрифта подписей вкладок */
