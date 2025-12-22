@@ -35,6 +35,12 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 function AppContent() {
   const insets = useSafeAreaInsets();
   
+  // Определяем iOS в веб-версии (PWA)
+  const isIOS = Platform.OS === 'ios' || 
+                (Platform.OS === 'web' && typeof window !== 'undefined' && 
+                 (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)));
+  
   return (
     <NavigationContainer>
         <StatusBar style="light" />
@@ -53,10 +59,10 @@ function AppContent() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              paddingBottom: Platform.OS === 'ios' ? Math.max(32, insets.bottom + 24) : 8, // Значительно увеличенный отступ от Home индикатора
+              paddingBottom: isIOS ? Math.max(32, insets.bottom + 24) : 8, // Значительно увеличенный отступ от Home индикатора
               paddingTop: 8, // Padding сверху
-              height: Platform.OS === 'ios' ? undefined : 70, // Автоматическая высота для iOS с учетом padding
-              minHeight: Platform.OS === 'ios' ? 60 : 70, // Минимальная высота
+              height: isIOS ? undefined : 70, // Автоматическая высота для iOS с учетом padding
+              minHeight: isIOS ? 60 : 70, // Минимальная высота
             },
             tabBarActiveTintColor: colors.primaryLight || colors.primary,
             tabBarInactiveTintColor: colors.textTertiary,
