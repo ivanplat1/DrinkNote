@@ -633,7 +633,6 @@ if (fs.existsSync(indexPath)) {
       const mainContentContainer = root.querySelector('div');
       if (mainContentContainer) {
         mainContentContainer.style.flex = '1';
-        mainContentContainer.style.overflow = 'hidden';
         mainContentContainer.style.display = 'flex';
         mainContentContainer.style.flexDirection = 'column';
       }
