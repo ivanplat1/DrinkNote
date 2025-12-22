@@ -674,20 +674,22 @@ export default function TodayScreen() {
             </View>
           );
         })}
-        <TouchableOpacity
-          style={styles.addFavButtonRect}
-          onPress={() => {
-            setDeletingPresetId(null);
-            setEditingPresetId(null);
-            openAddModal();
-          }}
-          accessibilityLabel="Добавить напиток"
-        >
-          <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
-        </TouchableOpacity>
         </ScrollView>
       </TouchableOpacity>
       )}
+      {/* Кнопка добавления в избранное - всегда видна */}
+      <TouchableOpacity
+        style={styles.addFavButtonRect}
+        onPress={() => {
+          setDeletingPresetId(null);
+          setEditingPresetId(null);
+          openAddModal();
+        }}
+        accessibilityLabel="Добавить напиток в избранное"
+      >
+        <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
+        <Text style={styles.addFavRectText}>Добавить</Text>
+      </TouchableOpacity>
 
 
       <TouchableOpacity
