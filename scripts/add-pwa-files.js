@@ -369,11 +369,11 @@ if (fs.existsSync(indexPath)) {
           bottom: 0 !important;
           left: 0 !important;
           right: 0 !important;
-          padding-bottom: calc(20px + env(safe-area-inset-bottom) + 12px) !important;
+          padding-bottom: env(safe-area-inset-bottom) !important;
           margin-bottom: 0 !important;
           /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
           /* Увеличиваем базовую высоту с 49px до 70px для лучшего размещения текста */
-          min-height: calc(70px + env(safe-area-inset-bottom) + 32px) !important;
+          min-height: calc(70px + env(safe-area-inset-bottom)) !important;
           /* Убеждаемся, что панель вкладок поверх всего контента */
           z-index: 1000 !important;
         }
@@ -395,7 +395,7 @@ if (fs.existsSync(indexPath)) {
         .tab-bar a {
           min-height: 70px !important;
           padding-top: 8px !important;
-          padding-bottom: calc(20px + env(safe-area-inset-bottom) + 12px) !important;
+          padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;

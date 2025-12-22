@@ -59,7 +59,7 @@ function AppContent() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              paddingBottom: isIOS ? Math.max(32, insets.bottom + 24) : 8, // Значительно увеличенный отступ от Home индикатора
+              paddingBottom: isIOS ? Math.max(8, insets.bottom) : 8, // Минимальный отступ от Home индикатора
               paddingTop: 8, // Padding сверху
               height: isIOS ? undefined : 70, // Автоматическая высота для iOS с учетом padding
               minHeight: isIOS ? 60 : 70, // Минимальная высота
