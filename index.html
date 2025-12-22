@@ -178,6 +178,35 @@
           height: 0 !important;
           width: 0 !important;
           overflow: hidden !important;
+          font-size: 0 !important;
+          line-height: 0 !important;
+          color: transparent !important;
+        }
+        
+        /* Скрываем все div элементы с текстом внутри кнопок вкладок (более агрессивно) */
+        nav[role="tablist"] button div[dir],
+        nav[role="tablist"] a div[dir],
+        [data-testid="tab-bar"] button div[dir],
+        [data-testid="tab-bar"] a div[dir],
+        .tab-bar button div[dir],
+        .tab-bar a div[dir],
+        nav[role="tablist"] button div[class*="css-"],
+        nav[role="tablist"] a div[class*="css-"],
+        [data-testid="tab-bar"] button div[class*="css-"],
+        [data-testid="tab-bar"] a div[class*="css-"],
+        .tab-bar button div[class*="css-"],
+        .tab-bar a div[class*="css-"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
+          font-size: 0 !important;
+          line-height: 0 !important;
+          color: transparent !important;
+          position: absolute !important;
+          left: -9999px !important;
         }
         
         /* Исключаем SVG и иконки из скрытия */
