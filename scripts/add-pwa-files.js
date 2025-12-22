@@ -839,6 +839,20 @@ if (fs.existsSync(indexPath)) {
         // Fallback на body, но только прямые дети
         labelObserver.observe(document.body, { childList: true, subtree: false });
       }
+      
+      // Также наблюдаем за изменениями контента для добавления padding
+      let contentObserverTimeout;
+      const contentObserver = new MutationObserver(() => {
+        clearTimeout(contentObserverTimeout);
+        contentObserverTimeout = setTimeout(() => {
+          addContentPadding();
+        }, 200);
+      });
+      
+      const root = document.getElementById('root');
+      if (root) {
+        contentObserver.observe(root, { childList: true, subtree: true });
+      }
     }
     
     // Применяем после загрузки DOM
