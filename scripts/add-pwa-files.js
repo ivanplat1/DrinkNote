@@ -122,7 +122,8 @@ const urlsToCache = [
   BASE_PATH + '/index.html',
   BASE_PATH + '/manifest.json',
   BASE_PATH + '/assets/icon-192.png',
-  BASE_PATH + '/assets/icon-512.png'
+  BASE_PATH + '/assets/icon-512.png',
+  BASE_PATH + '/assets/apple-touch-icon.png'
 ];
 
 // Установка Service Worker
@@ -254,11 +255,18 @@ if (fs.existsSync(indexPath)) {
       }
     }
     
+    // Добавляем или обновляем apple-touch-icon в HTML
+    const appleTouchIconTag = '  <link rel="apple-touch-icon" sizes="180x180" href="/DrinkNote/assets/apple-touch-icon.png" />';
     if (!html.includes('apple-touch-icon')) {
       html = html.replace(
         /<\/head>/,
-        `  <link rel="apple-touch-icon" href="/DrinkNote/assets/apple-touch-icon.png" />
-</head>`
+        `${appleTouchIconTag}\n</head>`
+      );
+    } else {
+      // Обновляем существующий тег
+      html = html.replace(
+        /<link[^>]*apple-touch-icon[^>]*>/i,
+        appleTouchIconTag
       );
     }
   }
