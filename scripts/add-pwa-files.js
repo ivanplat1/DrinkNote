@@ -359,22 +359,28 @@ if (fs.existsSync(indexPath)) {
         }
 
         /* Убираем padding:5px у элементов с классом r-1uu6nss (корень кнопки таба) */
-        nav[role="tablist"] .r-1uu6nss,
+        /* Используем максимальную специфичность */
+        nav[role="tablist"] a.r-1uu6nss[role="tab"],
+        nav[role="tablist"] button.r-1uu6nss[role="tab"],
         nav[role="tablist"] a.r-1uu6nss,
         nav[role="tablist"] button.r-1uu6nss,
-        [data-testid="tab-bar"] .r-1uu6nss,
+        [data-testid="tab-bar"] a.r-1uu6nss[role="tab"],
+        [data-testid="tab-bar"] button.r-1uu6nss[role="tab"],
         [data-testid="tab-bar"] a.r-1uu6nss,
         [data-testid="tab-bar"] button.r-1uu6nss,
-        .tab-bar .r-1uu6nss,
+        .tab-bar a.r-1uu6nss[role="tab"],
+        .tab-bar button.r-1uu6nss[role="tab"],
         .tab-bar a.r-1uu6nss,
         .tab-bar button.r-1uu6nss,
-        .r-1uu6nss[role="tab"] {
+        a.r-1uu6nss[role="tab"],
+        button.r-1uu6nss[role="tab"] {
           padding-top: 8px !important;
           padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
           padding-left: 0 !important;
           padding-right: 0 !important;
+          padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) 0 !important;
           min-height: calc(70px + env(safe-area-inset-bottom)) !important;
-          box-sizing: border-box;
+          box-sizing: border-box !important;
         }
         
       }
@@ -770,6 +776,7 @@ if (fs.existsSync(indexPath)) {
       
       // Применяем исправление padding для r-1uu6nss
       fixR1uu6nssPadding();
+      observeR1uu6nssStyles();
       
       // Также применяем через MutationObserver для динамически созданных элементов
       const tabBarObserver = new MutationObserver(() => {
@@ -793,6 +800,7 @@ if (fs.existsSync(indexPath)) {
         
         // Исправляем padding для новых элементов r-1uu6nss
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       });
       
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
@@ -803,10 +811,12 @@ if (fs.existsSync(indexPath)) {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       });
     } else {
       applySafeAreaToTabBar();
       fixR1uu6nssPadding();
+      observeR1uu6nssStyles();
     }
     
     // Также применяем после полной загрузки страницы
@@ -814,14 +824,17 @@ if (fs.existsSync(indexPath)) {
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       }, 500);
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       }, 1000);
     });
     
@@ -830,6 +843,7 @@ if (fs.existsSync(indexPath)) {
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
+        observeR1uu6nssStyles();
       }, 100);
     });
     
@@ -839,9 +853,15 @@ if (fs.existsSync(indexPath)) {
         setTimeout(() => {
           applySafeAreaToTabBar();
           fixR1uu6nssPadding();
+          observeR1uu6nssStyles();
         }, 100);
       }
     });
+    
+    // Постоянно проверяем и исправляем padding каждые 100ms
+    setInterval(() => {
+      fixR1uu6nssPadding();
+    }, 100);
     
   })();
 </script>`;
