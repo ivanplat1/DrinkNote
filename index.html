@@ -352,10 +352,22 @@
       const root = document.getElementById('root');
       if (!root) return;
       
-      // Ограничиваем высоту root до viewport
+      // Ограничиваем высоту root до viewport и отключаем overscroll
       root.style.height = '100vh';
       root.style.maxHeight = '100vh';
       root.style.overflow = 'hidden';
+      root.style.position = 'fixed';
+      root.style.top = '0';
+      root.style.left = '0';
+      root.style.width = '100%';
+      root.style.overscrollBehavior = 'none';
+      root.style.overscrollBehaviorY = 'none';
+      
+      // Также отключаем overscroll на body и html
+      document.body.style.overscrollBehavior = 'none';
+      document.body.style.overscrollBehaviorY = 'none';
+      document.documentElement.style.overscrollBehavior = 'none';
+      document.documentElement.style.overscrollBehaviorY = 'none';
       
       // Находим панель вкладок, чтобы определить её высоту
       const tabBar = document.querySelector('nav[role="tablist"]') || 
