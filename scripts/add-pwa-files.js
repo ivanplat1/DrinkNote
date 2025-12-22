@@ -53,40 +53,20 @@ if (fs.existsSync(iconPath)) {
     }
   }
   
-  // Создаем дополнительные размеры иконок для лучшей совместимости
-  const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
-  iconSizes.forEach(size => {
-    try {
-      const iconSizePath = path.join(distAssetsDir, `icon-${size}.png`);
-      execSync(`sips -z ${size} ${size} "${iconPath}" --out "${iconSizePath}"`, { stdio: 'ignore' });
-      icons.push({
-        src: `/DrinkNote/assets/icon-${size}.png`,
-        sizes: `${size}x${size}`,
-        type: 'image/png',
-        purpose: 'any maskable'
-      });
-    } catch (e) {
-      // Игнорируем ошибки для отдельных размеров
-    }
+  // Создаем только необходимые размеры иконок для оптимизации загрузки
+  // Используем только стандартные размеры: 192x192 и 512x512
+  icons.push({
+    src: '/DrinkNote/assets/icon-192.png',
+    sizes: '192x192',
+    type: 'image/png',
+    purpose: 'any'
   });
-  
-  // Убеждаемся, что есть минимум обязательные размеры
-  if (!icons.some(icon => icon.sizes === '192x192')) {
-    icons.push({
-      src: '/DrinkNote/assets/icon-192.png',
-      sizes: '192x192',
-      type: 'image/png',
-      purpose: 'any'
-    });
-  }
-  if (!icons.some(icon => icon.sizes === '512x512')) {
-    icons.push({
-      src: '/DrinkNote/assets/icon-512.png',
-      sizes: '512x512',
-      type: 'image/png',
-      purpose: 'any'
-    });
-  }
+  icons.push({
+    src: '/DrinkNote/assets/icon-512.png',
+    sizes: '512x512',
+    type: 'image/png',
+    purpose: 'any'
+  });
   
   console.log('✅ Созданы иконки: icon-192.png, icon-512.png');
 } else {
@@ -565,28 +545,12 @@ if (fs.existsSync(indexPath)) {
               const hasIconClass = className.includes('ionicons') || className.includes('icon') || className.includes('r-lrvibr');
               const isIcon = hasSvg || hasIconClass;
               
-              // Проверяем, содержит ли элемент текст (подпись вкладки)
-              const text = textDiv.textContent && textDiv.textContent.trim();
-              const isLabel = text && (text === 'Сегодня' || text === 'Календарь' || text === 'Статистика' || text === 'Настройки' || text.length > 0);
-              
-              if (!isIcon && isLabel) {
-                // Полностью удаляем элемент из DOM
-                try {
-                  textDiv.remove();
-                } catch (e) {
-                  // Если remove не работает, скрываем агрессивно
-                  textDiv.style.setProperty('display', 'none', 'important');
-                  textDiv.style.setProperty('visibility', 'hidden', 'important');
-                  textDiv.style.setProperty('opacity', '0', 'important');
-                  textDiv.style.setProperty('height', '0', 'important');
-                  textDiv.style.setProperty('width', '0', 'important');
-                  textDiv.style.setProperty('overflow', 'hidden', 'important');
-                  textDiv.style.setProperty('font-size', '0', 'important');
-                  textDiv.style.setProperty('line-height', '0', 'important');
-                  textDiv.style.setProperty('padding', '0', 'important');
-                  textDiv.style.setProperty('margin', '0', 'important');
-                  textDiv.textContent = '';
-                }
+              // Уменьшаем размер шрифта для подписей
+              if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
+                textDiv.style.setProperty('font-size', '10px', 'important');
+                textDiv.style.setProperty('line-height', '1.1', 'important');
+                textDiv.style.setProperty('padding', '0', 'important');
+                textDiv.style.setProperty('margin', '0', 'important');
               }
             });
           } catch (e) {
@@ -701,7 +665,7 @@ if (fs.existsSync(indexPath)) {
                 btn.style.paddingTop = btnPaddingTop;
                 btn.style.paddingBottom = \`calc(\${btnPaddingBottom} + \${safeAreaBottom})\`;
                 
-                // Удаляем подписи вкладок, оставляем только иконки
+                // Уменьшаем размер шрифта подписей вкладок
                 const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"], div[class*="r-dnmrzs"]');
                 textDivs.forEach(textDiv => {
                   // Проверяем, что это не иконка (нет svg внутри и нет ionicons класса)
@@ -710,18 +674,11 @@ if (fs.existsSync(indexPath)) {
                   const isIcon = hasSvg || hasIconClass;
                   
                   if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
-                    // Скрываем и удаляем элемент с текстом
-                    textDiv.style.setProperty('display', 'none', 'important');
-                    textDiv.style.setProperty('visibility', 'hidden', 'important');
-                    textDiv.style.setProperty('opacity', '0', 'important');
-                    textDiv.style.setProperty('height', '0', 'important');
-                    textDiv.style.setProperty('width', '0', 'important');
-                    textDiv.style.setProperty('overflow', 'hidden', 'important');
-                    textDiv.style.setProperty('font-size', '0', 'important');
-                    textDiv.style.setProperty('line-height', '0', 'important');
+                    // Уменьшаем размер шрифта для подписей
+                    textDiv.style.setProperty('font-size', '10px', 'important');
+                    textDiv.style.setProperty('line-height', '1.1', 'important');
                     textDiv.style.setProperty('padding', '0', 'important');
                     textDiv.style.setProperty('margin', '0', 'important');
-                    textDiv.textContent = '';
                   }
                 });
               });
