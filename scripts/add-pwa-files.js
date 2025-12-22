@@ -1025,6 +1025,11 @@ if (fs.existsSync(indexPath)) {
       hideTabBarLabels();
     });
     labelObserver.observe(document.body, { childList: true, subtree: true });
+    
+    // Также применяем периодически для надежности (каждые 500ms)
+    setInterval(() => {
+      hideTabBarLabels();
+    }, 500);
   })();
 </script>`;
     html = html.replace('</head>', `${pathFixScript}\n</head>`);
