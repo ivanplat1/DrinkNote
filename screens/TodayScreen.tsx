@@ -611,84 +611,86 @@ export default function TodayScreen() {
         />
       </TouchableOpacity>
       {!presetsCollapsed && (
-        <View>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {
-              setDeletingPresetId(null);
-              setEditingPresetId(null);
-            }}
-            style={{ flex: 0 }}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            setDeletingPresetId(null);
+            setEditingPresetId(null);
+          }}
+          style={{ marginBottom: 12 }}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.presetList} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
           >
-            <ScrollView contentContainerStyle={styles.presetList} showsVerticalScrollIndicator={false}>
-              {userPresets.map((p) => {
-                const beverageColor = getBeverageColor(p.beverageType);
-                const isEditing = editingPresetId === p.id;
-                const isDeleting = deletingPresetId === p.id;
-                return (
-                  <View key={p.id} style={{ position: 'relative' }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.presetButton,
-                        { backgroundColor: beverageColor.light },
-                        isEditing && styles.presetButtonDeleting,
-                      ]}
-                      onPress={() => {
-                        if (isEditing) {
-                          // Ничего не делаем при нажатии в режиме редактирования
-                        } else {
-                          openQtyModal(p);
-                        }
-                      }}
-                      onLongPress={() => handleLongPress(p.id)}
-                      delayLongPress={500}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.presetText, { color: beverageColor.text, opacity: isEditing ? 0.3 : 1 }]}>{p.name}</Text>
-                      <Text style={[styles.presetDetails, { color: beverageColor.text, opacity: isEditing ? 0.3 : 0.7 }]}>
-                        {formatTotalVolume(p.volumeMl, 1)} · {p.abvPercent}%
-                      </Text>
-                      {isEditing && (
-                        <View style={styles.editIconContainer}>
-                          <View style={styles.editButtonsRow}>
-                            <TouchableOpacity
-                              style={styles.editActionButtonNoBg}
-                              onPress={() => {
-                                const preset = userPresets.find(pr => pr.id === p.id);
-                                if (preset) {
-                                  openEditPresetModal(preset);
-                                }
-                              }}
-                            >
-                              <Entypo name="pencil" size={18} color={colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.editActionButtonNoBg}
-                              onPress={() => onRemovePreset(p.id)}
-                            >
-                              <Entypo name="circle-with-cross" size={18} color={colors.error} />
-                            </TouchableOpacity>
-                          </View>
+            {userPresets.map((p) => {
+              const beverageColor = getBeverageColor(p.beverageType);
+              const isEditing = editingPresetId === p.id;
+              const isDeleting = deletingPresetId === p.id;
+              return (
+                <View key={p.id} style={{ position: 'relative' }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.presetButton,
+                      { backgroundColor: beverageColor.light },
+                      isEditing && styles.presetButtonDeleting,
+                    ]}
+                    onPress={() => {
+                      if (isEditing) {
+                        // Ничего не делаем при нажатии в режиме редактирования
+                      } else {
+                        openQtyModal(p);
+                      }
+                    }}
+                    onLongPress={() => handleLongPress(p.id)}
+                    delayLongPress={500}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.presetText, { color: beverageColor.text, opacity: isEditing ? 0.3 : 1 }]}>{p.name}</Text>
+                    <Text style={[styles.presetDetails, { color: beverageColor.text, opacity: isEditing ? 0.3 : 0.7 }]}>
+                      {formatTotalVolume(p.volumeMl, 1)} · {p.abvPercent}%
+                    </Text>
+                    {isEditing && (
+                      <View style={styles.editIconContainer}>
+                        <View style={styles.editButtonsRow}>
+                          <TouchableOpacity
+                            style={styles.editActionButtonNoBg}
+                            onPress={() => {
+                              const preset = userPresets.find(pr => pr.id === p.id);
+                              if (preset) {
+                                openEditPresetModal(preset);
+                              }
+                            }}
+                          >
+                            <Entypo name="pencil" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.editActionButtonNoBg}
+                            onPress={() => onRemovePreset(p.id)}
+                          >
+                            <Entypo name="circle-with-cross" size={18} color={colors.error} />
+                          </TouchableOpacity>
                         </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-              <TouchableOpacity
-                style={styles.addFavButtonRect}
-                onPress={() => {
-                  setDeletingPresetId(null);
-                  setEditingPresetId(null);
-                  openAddModal();
-                }}
-                accessibilityLabel="Добавить напиток"
-              >
-                <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
-              </TouchableOpacity>
-            </ScrollView>
-          </TouchableOpacity>
-        </View>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            <TouchableOpacity
+              style={styles.addFavButtonRect}
+              onPress={() => {
+                setDeletingPresetId(null);
+                setEditingPresetId(null);
+                openAddModal();
+              }}
+              accessibilityLabel="Добавить напиток"
+            >
+              <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableOpacity>
       )}
 
 
