@@ -598,14 +598,25 @@ if (fs.existsSync(indexPath)) {
       const root = document.getElementById('root');
       if (!root) return;
       
+      // Ограничиваем высоту root до viewport
+      root.style.height = '100vh';
+      root.style.maxHeight = '100vh';
+      root.style.overflow = 'hidden';
+      
       // Находим панель вкладок, чтобы определить её высоту
       const tabBar = document.querySelector('nav[role="tablist"]') || 
                      document.querySelector('[data-testid="tab-bar"]');
       
-      if (!tabBar) return;
+      const tabBarHeight = tabBar ? tabBar.getBoundingClientRect().height : 70;
       
-      const tabBarRect = tabBar.getBoundingClientRect();
-      const tabBarHeight = tabBarRect.height;
+      // Находим основной контейнер контента (первый div внутри root)
+      const mainContentContainer = root.querySelector('div');
+      if (mainContentContainer) {
+        mainContentContainer.style.flex = '1';
+        mainContentContainer.style.overflow = 'hidden';
+        mainContentContainer.style.display = 'flex';
+        mainContentContainer.style.flexDirection = 'column';
+      }
       
       // Находим только ScrollView и контейнеры с overflow: scroll/auto
       const scrollContainers = root.querySelectorAll('div[style*="overflow"], div[style*="scroll"]');
@@ -632,14 +643,17 @@ if (fs.existsSync(indexPath)) {
                            computedStyle.overflowY === 'scroll' ||
                            computedStyle.overflowY === 'auto';
         
-        if (!hasOverflow) return;
-        
-        // Добавляем padding-bottom только к ScrollView, если его еще нет
-        const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-        const minPaddingBottom = tabBarHeight + 10; // Высота панели + небольшой отступ
-        
-        if (currentPaddingBottom < minPaddingBottom) {
-          container.style.paddingBottom = \`\${minPaddingBottom}px\`;
+        if (hasOverflow) {
+          // Ограничиваем высоту ScrollView и добавляем padding-bottom
+          container.style.maxHeight = \`calc(100vh - \${tabBarHeight}px)\`;
+          container.style.height = \`calc(100vh - \${tabBarHeight}px)\`;
+          
+          const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+          const minPaddingBottom = tabBarHeight + 10; // Высота панели + небольшой отступ
+          
+          if (currentPaddingBottom < minPaddingBottom) {
+            container.style.paddingBottom = \`\${minPaddingBottom}px\`;
+          }
         }
       });
     }
