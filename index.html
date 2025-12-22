@@ -864,14 +864,14 @@
         labelObserver.observe(document.body, { childList: true, subtree: false });
       }
       
-      // Также наблюдаем за изменениями контента для добавления padding
+      // Также наблюдаем за изменениями контента для добавления padding и скрытия кнопок удаления
       let contentObserverTimeout;
       const contentObserver = new MutationObserver(() => {
         clearTimeout(contentObserverTimeout);
         contentObserverTimeout = setTimeout(() => {
           hideDeleteButtons();
           addContentPadding();
-        }, 200);
+        }, 50); // Уменьшаем задержку для более быстрой реакции на появление кнопок удаления
       });
       
       const root = document.getElementById('root');
