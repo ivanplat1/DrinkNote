@@ -641,11 +641,19 @@
           const hasText = child.textContent && child.textContent.trim();
           const isTextElement = hasText && !hasIconClass && !isSvg && !hasSvgChild;
           
-          // Специальная проверка для div элементов с текстом (как "Статистика")
-          const isTextDiv = tagName === 'div' && hasText && !hasIconClass && !hasSvgChild;
+          // Специальная проверка для div элементов с текстом (как "Статистика", "Календарь")
+          // Проверяем наличие атрибута dir или классов css- или r-
+          const hasDirAttr = child.hasAttribute('dir');
+          const hasCssClass = className.includes('css-');
+          const hasRClass = className.includes(' r-');
+          const isTextDiv = tagName === 'div' && hasText && (hasDirAttr || hasCssClass || hasRClass) && !hasIconClass && !hasSvgChild;
           
           // Если это не иконка и содержит текст - скрываем агрессивно
           if (isTextElement || isTextDiv) {
+            // Удаляем все inline стили, которые могут перекрывать наши правила
+            child.removeAttribute('style');
+            
+            // Применяем стили через setProperty с important
             child.style.setProperty('display', 'none', 'important');
             child.style.setProperty('visibility', 'hidden', 'important');
             child.style.setProperty('opacity', '0', 'important');
@@ -660,9 +668,21 @@
             child.style.setProperty('text-indent', '-9999px', 'important');
             child.style.setProperty('margin', '0', 'important');
             child.style.setProperty('padding', '0', 'important');
+            
             // Также очищаем textContent для надежности
             if (hasText && !hasIconClass && !isSvg && !hasSvgChild) {
               child.textContent = '';
+              // Удаляем все текстовые узлы внутри
+              const walker = document.createTreeWalker(
+                child,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+              );
+              let textNode;
+              while (textNode = walker.nextNode()) {
+                textNode.textContent = '';
+              }
             }
           }
         });
