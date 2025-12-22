@@ -902,42 +902,10 @@ if (fs.existsSync(indexPath)) {
           const hasRClass = className.includes(' r-');
           const isTextDiv = tagName === 'div' && hasText && (hasDirAttr || hasCssClass || hasRClass) && !hasIconClass && !hasSvgChild;
           
-          // Если это не иконка и содержит текст - скрываем агрессивно
+          // Если это не иконка и содержит текст - удаляем элемент
           if (isTextElement || isTextDiv) {
-            // Удаляем все inline стили, которые могут перекрывать наши правила
-            child.removeAttribute('style');
-            
-            // Применяем стили через setProperty с important
-            child.style.setProperty('display', 'none', 'important');
-            child.style.setProperty('visibility', 'hidden', 'important');
-            child.style.setProperty('opacity', '0', 'important');
-            child.style.setProperty('height', '0', 'important');
-            child.style.setProperty('width', '0', 'important');
-            child.style.setProperty('overflow', 'hidden', 'important');
-            child.style.setProperty('font-size', '0', 'important');
-            child.style.setProperty('line-height', '0', 'important');
-            child.style.setProperty('color', 'transparent', 'important');
-            child.style.setProperty('position', 'absolute', 'important');
-            child.style.setProperty('left', '-9999px', 'important');
-            child.style.setProperty('text-indent', '-9999px', 'important');
-            child.style.setProperty('margin', '0', 'important');
-            child.style.setProperty('padding', '0', 'important');
-            
-            // Также очищаем textContent для надежности
-            if (hasText && !hasIconClass && !isSvg && !hasSvgChild) {
-              child.textContent = '';
-              // Удаляем все текстовые узлы внутри
-              const walker = document.createTreeWalker(
-                child,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-              );
-              let textNode;
-              while (textNode = walker.nextNode()) {
-                textNode.textContent = '';
-              }
-            }
+            child.remove();
+            return;
           }
         });
         
@@ -967,8 +935,12 @@ if (fs.existsSync(indexPath)) {
           if (text && text.length > 0) {
             const parent = textNode.parentElement;
             const hasIconParent = parent && parent.className && typeof parent.className === 'string' && (parent.className.includes('icon') || parent.className.includes('Icon'));
-            if (!hasIconParent) {
+            if (!hasIconParent) { 
+              // Удаляем текстовый узел целиком
               textNode.textContent = '';
+              if (textNode.parentNode) {
+                textNode.parentNode.removeChild(textNode);
+              }
             }
           }
         }
