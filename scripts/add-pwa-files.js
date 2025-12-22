@@ -1042,12 +1042,14 @@ if (fs.existsSync(indexPath)) {
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
         initObservers();
       });
     } else {
+      hideDeleteButtons();
       applySafeAreaToTabBar();
       fixTabBarLabels();
       addContentPadding();
@@ -1057,6 +1059,7 @@ if (fs.existsSync(indexPath)) {
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(() => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
@@ -1069,6 +1072,7 @@ if (fs.existsSync(indexPath)) {
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
+        hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
@@ -1079,6 +1083,7 @@ if (fs.existsSync(indexPath)) {
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         setTimeout(() => {
+          hideDeleteButtons();
           applySafeAreaToTabBar();
           fixTabBarLabels();
           addContentPadding();
