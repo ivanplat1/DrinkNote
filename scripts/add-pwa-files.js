@@ -981,18 +981,35 @@ if (fs.existsSync(indexPath)) {
       }, { passive: true });
       
       document.addEventListener('touchmove', (e) => {
+        // Проверяем, не является ли целевой элемент скроллируемым контейнером (ScrollView, FlatList)
+        const target = e.target;
+        const scrollableParent = target.closest ? target.closest('[style*="overflow"], [class*="scroll"], [class*="flatlist"]') : null;
+        
+        // Если это скроллируемый контейнер, не блокируем его скролл
+        if (scrollableParent) {
+          const parentStyle = window.getComputedStyle(scrollableParent);
+          if (parentStyle.overflow === 'scroll' || parentStyle.overflow === 'auto' ||
+              parentStyle.overflowY === 'scroll' || parentStyle.overflowY === 'auto' ||
+              parentStyle.overflowX === 'scroll' || parentStyle.overflowX === 'auto') {
+            return; // Разрешаем скролл внутри контейнера
+          }
+        }
+        
         const touchY = e.touches[0].clientY;
+        const touchX = e.touches[0].clientX;
         const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
         const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
         const clientHeight = document.documentElement.clientHeight || document.body.clientHeight;
+        const deltaY = touchY - touchStartY;
+        const deltaX = touchX - (e.touches[0].clientX || 0);
         
-        // Если мы вверху страницы и тянем вниз - предотвращаем
-        if (scrollTop === 0 && touchY > touchStartY) {
+        // Предотвращаем pull-to-refresh только когда вверху и тянем вниз (вертикальный скролл)
+        if (scrollTop === 0 && deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
           e.preventDefault();
         }
         
-        // Если мы внизу страницы и тянем вверх - предотвращаем
-        if (scrollTop + clientHeight >= scrollHeight && touchY < touchStartY) {
+        // Предотвращаем overscroll внизу только когда внизу и тянем вверх (вертикальный скролл)
+        if (scrollTop + clientHeight >= scrollHeight && deltaY < 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
           e.preventDefault();
         }
       }, { passive: false });
