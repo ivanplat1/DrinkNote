@@ -135,11 +135,12 @@ console.log('✅ Создан manifest.json');
 
 // Создаем Service Worker
 const swContent = `// Service Worker для DrinkNote PWA
-const CACHE_NAME = 'drinknote-v1';
+const CACHE_NAME = 'drinknote-v2';
+const BASE_PATH = '/DrinkNote';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  BASE_PATH + '/',
+  BASE_PATH + '/index.html',
+  BASE_PATH + '/manifest.json'
 ];
 
 // Установка Service Worker
@@ -381,7 +382,7 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
 
-        /* Скрываем подписи вкладок, оставляем только иконки */
+        /* Уменьшаем размер шрифта подписей вкладок */
         nav[role="tablist"] div[dir="auto"],
         [data-testid="tab-bar"] div[dir="auto"],
         .tab-bar div[dir="auto"],
@@ -391,14 +392,8 @@ if (fs.existsSync(indexPath)) {
         nav[role="tablist"] div[class*="r-dnmrzs"],
         [data-testid="tab-bar"] div[class*="r-dnmrzs"],
         .tab-bar div[class*="r-dnmrzs"] {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          height: 0 !important;
-          width: 0 !important;
-          overflow: hidden !important;
-          font-size: 0 !important;
-          line-height: 0 !important;
+          font-size: 10px !important;
+          line-height: 1.1 !important;
           padding: 0 !important;
           margin: 0 !important;
         }
