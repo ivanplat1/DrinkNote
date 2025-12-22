@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import TodayScreen from './screens/TodayScreen';
@@ -32,12 +32,11 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
   <Ionicons name="settings" size={size} color={color} />
 );
 
-export default function App() {
+function AppContent() {
   const insets = useSafeAreaInsets();
   
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
+    <NavigationContainer>
         <StatusBar style="light" />
         <Tab.Navigator
           screenOptions={{
@@ -99,6 +98,15 @@ export default function App() {
           />
         </Tab.Navigator>
       </NavigationContainer>
-    </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AppContent />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
