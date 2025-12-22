@@ -342,6 +342,7 @@ if (fs.existsSync(indexPath)) {
         display: flex;
         flex-direction: column;
         min-height: 100vh;
+        position: relative;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
@@ -351,6 +352,7 @@ if (fs.existsSync(indexPath)) {
           flex: 1;
           display: flex;
           flex-direction: column;
+          position: relative;
         }
         
         nav[role="tablist"],
@@ -359,6 +361,10 @@ if (fs.existsSync(indexPath)) {
         div[style*="position: fixed"][style*="bottom: 0"],
         div[style*="bottom: 0px"],
         div[style*="bottom:0px"] {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
           padding-bottom: calc(20px + env(safe-area-inset-bottom) + 12px) !important;
           margin-bottom: 0 !important;
           /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
