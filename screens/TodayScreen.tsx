@@ -611,18 +611,16 @@ export default function TodayScreen() {
         />
       </TouchableOpacity>
       {!presetsCollapsed && (
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            setDeletingPresetId(null);
-            setEditingPresetId(null);
-          }}
-          style={{ marginBottom: 12 }}
-        >
+        <View style={{ marginBottom: 12 }}>
           <ScrollView 
             contentContainerStyle={styles.presetList} 
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
+            onStartShouldSetResponder={() => {
+              setDeletingPresetId(null);
+              setEditingPresetId(null);
+              return false;
+            }}
           >
             {userPresets.map((p) => {
               const beverageColor = getBeverageColor(p.beverageType);
