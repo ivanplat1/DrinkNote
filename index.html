@@ -74,17 +74,8 @@
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
-        /* Добавляем padding-bottom к основному контейнеру, чтобы контент не перекрывался панелью вкладок */
-        #root {
-          padding-bottom: calc(70px + env(safe-area-inset-bottom));
-          box-sizing: border-box;
-        }
-        
-        /* Убеждаемся, что ScrollView и контент учитывают высоту панели */
-        [data-testid="tab-bar"] ~ *,
-        nav[role="tablist"] ~ * {
-          margin-bottom: calc(70px + env(safe-area-inset-bottom));
-        }
+        /* НЕ добавляем padding-bottom к #root - это сдвигает панель вкладок */
+        /* Вместо этого добавляем padding-bottom только к контейнерам контента через JavaScript */
         
         nav[role="tablist"],
         [data-testid="tab-bar"],
@@ -325,19 +316,26 @@
       const root = document.getElementById('root');
       if (!root) return;
       
-      // Находим контейнеры с контентом (ScrollView, View и т.д.)
-      const contentContainers = root.querySelectorAll('div[style*="flex"], div[style*="height"], [data-testid], main, section');
+      // Находим панель вкладок, чтобы определить её высоту
+      const tabBar = document.querySelector('nav[role="tablist"]') || 
+                     document.querySelector('[data-testid="tab-bar"]');
       
-      contentContainers.forEach(container => {
-        // Пропускаем панель вкладок
+      if (!tabBar) return;
+      
+      const tabBarRect = tabBar.getBoundingClientRect();
+      const tabBarHeight = tabBarRect.height;
+      
+      // Находим только ScrollView и контейнеры с overflow: scroll/auto
+      const scrollContainers = root.querySelectorAll('div[style*="overflow"], div[style*="scroll"]');
+      
+      scrollContainers.forEach(container => {
+        // Пропускаем панель вкладок и её родители
         const isTabBar = container.closest('nav[role="tablist"]') || 
                         container.closest('[data-testid="tab-bar"]') ||
-                        container.querySelector('nav[role="tablist"]') ||
-                        container.querySelector('[data-testid="tab-bar"]');
+                        container === tabBar;
         
         if (isTabBar) return;
         
-        const style = window.getComputedStyle(container);
         const computedStyle = window.getComputedStyle(container);
         
         // Проверяем, что это не панель вкладок (не fixed внизу)
@@ -346,12 +344,20 @@
         
         if (isFixedBottom) return;
         
-        // Добавляем padding-bottom, если его еще нет или он слишком маленький
+        // Проверяем, что это ScrollView (имеет overflow: scroll или auto)
+        const hasOverflow = computedStyle.overflow === 'scroll' || 
+                           computedStyle.overflow === 'auto' ||
+                           computedStyle.overflowY === 'scroll' ||
+                           computedStyle.overflowY === 'auto';
+        
+        if (!hasOverflow) return;
+        
+        // Добавляем padding-bottom только к ScrollView, если его еще нет
         const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-        const minPaddingBottom = 80; // Минимальный отступ для панели вкладок
+        const minPaddingBottom = tabBarHeight + 10; // Высота панели + небольшой отступ
         
         if (currentPaddingBottom < minPaddingBottom) {
-          container.style.paddingBottom = `calc(${minPaddingBottom}px + env(safe-area-inset-bottom))`;
+          container.style.paddingBottom = `${minPaddingBottom}px`;
         }
       });
     }
