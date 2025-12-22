@@ -674,6 +674,8 @@ if (fs.existsSync(indexPath)) {
           container.style.overflow = computedStyle.overflow || 'auto';
           container.style.overflowX = computedStyle.overflowX || 'auto';
           container.style.overflowY = computedStyle.overflowY || 'auto';
+          // Добавляем поддержку iOS скроллинга
+          container.style.setProperty('-webkit-overflow-scrolling', 'touch', 'important');
           
           // Добавляем padding-bottom, чтобы контент не перекрывался панелью вкладок
           const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
@@ -876,7 +878,17 @@ if (fs.existsSync(indexPath)) {
       tabBarSelectors.forEach(selector => {
         try {
           const elements = document.querySelectorAll(selector);
-          elements.forEach(applyPadding);
+          elements.forEach(element => {
+            // Применяем position: fixed для фиксации панели внизу
+            element.style.setProperty('position', 'fixed', 'important');
+            element.style.setProperty('bottom', '0', 'important');
+            element.style.setProperty('left', '0', 'important');
+            element.style.setProperty('right', '0', 'important');
+            element.style.setProperty('width', '100%', 'important');
+            element.style.setProperty('z-index', '1000', 'important');
+            // Применяем padding
+            applyPadding(element);
+          });
         } catch (e) {
           // Игнорируем ошибки селекторов
         }
