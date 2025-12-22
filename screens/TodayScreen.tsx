@@ -688,7 +688,7 @@ export default function TodayScreen() {
               <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
             </TouchableOpacity>
           </ScrollView>
-        </TouchableOpacity>
+        </View>
       )}
 
 
