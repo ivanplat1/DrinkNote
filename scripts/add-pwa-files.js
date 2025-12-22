@@ -566,7 +566,7 @@ if (fs.existsSync(indexPath)) {
       return originalInsertRule.call(this, rule, index);
     };
     
-      // Функция для удаления подписей вкладок, оставляем только иконки
+      // Функция для уменьшения размера шрифта подписей вкладок (не скрываем их)
       function fixTabBarLabels() {
         // Ищем все возможные элементы с подписями
         const selectors = [
@@ -593,8 +593,16 @@ if (fs.existsSync(indexPath)) {
               const hasIconClass = className.includes('ionicons') || className.includes('icon') || className.includes('r-lrvibr');
               const isIcon = hasSvg || hasIconClass;
               
-              // Уменьшаем размер шрифта для подписей
+              // Уменьшаем размер шрифта для подписей, но НЕ скрываем их
               if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
+                // Убеждаемся, что элемент видим
+                textDiv.style.setProperty('display', 'block', 'important');
+                textDiv.style.setProperty('visibility', 'visible', 'important');
+                textDiv.style.setProperty('opacity', '1', 'important');
+                textDiv.style.setProperty('height', 'auto', 'important');
+                textDiv.style.setProperty('width', 'auto', 'important');
+                textDiv.style.setProperty('overflow', 'visible', 'important');
+                // Устанавливаем размер шрифта
                 textDiv.style.setProperty('font-size', '10px', 'important');
                 textDiv.style.setProperty('line-height', '1.1', 'important');
                 textDiv.style.setProperty('padding', '0', 'important');
@@ -792,9 +800,7 @@ if (fs.existsSync(indexPath)) {
                 const btnPaddingTop = btnStyle.paddingTop || '8px';
                 const btnPaddingBottom = btnStyle.paddingBottom || '8px';
                 btn.style.paddingTop = btnPaddingTop;
-                // Увеличиваем padding-bottom для кнопок с дополнительным отступом
-                const additionalBtnPadding = 32; // Дополнительный отступ от Home индикатора
-                btn.style.setProperty('padding-bottom', \`calc(\${safeAreaBottom} + \${additionalBtnPadding}px)\`, 'important');
+                btn.style.paddingBottom = \`calc(20px + \${safeAreaBottom} + 12px)\`;
                 
                 // Убеждаемся, что панель вкладок поверх всего
                 if (isStandalone) {
@@ -924,25 +930,6 @@ if (fs.existsSync(indexPath)) {
       const root = document.getElementById('root');
       if (root) {
         contentObserver.observe(root, { childList: true, subtree: true });
-      }
-      
-      // Агрессивно применяем отступы к панели вкладок каждые 500ms
-      // Это необходимо, так как React Navigation может переопределять стили
-      if (isStandalone) {
-        setInterval(() => {
-          const tabBar = document.querySelector('nav[role="tablist"]') || 
-                         document.querySelector('[data-testid="tab-bar"]');
-          if (tabBar) {
-            const additionalPadding = 32;
-            tabBar.style.setProperty('padding-bottom', \`calc(env(safe-area-inset-bottom) + \${additionalPadding}px)\`, 'important');
-            
-            // Также применяем к кнопкам
-            const buttons = tabBar.querySelectorAll('button, a');
-            buttons.forEach(btn => {
-              btn.style.setProperty('padding-bottom', \`calc(env(safe-area-inset-bottom) + \${additionalPadding}px)\`, 'important');
-            });
-          }
-        }, 500);
       }
     }
     
