@@ -358,29 +358,17 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
 
-        /* Убираем padding:5px у элементов с классом r-1uu6nss (корень кнопки таба) */
-        /* Используем максимальную специфичность */
-        nav[role="tablist"] a.r-1uu6nss[role="tab"],
-        nav[role="tablist"] button.r-1uu6nss[role="tab"],
-        nav[role="tablist"] a.r-1uu6nss,
-        nav[role="tablist"] button.r-1uu6nss,
-        [data-testid="tab-bar"] a.r-1uu6nss[role="tab"],
-        [data-testid="tab-bar"] button.r-1uu6nss[role="tab"],
-        [data-testid="tab-bar"] a.r-1uu6nss,
-        [data-testid="tab-bar"] button.r-1uu6nss,
-        .tab-bar a.r-1uu6nss[role="tab"],
-        .tab-bar button.r-1uu6nss[role="tab"],
-        .tab-bar a.r-1uu6nss,
-        .tab-bar button.r-1uu6nss,
-        a.r-1uu6nss[role="tab"],
-        button.r-1uu6nss[role="tab"] {
-          padding-top: 8px !important;
-          padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
-          padding-left: 0 !important;
-          padding-right: 0 !important;
-          padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) 0 !important;
-          min-height: calc(70px + env(safe-area-inset-bottom)) !important;
-          box-sizing: border-box !important;
+        /* Уменьшаем размер шрифта надписей в таб-баре, чтобы они помещались */
+        nav[role="tablist"] div[dir="auto"],
+        [data-testid="tab-bar"] div[dir="auto"],
+        .tab-bar div[dir="auto"],
+        nav[role="tablist"] div[class*="css-146c3p1"],
+        [data-testid="tab-bar"] div[class*="css-146c3p1"],
+        .tab-bar div[class*="css-146c3p1"] {
+          font-size: 10px !important;
+          line-height: 1.2 !important;
+          padding: 0 !important;
+          margin: 0 !important;
         }
         
       }
@@ -624,20 +612,19 @@ if (fs.existsSync(indexPath)) {
                 btn.style.minHeight = '70px';
                 const btnStyle = window.getComputedStyle(btn);
                 
-                // Если у кнопки есть класс r-1uu6nss, явно переопределяем padding
-                const hasR1uu6nss = btn.className && typeof btn.className === 'string' && btn.className.includes('r-1uu6nss');
-                if (hasR1uu6nss) {
-                  btn.style.setProperty('padding', '8px 0', 'important');
-                  btn.style.setProperty('padding-top', '8px', 'important');
-                  btn.style.setProperty('padding-bottom', \`calc(8px + \${safeAreaBottom})\`, 'important');
-                  btn.style.setProperty('padding-left', '0', 'important');
-                  btn.style.setProperty('padding-right', '0', 'important');
-                } else {
-                  const btnPaddingTop = btnStyle.paddingTop || '8px';
-                  const btnPaddingBottom = btnStyle.paddingBottom || '8px';
-                  btn.style.paddingTop = btnPaddingTop;
-                  btn.style.paddingBottom = \`calc(\${btnPaddingBottom} + \${safeAreaBottom})\`;
-                }
+                const btnPaddingTop = btnStyle.paddingTop || '8px';
+                const btnPaddingBottom = btnStyle.paddingBottom || '8px';
+                btn.style.paddingTop = btnPaddingTop;
+                btn.style.paddingBottom = \`calc(\${btnPaddingBottom} + \${safeAreaBottom})\`;
+                
+                // Уменьшаем размер шрифта надписей в таб-баре
+                const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"]');
+                textDivs.forEach(textDiv => {
+                  textDiv.style.setProperty('font-size', '10px', 'important');
+                  textDiv.style.setProperty('line-height', '1.2', 'important');
+                  textDiv.style.setProperty('padding', '0', 'important');
+                  textDiv.style.setProperty('margin', '0', 'important');
+                });
                 
                 // Агрессивно скрываем все текстовые элементы
                 btn.style.setProperty('font-size', '0', 'important');
@@ -745,111 +732,16 @@ if (fs.existsSync(indexPath)) {
         }
       });
       
-      // Функция для переопределения padding у элементов с классом r-1uu6nss
-      function fixR1uu6nssPadding() {
-        const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-        const r1uu6nssElements = document.querySelectorAll('.r-1uu6nss');
-        r1uu6nssElements.forEach(el => {
-          if (el.tagName === 'A' || el.tagName === 'BUTTON' || el.getAttribute('role') === 'tab') {
-            el.style.setProperty('padding', '8px 0', 'important');
-            el.style.setProperty('padding-top', '8px', 'important');
-            el.style.setProperty('padding-bottom', \`calc(8px + \${safeAreaBottom})\`, 'important');
-            el.style.setProperty('padding-left', '0', 'important');
-            el.style.setProperty('padding-right', '0', 'important');
-          }
-        });
-      }
-      
-      // Перехватываем изменения в React Native Web stylesheet
-      function interceptReactNativeStylesheet() {
-        const stylesheet = document.getElementById('react-native-stylesheet');
-        if (stylesheet && stylesheet.sheet) {
-          try {
-            // Добавляем правило для переопределения padding у r-1uu6nss
-            const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-            const rule = \`a.r-1uu6nss[role="tab"], button.r-1uu6nss[role="tab"], a.r-1uu6nss, button.r-1uu6nss { padding: 8px 0 calc(8px + \${safeAreaBottom}) 0 !important; padding-top: 8px !important; padding-bottom: calc(8px + \${safeAreaBottom}) !important; padding-left: 0 !important; padding-right: 0 !important; }\`;
-            stylesheet.sheet.insertRule(rule, stylesheet.sheet.cssRules.length);
-          } catch (e) {
-            // Игнорируем ошибки
-          }
-        }
-        
-        // Также добавляем правило в отдельный style элемент для максимальной специфичности
-        let overrideStyle = document.getElementById('tab-bar-padding-override');
-        if (!overrideStyle) {
-          overrideStyle = document.createElement('style');
-          overrideStyle.id = 'tab-bar-padding-override';
-          document.head.appendChild(overrideStyle);
-        }
-        const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-        overrideStyle.textContent = \`
-          a.r-1uu6nss[role="tab"],
-          button.r-1uu6nss[role="tab"],
-          a.r-1uu6nss,
-          button.r-1uu6nss {
-            padding: 8px 0 calc(8px + \${safeAreaBottom}) 0 !important;
-            padding-top: 8px !important;
-            padding-bottom: calc(8px + \${safeAreaBottom}) !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-          }
-        \`;
-      }
-      
-      // Перехватываем установку стилей через Object.defineProperty
-      if (typeof HTMLElement !== 'undefined' && HTMLElement.prototype) {
-        const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
-        CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
-          if ((property === 'padding' || property === 'padding-top' || property === 'padding-bottom' || property === 'padding-left' || property === 'padding-right') && this._element) {
-            const className = this._element.className && typeof this._element.className === 'string' ? this._element.className : '';
-            if (className.includes('r-1uu6nss') && (this._element.tagName === 'A' || this._element.tagName === 'BUTTON' || this._element.getAttribute('role') === 'tab')) {
-              const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-              if (property === 'padding' && (value === '5px' || value === '5px 5px' || value.includes('5px'))) {
-                value = \`8px 0 calc(8px + \${safeAreaBottom}) 0\`;
-                priority = 'important';
-              } else if (property === 'padding-top' && value === '5px') {
-                value = '8px';
-                priority = 'important';
-              } else if (property === 'padding-bottom' && value === '5px') {
-                value = \`calc(8px + \${safeAreaBottom})\`;
-                priority = 'important';
-              } else if ((property === 'padding-left' || property === 'padding-right') && value === '5px') {
-                value = '0';
-                priority = 'important';
-              }
-            }
-          }
-          return originalSetProperty.call(this, property, value, priority);
-        };
-        
-        // Также перехватываем cssText для переопределения всех padding свойств сразу
-        const originalCssTextSetter = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText').set;
-        Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', {
-          set: function(value) {
-            if (this._element) {
-              const className = this._element.className && typeof this._element.className === 'string' ? this._element.className : '';
-              if (className.includes('r-1uu6nss') && (this._element.tagName === 'A' || this._element.tagName === 'BUTTON' || this._element.getAttribute('role') === 'tab')) {
-                const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-                // Заменяем padding: 5px на наши значения
-                value = value.replace(/padding:\s*5px[^;]*/gi, \`padding: 8px 0 calc(8px + \${safeAreaBottom}) 0\`);
-                value = value.replace(/padding-top:\s*5px/gi, 'padding-top: 8px');
-                value = value.replace(/padding-bottom:\s*5px/gi, \`padding-bottom: calc(8px + \${safeAreaBottom})\`);
-                value = value.replace(/padding-left:\s*5px/gi, 'padding-left: 0');
-                value = value.replace(/padding-right:\s*5px/gi, 'padding-right: 0');
-              }
-            }
-            return originalCssTextSetter.call(this, value);
-          },
-          get: Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText').get
-        });
-        
-        // Сохраняем ссылку на элемент в style объекте
-        const originalGetter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style').get;
-        Object.defineProperty(HTMLElement.prototype, 'style', {
-          get: function() {
-            const style = originalGetter.call(this);
-            style._element = this;
-            return style;
+      // Функция для уменьшения размера шрифта надписей в таб-баре
+      function fixTabBarLabels() {
+        const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"]');
+        textDivs.forEach(textDiv => {
+          // Проверяем, что это не иконка (нет svg внутри)
+          if (!textDiv.querySelector('svg')) {
+            textDiv.style.setProperty('font-size', '10px', 'important');
+            textDiv.style.setProperty('line-height', '1.2', 'important');
+            textDiv.style.setProperty('padding', '0', 'important');
+            textDiv.style.setProperty('margin', '0', 'important');
           }
         });
       }
@@ -868,10 +760,8 @@ if (fs.existsSync(indexPath)) {
         }
       });
       
-      // Применяем исправление padding для r-1uu6nss
-      fixR1uu6nssPadding();
-      observeR1uu6nssStyles();
-      interceptReactNativeStylesheet();
+      // Применяем исправление размера шрифта надписей
+      fixTabBarLabels();
       
       // Также применяем через MutationObserver для динамически созданных элементов
       const tabBarObserver = new MutationObserver(() => {
@@ -893,10 +783,8 @@ if (fs.existsSync(indexPath)) {
           }
         });
         
-        // Исправляем padding для новых элементов r-1uu6nss
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
-        interceptReactNativeStylesheet();
+        // Исправляем размер шрифта надписей для новых элементов
+        fixTabBarLabels();
       });
       
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
@@ -906,36 +794,26 @@ if (fs.existsSync(indexPath)) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
-        interceptReactNativeStylesheet();
+        fixTabBarLabels();
       });
     } else {
       applySafeAreaToTabBar();
-      fixR1uu6nssPadding();
-      observeR1uu6nssStyles();
-      interceptReactNativeStylesheet();
+      fixTabBarLabels();
     }
     
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
-        interceptReactNativeStylesheet();
+        fixTabBarLabels();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
-        interceptReactNativeStylesheet();
+        fixTabBarLabels();
       }, 500);
       setTimeout(() => {
         applySafeAreaToTabBar();
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
-        interceptReactNativeStylesheet();
+        fixTabBarLabels();
       }, 1000);
     });
     
@@ -943,8 +821,7 @@ if (fs.existsSync(indexPath)) {
     window.addEventListener('resize', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
-        fixR1uu6nssPadding();
-        observeR1uu6nssStyles();
+        fixTabBarLabels();
       }, 100);
     });
     
@@ -953,24 +830,21 @@ if (fs.existsSync(indexPath)) {
       if (!document.hidden) {
         setTimeout(() => {
           applySafeAreaToTabBar();
-          fixR1uu6nssPadding();
-          observeR1uu6nssStyles();
-          interceptReactNativeStylesheet();
+          fixTabBarLabels();
         }, 100);
       }
     });
     
-    // Постоянно проверяем и исправляем padding каждые 100ms
+    // Постоянно проверяем и исправляем размер шрифта каждые 500ms
     setInterval(() => {
-      fixR1uu6nssPadding();
-      interceptReactNativeStylesheet();
-    }, 100);
+      fixTabBarLabels();
+    }, 500);
     
-    // Наблюдаем за созданием/изменением React Native stylesheet
-    const stylesheetObserver = new MutationObserver(() => {
-      interceptReactNativeStylesheet();
+    // Наблюдаем за изменениями в таб-баре
+    const labelObserver = new MutationObserver(() => {
+      fixTabBarLabels();
     });
-    stylesheetObserver.observe(document.head, { childList: true, subtree: true });
+    labelObserver.observe(document.body, { childList: true, subtree: true });
     
   })();
 </script>`;
