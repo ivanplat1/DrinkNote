@@ -875,37 +875,62 @@ if (fs.existsSync(indexPath)) {
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
     }
     
-    // Функция для агрессивного скрытия текста в панели вкладок
+    // Функция для агрессивного удаления текста в панели вкладок
     function hideTabBarLabels() {
+      // Удаляем явные div с текстом в таб-баре
+      const textDivSelectors = [
+        'nav[role="tablist"] div[class*="css-"]',
+        'nav[role="tablist"] div[class*="r-"]',
+        '[data-testid="tab-bar"] div[class*="css-"]',
+        '[data-testid="tab-bar"] div[class*="r-"]',
+        '.tab-bar div[class*="css-"]',
+        '.tab-bar div[class*="r-"]',
+        'nav[role="tablist"] div[dir]',
+        '[data-testid="tab-bar"] div[dir]',
+        '.tab-bar div[dir]',
+      ];
+      textDivSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(node => {
+          const hasText = node.textContent && node.textContent.trim();
+          const hasSvg = node.querySelector('svg');
+          if (hasText && !hasSvg) {
+            node.remove();
+          }
+        });
+      });
+      
       const tabBarButtons = document.querySelectorAll('nav[role="tablist"] button, nav[role="tablist"] a, [data-testid="tab-bar"] button, [data-testid="tab-bar"] a, .tab-bar button, .tab-bar a');
       tabBarButtons.forEach(btn => {
-        // Устанавливаем font-size: 0 для скрытия текста
-        btn.style.setProperty('font-size', '0', 'important');
-        btn.style.setProperty('line-height', '0', 'important');
-        btn.style.setProperty('color', 'transparent', 'important');
+        // Удаляем текстовые узлы
+        const walker = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, null, false);
+        let textNode;
+        while (textNode = walker.nextNode()) {
+          const text = textNode.textContent.trim();
+          const parent = textNode.parentElement;
+          const parentClass = parent && parent.className && typeof parent.className === 'string' ? parent.className : '';
+          const hasIconParent = parent && (parentClass.includes('icon') || parentClass.includes('Icon') || parent.tagName.toLowerCase() === 'svg');
+          if (text && !hasIconParent) {
+            if (textNode.parentNode) textNode.parentNode.removeChild(textNode);
+          }
+        }
         
-        // Скрываем все дочерние элементы, кроме иконок
+        // Удаляем дочерние элементы с текстом (без svg и без классов icon)
         const allChildren = btn.querySelectorAll('*');
         allChildren.forEach(child => {
           const tagName = child.tagName.toLowerCase();
           const className = child.className && typeof child.className === 'string' ? child.className : '';
           const hasIconClass = className.includes('icon') || className.includes('Icon');
-          const isSvg = tagName === 'svg';
           const hasSvgChild = child.querySelector('svg');
           const hasText = child.textContent && child.textContent.trim();
-          const isTextElement = hasText && !hasIconClass && !isSvg && !hasSvgChild;
           
-          // Специальная проверка для div элементов с текстом (как "Статистика", "Календарь")
-          // Проверяем наличие атрибута dir или классов css- или r-
           const hasDirAttr = child.hasAttribute('dir');
           const hasCssClass = className.includes('css-');
           const hasRClass = className.includes(' r-');
           const isTextDiv = tagName === 'div' && hasText && (hasDirAttr || hasCssClass || hasRClass) && !hasIconClass && !hasSvgChild;
+          const isTextElement = hasText && !hasIconClass && !hasSvgChild && tagName !== 'svg';
           
-          // Если это не иконка и содержит текст - удаляем элемент
-          if (isTextElement || isTextDiv) {
+          if (isTextDiv || isTextElement) {
             child.remove();
-            return;
           }
         });
         
@@ -921,29 +946,6 @@ if (fs.existsSync(indexPath)) {
           icon.style.setProperty('color', 'inherit', 'important');
         });
         
-        // Скрываем прямые текстовые узлы
-        const walker = document.createTreeWalker(
-          btn,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false
-        );
-        
-        let textNode;
-        while (textNode = walker.nextNode()) {
-          const text = textNode.textContent.trim();
-          if (text && text.length > 0) {
-            const parent = textNode.parentElement;
-            const hasIconParent = parent && parent.className && typeof parent.className === 'string' && (parent.className.includes('icon') || parent.className.includes('Icon'));
-            if (!hasIconParent) { 
-              // Удаляем текстовый узел целиком
-              textNode.textContent = '';
-              if (textNode.parentNode) {
-                textNode.parentNode.removeChild(textNode);
-              }
-            }
-          }
-        }
       });
     }
     
