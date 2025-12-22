@@ -746,17 +746,6 @@
         }
       }, { passive: false });
       
-      // Предотвращаем overscroll на body
-      document.body.addEventListener('touchmove', (e) => {
-        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-        const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-        const clientHeight = document.documentElement.clientHeight || document.body.clientHeight;
-        
-        // Если пытаемся прокрутить за пределы - предотвращаем
-        if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) {
-          e.preventDefault();
-        }
-      }, { passive: false });
     }
     
     // Применяем после загрузки DOM
