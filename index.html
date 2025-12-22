@@ -352,6 +352,48 @@
         });
       }
     
+    // Функция для скрытия кнопок удаления при загрузке PWA
+    function hideDeleteButtons() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator && window.navigator.standalone) || 
+                          document.referrer.includes('android-app://');
+      
+      if (!isStandalone) return;
+      
+      // Ищем все элементы с иконкой удаления (Material Icons delete-sweep)
+      // Иконка имеет цвет rgb(239, 68, 68) и размер 28px
+      const deleteButtons = document.querySelectorAll('div[style*="rgb(239, 68, 68)"], div[style*="color: rgb(239, 68, 68)"]');
+      deleteButtons.forEach(btn => {
+        // Проверяем, что это действительно иконка удаления (имеет font-family: material)
+        const style = window.getComputedStyle(btn);
+        if (style.fontFamily && style.fontFamily.includes('material')) {
+          // Ищем родительский контейнер кнопки удаления
+          let container = btn.parentElement;
+          while (container && container !== document.body) {
+            // Проверяем, является ли это контейнером кнопки удаления
+            const containerStyle = window.getComputedStyle(container);
+            if (containerStyle.position === 'absolute' || containerStyle.position === 'fixed') {
+              // Скрываем контейнер, устанавливая width: 0
+              container.style.setProperty('width', '0', 'important');
+              container.style.setProperty('overflow', 'hidden', 'important');
+              break;
+            }
+            container = container.parentElement;
+          }
+        }
+      });
+      
+      // Также ищем элементы с классом deleteButtonContainer или похожими
+      const deleteContainers = document.querySelectorAll('[class*="delete"], [class*="Delete"]');
+      deleteContainers.forEach(container => {
+        const style = window.getComputedStyle(container);
+        if (style.position === 'absolute' || style.position === 'fixed') {
+          container.style.setProperty('width', '0', 'important');
+          container.style.setProperty('overflow', 'hidden', 'important');
+        }
+      });
+    }
+    
     // Функция для добавления padding-bottom к контенту, чтобы он не перекрывался панелью вкладок
     function addContentPadding() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -718,6 +760,7 @@
       const contentObserver = new MutationObserver(() => {
         clearTimeout(contentObserverTimeout);
         contentObserverTimeout = setTimeout(() => {
+          hideDeleteButtons();
           addContentPadding();
         }, 200);
       });
