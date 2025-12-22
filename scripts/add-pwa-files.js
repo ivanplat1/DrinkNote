@@ -663,6 +663,82 @@ if (fs.existsSync(indexPath)) {
         });
       }
     
+    // Функция для исправления кликов на таб-баре
+    function fixTabBarClicks() {
+      // Ищем все кликабельные элементы таб-бара
+      const tabBarSelectors = [
+        'nav[role="tablist"]',
+        '[data-testid="tab-bar"]',
+        '.tab-bar',
+      ];
+      
+      tabBarSelectors.forEach(selector => {
+        try {
+          const tabBars = document.querySelectorAll(selector);
+          tabBars.forEach(tabBar => {
+            // Убеждаемся, что таб-бар кликабелен и не перекрыт
+            tabBar.style.setProperty('pointer-events', 'auto', 'important');
+            tabBar.style.setProperty('z-index', '1000', 'important');
+            
+            // Ищем все кликабельные элементы внутри таб-бара (ссылки и кнопки)
+            const clickableElements = tabBar.querySelectorAll('a[role="tab"], button[role="tab"], a[href], button');
+            clickableElements.forEach((element, index) => {
+              // Убеждаемся, что элемент кликабелен
+              element.style.setProperty('pointer-events', 'auto', 'important');
+              element.style.setProperty('cursor', 'pointer', 'important');
+              element.style.setProperty('z-index', String(1001 + index), 'important');
+              
+              // Убеждаемся, что элемент видим и не скрыт
+              const computedStyle = window.getComputedStyle(element);
+              if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                element.style.setProperty('display', 'flex', 'important');
+                element.style.setProperty('visibility', 'visible', 'important');
+              }
+              
+              // Убеждаемся, что элемент не перекрыт другими элементами
+              if (computedStyle.pointerEvents === 'none') {
+                element.style.setProperty('pointer-events', 'auto', 'important');
+              }
+              
+              // Убеждаемся, что элемент имеет правильную позицию
+              if (computedStyle.position === 'static') {
+                element.style.setProperty('position', 'relative', 'important');
+              }
+            });
+            
+            // Ищем все дочерние элементы и убеждаемся, что они не блокируют клики
+            const allChildren = tabBar.querySelectorAll('*');
+            allChildren.forEach(child => {
+              const computedStyle = window.getComputedStyle(child);
+              
+              // Пропускаем кликабельные элементы (они уже обработаны выше)
+              if (child.tagName === 'A' || child.tagName === 'BUTTON' || child.getAttribute('role') === 'tab') {
+                return;
+              }
+              
+              // Если элемент имеет pointer-events: none, но это не иконка или текст, исправляем
+              if (computedStyle.pointerEvents === 'none') {
+                const isIcon = child.querySelector('svg') || 
+                              (child.className && typeof child.className === 'string' && 
+                               (child.className.includes('ionicons') || child.className.includes('icon')));
+                const isText = child.textContent && child.textContent.trim() && 
+                              !child.querySelector('svg') && 
+                              !child.querySelector('button') && 
+                              !child.querySelector('a');
+                
+                // Для текста и иконок оставляем pointer-events: none, чтобы клики проходили к родителю
+                if (!isIcon && !isText) {
+                  child.style.setProperty('pointer-events', 'auto', 'important');
+                }
+              }
+            });
+          });
+        } catch (e) {
+          console.error('Error fixing tab bar clicks:', e);
+        }
+      });
+    }
+    
     // Функция для скрытия кнопок удаления при загрузке PWA
     function hideDeleteButtons() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -1087,6 +1163,8 @@ if (fs.existsSync(indexPath)) {
       
       // Применяем исправление размера шрифта надписей
       fixTabBarLabels();
+      // Исправляем клики на таб-баре
+      fixTabBarClicks();
       
       // Также применяем через MutationObserver для динамически созданных элементов
       // Используем debounce для оптимизации производительности
@@ -1103,6 +1181,7 @@ if (fs.existsSync(indexPath)) {
             }
           });
           fixTabBarLabels();
+          fixTabBarClicks();
         }, 100); // Debounce на 100ms
       });
       
@@ -1121,6 +1200,7 @@ if (fs.existsSync(indexPath)) {
         clearTimeout(labelObserverTimeout);
         labelObserverTimeout = setTimeout(() => {
           fixTabBarLabels();
+        fixTabBarClicks();
         }, 200); // Debounce на 200ms
       });
       // Наблюдаем только за навигацией, а не за всем body
@@ -1154,6 +1234,7 @@ if (fs.existsSync(indexPath)) {
         hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        fixTabBarClicks();
         addContentPadding();
         initObservers();
       });
@@ -1161,6 +1242,7 @@ if (fs.existsSync(indexPath)) {
       hideDeleteButtons();
       applySafeAreaToTabBar();
       fixTabBarLabels();
+      fixTabBarClicks();
       addContentPadding();
       initObservers();
     }
@@ -1171,6 +1253,7 @@ if (fs.existsSync(indexPath)) {
         hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        fixTabBarClicks();
         addContentPadding();
         initObservers();
       }, 100);
@@ -1184,6 +1267,7 @@ if (fs.existsSync(indexPath)) {
         hideDeleteButtons();
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        fixTabBarClicks();
         addContentPadding();
       }, 200);
     });
@@ -1195,6 +1279,7 @@ if (fs.existsSync(indexPath)) {
           hideDeleteButtons();
           applySafeAreaToTabBar();
           fixTabBarLabels();
+          fixTabBarClicks();
           addContentPadding();
         }, 100);
       }
