@@ -660,9 +660,16 @@ if (fs.existsSync(indexPath)) {
         const hasOverflow = computedStyle.overflow === 'scroll' || 
                            computedStyle.overflow === 'auto' ||
                            computedStyle.overflowY === 'scroll' ||
-                           computedStyle.overflowY === 'auto';
+                           computedStyle.overflowY === 'auto' ||
+                           computedStyle.overflowX === 'scroll' ||
+                           computedStyle.overflowX === 'auto';
         
         if (hasOverflow) {
+          // Убеждаемся, что скролл не заблокирован
+          container.style.overflow = computedStyle.overflow || 'auto';
+          container.style.overflowX = computedStyle.overflowX || 'auto';
+          container.style.overflowY = computedStyle.overflowY || 'auto';
+          
           // Добавляем padding-bottom, чтобы контент не перекрывался панелью вкладок
           const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
           const minPaddingBottom = tabBarHeight + 10; // Высота панели + небольшой отступ
@@ -670,6 +677,22 @@ if (fs.existsSync(indexPath)) {
           if (currentPaddingBottom < minPaddingBottom) {
             container.style.paddingBottom = \`\${minPaddingBottom}px\`;
           }
+        }
+      });
+      
+      // Также проверяем все элементы с классом, содержащим "scroll" или "flatlist"
+      const allScrollableElements = root.querySelectorAll('[class*="scroll"], [class*="flatlist"], [class*="ScrollView"]');
+      allScrollableElements.forEach(element => {
+        const computedStyle = window.getComputedStyle(element);
+        // Убеждаемся, что overflow не установлен в hidden
+        if (computedStyle.overflow === 'hidden') {
+          element.style.overflow = 'auto';
+        }
+        if (computedStyle.overflowY === 'hidden') {
+          element.style.overflowY = 'auto';
+        }
+        if (computedStyle.overflowX === 'hidden') {
+          element.style.overflowX = 'auto';
         }
       });
     }
