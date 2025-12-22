@@ -420,6 +420,27 @@ if (fs.existsSync(indexPath)) {
           z-index: 1001 !important;
         }
         
+        /* Скрываем кнопки удаления при загрузке PWA */
+        /* Скрываем все контейнеры с position: absolute/fixed справа, которые могут быть кнопками удаления */
+        div[style*="position: absolute"][style*="right: 0"],
+        div[style*="position: fixed"][style*="right: 0"] {
+          width: 0 !important;
+          overflow: hidden !important;
+          max-width: 0 !important;
+        }
+        
+        /* Скрываем элементы с иконками удаления (красный цвет) */
+        div[style*="rgb(239, 68, 68)"],
+        div[style*="color: rgb(239, 68, 68)"],
+        div[style*="239, 68, 68"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          overflow: hidden !important;
+        }
+        
         /* Увеличиваем высоту кнопок вкладок и их контейнеров */
         nav[role="tablist"] button,
         nav[role="tablist"] a,
