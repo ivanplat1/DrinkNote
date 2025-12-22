@@ -312,10 +312,6 @@ if (fs.existsSync(indexPath)) {
         height: 100vh;
         max-height: 100vh;
         overflow: hidden;
-        position: fixed;
-        width: 100%;
-        top: 0;
-        left: 0;
         /* Отключаем pull-to-refresh и overscroll */
         overscroll-behavior: none;
         overscroll-behavior-y: none;
@@ -328,7 +324,6 @@ if (fs.existsSync(indexPath)) {
           height: 100vh;
           max-height: 100vh;
           overflow: hidden;
-          position: fixed;
           overscroll-behavior: none;
           overscroll-behavior-y: none;
         }
@@ -624,10 +619,6 @@ if (fs.existsSync(indexPath)) {
       root.style.height = '100vh';
       root.style.maxHeight = '100vh';
       root.style.overflow = 'hidden';
-      root.style.position = 'fixed';
-      root.style.top = '0';
-      root.style.left = '0';
-      root.style.width = '100%';
       root.style.overscrollBehavior = 'none';
       root.style.overscrollBehaviorY = 'none';
       
