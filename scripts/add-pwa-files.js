@@ -686,18 +686,36 @@ if (fs.existsSync(indexPath)) {
       });
       
       // Также проверяем все элементы с классом, содержащим "scroll" или "flatlist"
-      const allScrollableElements = root.querySelectorAll('[class*="scroll"], [class*="flatlist"], [class*="ScrollView"]');
+      // И все div элементы, которые могут быть ScrollView или FlatList
+      const allScrollableElements = root.querySelectorAll('[class*="scroll"], [class*="flatlist"], [class*="ScrollView"], [class*="FlatList"], div[style*="overflow"]');
       allScrollableElements.forEach(element => {
+        // Пропускаем панель вкладок
+        const isTabBar = element.closest('nav[role="tablist"]') || 
+                        element.closest('[data-testid="tab-bar"]');
+        if (isTabBar) return;
+        
         const computedStyle = window.getComputedStyle(element);
-        // Убеждаемся, что overflow не установлен в hidden
-        if (computedStyle.overflow === 'hidden') {
-          element.style.overflow = 'auto';
-        }
-        if (computedStyle.overflowY === 'hidden') {
-          element.style.overflowY = 'auto';
-        }
-        if (computedStyle.overflowX === 'hidden') {
-          element.style.overflowX = 'auto';
+        
+        // Проверяем, что это не fixed элемент внизу (панель вкладок)
+        const isFixedBottom = computedStyle.position === 'fixed' && 
+                             (computedStyle.bottom === '0px' || computedStyle.bottom === '0');
+        if (isFixedBottom) return;
+        
+        // Убеждаемся, что overflow не установлен в hidden для скроллируемых элементов
+        // Но только если элемент действительно должен скроллиться
+        const hasScrollContent = element.scrollHeight > element.clientHeight || 
+                                element.scrollWidth > element.clientWidth;
+        
+        if (hasScrollContent || computedStyle.overflow === 'scroll' || computedStyle.overflow === 'auto') {
+          if (computedStyle.overflow === 'hidden') {
+            element.style.overflow = 'auto';
+          }
+          if (computedStyle.overflowY === 'hidden' && element.scrollHeight > element.clientHeight) {
+            element.style.overflowY = 'auto';
+          }
+          if (computedStyle.overflowX === 'hidden' && element.scrollWidth > element.clientWidth) {
+            element.style.overflowX = 'auto';
+          }
         }
       });
     }
