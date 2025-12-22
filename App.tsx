@@ -32,6 +32,8 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 );
 
 export default function App() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -51,14 +53,17 @@ export default function App() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
+              paddingBottom: Platform.OS === 'ios' ? Math.max(8, insets.bottom) : 8, // Safe area для iOS
+              paddingTop: 8, // Padding сверху для поднятия панели
+              height: Platform.OS === 'ios' ? 70 + insets.bottom : 70, // Увеличиваем высоту панели с учетом safe area
             },
             tabBarActiveTintColor: colors.primaryLight || colors.primary,
             tabBarInactiveTintColor: colors.textTertiary,
             tabBarLabelStyle: {
               fontWeight: '600',
-              fontSize: 12,
+              fontSize: 10, // Уменьшаем размер шрифта подписей
+              marginTop: 4, // Небольшой отступ сверху для подписей
             },
-            tabBarShowLabel: false, // Скрываем подписи вкладок, оставляем только иконки
           }}
         >
           <Tab.Screen 
