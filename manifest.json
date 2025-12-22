@@ -8,6 +8,12 @@
   "theme_color": "#1a1a1a",
   "orientation": "portrait",
   "scope": "/DrinkNote/",
+  "categories": [
+    "health",
+    "lifestyle"
+  ],
+  "lang": "ru",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/DrinkNote/assets/icon-192.png",
