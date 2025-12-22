@@ -53,9 +53,10 @@ function AppContent() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              paddingBottom: Platform.OS === 'ios' ? Math.max(16, insets.bottom + 8) : 8, // Увеличиваем отступ от Home кнопки
-              paddingTop: 8, // Padding сверху для поднятия панели
-              height: Platform.OS === 'ios' ? 70 + insets.bottom + 8 : 70, // Увеличиваем высоту панели с учетом safe area и дополнительного отступа
+              paddingBottom: Platform.OS === 'ios' ? Math.max(12, insets.bottom + 4) : 8, // Отступ от Home кнопки
+              paddingTop: 6, // Padding сверху
+              height: Platform.OS === 'ios' ? undefined : 70, // Автоматическая высота для iOS с учетом padding
+              minHeight: Platform.OS === 'ios' ? 60 : 70, // Минимальная высота
             },
             tabBarActiveTintColor: colors.primaryLight || colors.primary,
             tabBarInactiveTintColor: colors.textTertiary,
