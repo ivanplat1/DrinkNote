@@ -1019,14 +1019,12 @@ if (fs.existsSync(indexPath)) {
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        preventOverscroll();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
         initObservers();
       });
     } else {
-      preventOverscroll();
       applySafeAreaToTabBar();
       fixTabBarLabels();
       addContentPadding();
