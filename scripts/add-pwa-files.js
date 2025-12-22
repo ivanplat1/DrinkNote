@@ -341,8 +341,10 @@ if (fs.existsSync(indexPath)) {
         padding: 0;
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
+        height: 100vh;
+        max-height: 100vh;
         position: relative;
+        overflow: hidden;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
@@ -353,6 +355,8 @@ if (fs.existsSync(indexPath)) {
           display: flex;
           flex-direction: column;
           position: relative;
+          overflow: hidden;
+          min-height: 0;
         }
         
         nav[role="tablist"],
@@ -616,11 +620,12 @@ if (fs.existsSync(indexPath)) {
       const root = document.getElementById('root');
       if (!root) return;
       
-      // Отключаем только overscroll, но не весь скролл
+      // Ограничиваем высоту root до viewport
+      root.style.height = '100vh';
+      root.style.maxHeight = '100vh';
+      root.style.overflow = 'hidden';
       root.style.overscrollBehavior = 'none';
       root.style.overscrollBehaviorY = 'none';
-      // Убеждаемся, что overflow не заблокирован для скролла
-      root.style.overflow = 'auto';
       
       // Также отключаем overscroll на body и html
       document.body.style.overscrollBehavior = 'none';
@@ -640,6 +645,8 @@ if (fs.existsSync(indexPath)) {
         mainContentContainer.style.flex = '1';
         mainContentContainer.style.display = 'flex';
         mainContentContainer.style.flexDirection = 'column';
+        mainContentContainer.style.overflow = 'hidden';
+        mainContentContainer.style.minHeight = '0';
       }
       
       // Находим только ScrollView и контейнеры с overflow: scroll/auto
