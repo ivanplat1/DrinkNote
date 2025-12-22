@@ -363,10 +363,21 @@
               buttons.forEach(btn => {
                 btn.style.minHeight = '70px';
                 const btnStyle = window.getComputedStyle(btn);
-                const btnPaddingTop = btnStyle.paddingTop || '8px';
-                const btnPaddingBottom = btnStyle.paddingBottom || '8px';
-                btn.style.paddingTop = btnPaddingTop;
-                btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
+                
+                // Если у кнопки есть класс r-1uu6nss, явно переопределяем padding
+                const hasR1uu6nss = btn.className && typeof btn.className === 'string' && btn.className.includes('r-1uu6nss');
+                if (hasR1uu6nss) {
+                  btn.style.setProperty('padding', '8px 0', 'important');
+                  btn.style.setProperty('padding-top', '8px', 'important');
+                  btn.style.setProperty('padding-bottom', `calc(8px + ${safeAreaBottom})`, 'important');
+                  btn.style.setProperty('padding-left', '0', 'important');
+                  btn.style.setProperty('padding-right', '0', 'important');
+                } else {
+                  const btnPaddingTop = btnStyle.paddingTop || '8px';
+                  const btnPaddingBottom = btnStyle.paddingBottom || '8px';
+                  btn.style.paddingTop = btnPaddingTop;
+                  btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
+                }
                 
                 // Агрессивно скрываем все текстовые элементы
                 btn.style.setProperty('font-size', '0', 'important');
