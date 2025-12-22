@@ -358,39 +358,77 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
         
-        /* Скрываем текстовые надписи в панели вкладок, оставляем только иконки */
-        nav[role="tablist"] button span:not([class*="icon"]):not([class*="Icon"]),
-        nav[role="tablist"] a span:not([class*="icon"]):not([class*="Icon"]),
-        [data-testid="tab-bar"] button span:not([class*="icon"]):not([class*="Icon"]),
-        [data-testid="tab-bar"] a span:not([class*="icon"]):not([class*="Icon"]),
-        .tab-bar button span:not([class*="icon"]):not([class*="Icon"]),
-        .tab-bar a span:not([class*="icon"]):not([class*="Icon"]),
+        /* Агрессивное скрытие всех текстовых элементов в панели вкладок */
+        nav[role="tablist"] button *,
+        nav[role="tablist"] a *,
+        [data-testid="tab-bar"] button *,
+        [data-testid="tab-bar"] a *,
+        .tab-bar button *,
+        .tab-bar a * {
+          font-size: 0 !important;
+          line-height: 0 !important;
+          color: transparent !important;
+        }
+        
+        /* Показываем только иконки (SVG и элементы с классами icon) */
+        nav[role="tablist"] button svg,
+        nav[role="tablist"] a svg,
+        [data-testid="tab-bar"] button svg,
+        [data-testid="tab-bar"] a svg,
+        .tab-bar button svg,
+        .tab-bar a svg {
+          display: block !important;
+          font-size: 24px !important;
+          width: 24px !important;
+          height: 24px !important;
+          color: inherit !important;
+        }
+        
+        nav[role="tablist"] button [class*="icon"],
+        nav[role="tablist"] a [class*="icon"],
+        [data-testid="tab-bar"] button [class*="icon"],
+        [data-testid="tab-bar"] a [class*="icon"],
+        .tab-bar button [class*="icon"],
+        .tab-bar a [class*="icon"] {
+          display: block !important;
+          font-size: 24px !important;
+          color: inherit !important;
+        }
+        
+        /* Скрываем все span, label, div, p, text элементы, которые не являются иконками */
+        nav[role="tablist"] button span,
+        nav[role="tablist"] a span,
+        [data-testid="tab-bar"] button span,
+        [data-testid="tab-bar"] a span,
+        .tab-bar button span,
+        .tab-bar a span,
         nav[role="tablist"] button label,
         nav[role="tablist"] a label,
         [data-testid="tab-bar"] button label,
         [data-testid="tab-bar"] a label,
         .tab-bar button label,
         .tab-bar a label,
-        nav[role="tablist"] button div:not([class*="icon"]):not([class*="Icon"]),
-        nav[role="tablist"] a div:not([class*="icon"]):not([class*="Icon"]),
-        [data-testid="tab-bar"] button div:not([class*="icon"]):not([class*="Icon"]),
-        [data-testid="tab-bar"] a div:not([class*="icon"]):not([class*="Icon"]),
-        .tab-bar button div:not([class*="icon"]):not([class*="Icon"]),
-        .tab-bar a div:not([class*="icon"]):not([class*="Icon"]) {
+        nav[role="tablist"] button div,
+        nav[role="tablist"] a div,
+        [data-testid="tab-bar"] button div,
+        [data-testid="tab-bar"] a div,
+        .tab-bar button div,
+        .tab-bar a div,
+        nav[role="tablist"] button p,
+        nav[role="tablist"] a p,
+        [data-testid="tab-bar"] button p,
+        [data-testid="tab-bar"] a p,
+        .tab-bar button p,
+        .tab-bar a p {
           display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
         }
         
-        /* Альтернативный подход: скрываем все текстовые узлы */
-        nav[role="tablist"] button,
-        nav[role="tablist"] a,
-        [data-testid="tab-bar"] button,
-        [data-testid="tab-bar"] a,
-        .tab-bar button,
-        .tab-bar a {
-          font-size: 0 !important;
-        }
-        
-        /* Показываем только иконки */
+        /* Исключаем SVG и иконки из скрытия */
         nav[role="tablist"] button svg,
         nav[role="tablist"] a svg,
         [data-testid="tab-bar"] button svg,
@@ -404,7 +442,11 @@ if (fs.existsSync(indexPath)) {
         .tab-bar button [class*="icon"],
         .tab-bar a [class*="icon"] {
           display: block !important;
-          font-size: 24px !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          height: auto !important;
+          width: auto !important;
+          overflow: visible !important;
         }
       }
       
