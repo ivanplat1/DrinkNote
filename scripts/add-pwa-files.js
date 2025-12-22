@@ -513,6 +513,22 @@ if (fs.existsSync(indexPath)) {
       return originalInsertRule.call(this, rule, index);
     };
     
+    // Функция для уменьшения размера шрифта надписей в таб-баре
+    function fixTabBarLabels() {
+      const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"]');
+      textDivs.forEach(textDiv => {
+        // Проверяем, что это не иконка (нет svg внутри)
+        if (!textDiv.querySelector('svg')) {
+          textDiv.style.setProperty('font-size', '9px', 'important');
+          textDiv.style.setProperty('line-height', '1.1', 'important');
+          textDiv.style.setProperty('padding', '0', 'important');
+          textDiv.style.setProperty('margin', '0', 'important');
+          textDiv.style.setProperty('white-space', 'nowrap', 'important');
+          textDiv.style.setProperty('overflow', 'visible', 'important');
+        }
+      });
+    }
+    
     // Применяем safe area insets к таб-бару после загрузки DOM
     function applySafeAreaToTabBar() {
       // Проверяем, находимся ли мы в standalone режиме (PWA через домашний экран)
@@ -664,22 +680,6 @@ if (fs.existsSync(indexPath)) {
           // Игнорируем ошибки селекторов
         }
       });
-      
-      // Функция для уменьшения размера шрифта надписей в таб-баре
-      function fixTabBarLabels() {
-        const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"]');
-        textDivs.forEach(textDiv => {
-          // Проверяем, что это не иконка (нет svg внутри)
-          if (!textDiv.querySelector('svg')) {
-            textDiv.style.setProperty('font-size', '9px', 'important');
-            textDiv.style.setProperty('line-height', '1.1', 'important');
-            textDiv.style.setProperty('padding', '0', 'important');
-            textDiv.style.setProperty('margin', '0', 'important');
-            textDiv.style.setProperty('white-space', 'nowrap', 'important');
-            textDiv.style.setProperty('overflow', 'visible', 'important');
-          }
-        });
-      }
       
       // Также ищем все fixed элементы внизу экрана
       const allElements = document.querySelectorAll('*');
