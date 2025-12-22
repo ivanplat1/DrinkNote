@@ -722,7 +722,20 @@ if (fs.existsSync(indexPath)) {
         fixTabBarLabels();
       });
       
-      tabBarObserver.observe(document.body, { childList: true, subtree: true });
+      if (document.body) {
+        tabBarObserver.observe(document.body, { childList: true, subtree: true });
+      }
+    }
+    
+    // Функция для инициализации observers
+    function initObservers() {
+      if (!document.body) return;
+      
+      // Наблюдаем за изменениями в таб-баре
+      const labelObserver = new MutationObserver(() => {
+        fixTabBarLabels();
+      });
+      labelObserver.observe(document.body, { childList: true, subtree: true });
     }
     
     // Применяем после загрузки DOM
@@ -730,10 +743,12 @@ if (fs.existsSync(indexPath)) {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        initObservers();
       });
     } else {
       applySafeAreaToTabBar();
       fixTabBarLabels();
+      initObservers();
     }
     
     // Также применяем после полной загрузки страницы
@@ -741,6 +756,7 @@ if (fs.existsSync(indexPath)) {
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
+        initObservers();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
@@ -774,12 +790,6 @@ if (fs.existsSync(indexPath)) {
     setInterval(() => {
       fixTabBarLabels();
     }, 500);
-    
-    // Наблюдаем за изменениями в таб-баре
-    const labelObserver = new MutationObserver(() => {
-      fixTabBarLabels();
-    });
-    labelObserver.observe(document.body, { childList: true, subtree: true });
     
   })();
 </script>`;
