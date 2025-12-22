@@ -519,6 +519,27 @@
             // Игнорируем ошибки
           }
         }
+        
+        // Также добавляем правило в отдельный style элемент для максимальной специфичности
+        let overrideStyle = document.getElementById('tab-bar-padding-override');
+        if (!overrideStyle) {
+          overrideStyle = document.createElement('style');
+          overrideStyle.id = 'tab-bar-padding-override';
+          document.head.appendChild(overrideStyle);
+        }
+        const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
+        overrideStyle.textContent = `
+          a.r-1uu6nss[role="tab"],
+          button.r-1uu6nss[role="tab"],
+          a.r-1uu6nss,
+          button.r-1uu6nss {
+            padding: 8px 0 calc(8px + ${safeAreaBottom}) 0 !important;
+            padding-top: 8px !important;
+            padding-bottom: calc(8px + ${safeAreaBottom}) !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+          }
+        `;
       }
       
       // Перехватываем установку стилей через Object.defineProperty
