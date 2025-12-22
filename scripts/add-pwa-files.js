@@ -358,17 +358,53 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
         
-        /* Убеждаемся, что текст в кнопках вкладок не обрезается */
-        nav[role="tablist"] button *,
-        nav[role="tablist"] a *,
-        [data-testid="tab-bar"] button *,
-        [data-testid="tab-bar"] a *,
-        .tab-bar button *,
-        .tab-bar a * {
-          white-space: nowrap !important;
-          overflow: visible !important;
-          text-overflow: clip !important;
-          line-height: 1.2 !important;
+        /* Скрываем текстовые надписи в панели вкладок, оставляем только иконки */
+        nav[role="tablist"] button span:not([class*="icon"]):not([class*="Icon"]),
+        nav[role="tablist"] a span:not([class*="icon"]):not([class*="Icon"]),
+        [data-testid="tab-bar"] button span:not([class*="icon"]):not([class*="Icon"]),
+        [data-testid="tab-bar"] a span:not([class*="icon"]):not([class*="Icon"]),
+        .tab-bar button span:not([class*="icon"]):not([class*="Icon"]),
+        .tab-bar a span:not([class*="icon"]):not([class*="Icon"]),
+        nav[role="tablist"] button label,
+        nav[role="tablist"] a label,
+        [data-testid="tab-bar"] button label,
+        [data-testid="tab-bar"] a label,
+        .tab-bar button label,
+        .tab-bar a label,
+        nav[role="tablist"] button div:not([class*="icon"]):not([class*="Icon"]),
+        nav[role="tablist"] a div:not([class*="icon"]):not([class*="Icon"]),
+        [data-testid="tab-bar"] button div:not([class*="icon"]):not([class*="Icon"]),
+        [data-testid="tab-bar"] a div:not([class*="icon"]):not([class*="Icon"]),
+        .tab-bar button div:not([class*="icon"]):not([class*="Icon"]),
+        .tab-bar a div:not([class*="icon"]):not([class*="Icon"]) {
+          display: none !important;
+        }
+        
+        /* Альтернативный подход: скрываем все текстовые узлы */
+        nav[role="tablist"] button,
+        nav[role="tablist"] a,
+        [data-testid="tab-bar"] button,
+        [data-testid="tab-bar"] a,
+        .tab-bar button,
+        .tab-bar a {
+          font-size: 0 !important;
+        }
+        
+        /* Показываем только иконки */
+        nav[role="tablist"] button svg,
+        nav[role="tablist"] a svg,
+        [data-testid="tab-bar"] button svg,
+        [data-testid="tab-bar"] a svg,
+        .tab-bar button svg,
+        .tab-bar a svg,
+        nav[role="tablist"] button [class*="icon"],
+        nav[role="tablist"] a [class*="icon"],
+        [data-testid="tab-bar"] button [class*="icon"],
+        [data-testid="tab-bar"] a [class*="icon"],
+        .tab-bar button [class*="icon"],
+        .tab-bar a [class*="icon"] {
+          display: block !important;
+          font-size: 24px !important;
         }
       }
       
