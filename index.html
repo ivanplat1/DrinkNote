@@ -109,23 +109,14 @@
           min-height: 0;
         }
         
+        /* УБИРАЕМ агрессивные стили position: fixed для таб-бара, чтобы не нарушать работу React Navigation */
+        /* React Navigation сам управляет позиционированием таб-бара */
         nav[role="tablist"],
         [data-testid="tab-bar"],
-        .tab-bar,
-        div[style*="position: fixed"][style*="bottom: 0"],
-        div[style*="bottom: 0px"],
-        div[style*="bottom:0px"] {
-          position: fixed !important;
-          bottom: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
+        .tab-bar {
+          /* Применяем только padding для safe area, не трогаем position */
           padding-bottom: env(safe-area-inset-bottom) !important;
           margin-bottom: 0 !important;
-          /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
-          /* Увеличиваем базовую высоту с 49px до 70px для лучшего размещения текста */
-          min-height: calc(70px + env(safe-area-inset-bottom)) !important;
-          /* Убеждаемся, что панель вкладок поверх всего контента */
-          z-index: 1000 !important;
         }
         
         /* Скрываем кнопки удаления при загрузке PWA */
@@ -150,13 +141,7 @@
           }
         }
         
-        /* Увеличиваем высоту элементов внутри панели вкладок */
-        nav[role="tablist"] > *,
-        [data-testid="tab-bar"] > *,
-        .tab-bar > * {
-          min-height: calc(70px + env(safe-area-inset-bottom)) !important;
-          z-index: 1001 !important;
-        }
+        /* УБИРАЕМ агрессивные стили для дочерних элементов таб-бара */
         
         /* Скрываем кнопки удаления при загрузке PWA */
         /* Скрываем все контейнеры с position: absolute/fixed справа, которые могут быть кнопками удаления */
@@ -179,21 +164,12 @@
           overflow: hidden !important;
         }
         
-        /* Увеличиваем высоту кнопок вкладок и их контейнеров */
-        nav[role="tablist"] button,
+        /* УБИРАЕМ агрессивные стили для кнопок таб-бара, чтобы не нарушать работу React Navigation */
+        /* Оставляем только минимальные стили для safe area */
         nav[role="tablist"] a,
-        [data-testid="tab-bar"] button,
         [data-testid="tab-bar"] a,
-        .tab-bar button,
         .tab-bar a {
-          min-height: 70px !important;
-          padding-top: 8px !important;
           padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: center !important;
-          align-items: center !important;
-          z-index: 1002 !important;
         }
 
         /* Уменьшаем размер шрифта подписей вкладок */
@@ -396,6 +372,7 @@
       }
     
     // Функция для исправления кликов на таб-баре
+    // УПРОЩЕННАЯ ВЕРСИЯ: минимальные изменения, чтобы не нарушать работу React Navigation
     function fixTabBarClicks() {
       // Ищем все кликабельные элементы таб-бара
       const tabBarSelectors = [
@@ -408,100 +385,26 @@
         try {
           const tabBars = document.querySelectorAll(selector);
           tabBars.forEach(tabBar => {
-            // Убеждаемся, что таб-бар кликабелен и не перекрыт
-            tabBar.style.setProperty('pointer-events', 'auto', 'important');
-            tabBar.style.setProperty('z-index', '1000', 'important');
+            // Минимальные изменения: только убеждаемся, что таб-бар не заблокирован
+            const computedStyle = window.getComputedStyle(tabBar);
+            if (computedStyle.pointerEvents === 'none') {
+              tabBar.style.setProperty('pointer-events', 'auto', 'important');
+            }
             
-            // Ищем все кликабельные элементы внутри таб-бара (ссылки и кнопки)
-            // Важно: получаем элементы в порядке их появления в DOM
-            const clickableElements = Array.from(tabBar.querySelectorAll('a[role="tab"], button[role="tab"], a[href], button'));
+            // Ищем все кликабельные элементы внутри таб-бара
+            const clickableElements = tabBar.querySelectorAll('a[role="tab"], button[role="tab"], a[href]');
             
-            // Сортируем элементы по их позиции в DOM (слева направо)
-            clickableElements.sort((a, b) => {
-              const rectA = a.getBoundingClientRect();
-              const rectB = b.getBoundingClientRect();
-              return rectA.left - rectB.left;
-            });
-            
-            clickableElements.forEach((element, index) => {
-              // Убеждаемся, что элемент кликабелен
-              element.style.setProperty('pointer-events', 'auto', 'important');
-              element.style.setProperty('cursor', 'pointer', 'important');
-              // Используем одинаковый z-index для всех элементов, чтобы не было перекрытий
-              element.style.setProperty('z-index', '1001', 'important');
-              
-              // Убеждаемся, что элемент видим и не скрыт
+            clickableElements.forEach((element) => {
+              // Минимальные изменения: только убеждаемся, что элемент не заблокирован
               const computedStyle = window.getComputedStyle(element);
-              if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-                element.style.setProperty('display', 'flex', 'important');
-                element.style.setProperty('visibility', 'visible', 'important');
-              }
-              
-              // Убеждаемся, что элемент не перекрыт другими элементами
               if (computedStyle.pointerEvents === 'none') {
                 element.style.setProperty('pointer-events', 'auto', 'important');
               }
               
-              // Убеждаемся, что элемент имеет правильную позицию
-              if (computedStyle.position === 'static') {
-                element.style.setProperty('position', 'relative', 'important');
-              }
-              
-              // Убеждаемся, что элемент не перекрыт другими элементами
-              // Проверяем, что элемент не перекрыт по горизонтали
-              const rect = element.getBoundingClientRect();
-              
-              // Убеждаемся, что элемент имеет правильную ширину и не перекрыт
-              if (rect.width === 0 || rect.height === 0) {
-                element.style.setProperty('min-width', '60px', 'important');
-                element.style.setProperty('min-height', '60px', 'important');
-              }
-              
-              // Убеждаемся, что клики не блокируются
-              element.style.setProperty('touch-action', 'manipulation', 'important');
-              
-              // Убеждаемся, что элемент не имеет overflow: hidden, который может скрывать клики
-              if (computedStyle.overflow === 'hidden') {
-                element.style.setProperty('overflow', 'visible', 'important');
-              }
-              
-              // Убеждаемся, что родительские элементы не блокируют клики
-              let parent = element.parentElement;
-              let depth = 0;
-              while (parent && parent !== tabBar && depth < 3) {
-                const parentStyle = window.getComputedStyle(parent);
-                if (parentStyle.pointerEvents === 'none') {
-                  parent.style.setProperty('pointer-events', 'auto', 'important');
-                }
-                parent = parent.parentElement;
-                depth++;
-              }
-            });
-            
-            // Ищем все дочерние элементы и убеждаемся, что они не блокируют клики
-            const allChildren = tabBar.querySelectorAll('*');
-            allChildren.forEach(child => {
-              const computedStyle = window.getComputedStyle(child);
-              
-              // Пропускаем кликабельные элементы (они уже обработаны выше)
-              if (child.tagName === 'A' || child.tagName === 'BUTTON' || child.getAttribute('role') === 'tab') {
-                return;
-              }
-              
-              // Если элемент имеет pointer-events: none, но это не иконка или текст, исправляем
-              if (computedStyle.pointerEvents === 'none') {
-                const isIcon = child.querySelector('svg') || 
-                              (child.className && typeof child.className === 'string' && 
-                               (child.className.includes('ionicons') || child.className.includes('icon')));
-                const isText = child.textContent && child.textContent.trim() && 
-                              !child.querySelector('svg') && 
-                              !child.querySelector('button') && 
-                              !child.querySelector('a');
-                
-                // Для текста и иконок оставляем pointer-events: none, чтобы клики проходили к родителю
-                if (!isIcon && !isText) {
-                  child.style.setProperty('pointer-events', 'auto', 'important');
-                }
+              // Убеждаемся, что элемент видим
+              if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                element.style.setProperty('display', 'flex', 'important');
+                element.style.setProperty('visibility', 'visible', 'important');
               }
             });
           });
@@ -900,18 +803,14 @@
       ];
       
       // Применяем ко всем найденным элементам
+      // ВАЖНО: НЕ применяем position: fixed через JavaScript, так как это нарушает работу React Navigation
+      // Вместо этого используем только CSS стили из safeAreaCSS выше
       tabBarSelectors.forEach(selector => {
         try {
           const elements = document.querySelectorAll(selector);
           elements.forEach(element => {
-            // Применяем position: fixed для фиксации панели внизу
-            element.style.setProperty('position', 'fixed', 'important');
-            element.style.setProperty('bottom', '0', 'important');
-            element.style.setProperty('left', '0', 'important');
-            element.style.setProperty('right', '0', 'important');
-            element.style.setProperty('width', '100%', 'important');
-            element.style.setProperty('z-index', '1000', 'important');
-            // Применяем padding
+            // НЕ применяем position: fixed через JavaScript - это делается через CSS
+            // Применяем только padding для safe area
             applyPadding(element);
           });
         } catch (e) {
@@ -933,56 +832,16 @@
         }
       });
       
-      // Применяем исправление размера шрифта надписей
-      fixTabBarLabels();
-      // Исправляем клики на таб-баре
-      fixTabBarClicks();
-      
-      // Также применяем через MutationObserver для динамически созданных элементов
-      // Используем debounce для оптимизации производительности
-      let tabBarObserverTimeout;
-      const tabBarObserver = new MutationObserver(() => {
-        clearTimeout(tabBarObserverTimeout);
-        tabBarObserverTimeout = setTimeout(() => {
-          tabBarSelectors.forEach(selector => {
-            try {
-              const elements = document.querySelectorAll(selector);
-              elements.forEach(applyPadding);
-            } catch (e) {
-              // Игнорируем ошибки
-            }
-          });
-          fixTabBarLabels();
-          fixTabBarClicks();
-        }, 100); // Debounce на 100ms
-      });
-      
-      if (document.body) {
-        tabBarObserver.observe(document.body, { childList: true, subtree: false }); // Только прямые дети для производительности
-      }
+      // УБИРАЕМ вызовы fixTabBarLabels и fixTabBarClicks из applySafeAreaToTabBar
+      // чтобы не нарушать работу React Navigation при каждом изменении
     }
     
     // Функция для инициализации observers
     function initObservers() {
       if (!document.body) return;
       
-      // Наблюдаем за изменениями в таб-баре с debounce
-      let labelObserverTimeout;
-      const labelObserver = new MutationObserver(() => {
-        clearTimeout(labelObserverTimeout);
-        labelObserverTimeout = setTimeout(() => {
-          fixTabBarLabels();
-        fixTabBarClicks();
-        }, 200); // Debounce на 200ms
-      });
-      // Наблюдаем только за навигацией, а не за всем body
-      const navElement = document.querySelector('nav[role="tablist"]');
-      if (navElement) {
-        labelObserver.observe(navElement, { childList: true, subtree: true });
-      } else {
-        // Fallback на body, но только прямые дети
-        labelObserver.observe(document.body, { childList: true, subtree: false });
-      }
+      // УБИРАЕМ MutationObserver для таб-бара, так как он может нарушать работу React Navigation
+      // Применяем исправления только при загрузке страницы
       
       // Также наблюдаем за изменениями контента для добавления padding и скрытия кнопок удаления
       let contentObserverTimeout;
@@ -1000,21 +859,18 @@
       }
     }
     
-    // Применяем после загрузки DOM
+    // Применяем после загрузки DOM - УПРОЩЕННАЯ ВЕРСИЯ
+    // Убираем частые вызовы fixTabBarLabels и fixTabBarClicks, чтобы не нарушать работу React Navigation
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         hideDeleteButtons();
         applySafeAreaToTabBar();
-        fixTabBarLabels();
-        fixTabBarClicks();
         addContentPadding();
         initObservers();
       });
     } else {
       hideDeleteButtons();
       applySafeAreaToTabBar();
-      fixTabBarLabels();
-      fixTabBarClicks();
       addContentPadding();
       initObservers();
     }
@@ -1024,8 +880,6 @@
       setTimeout(() => {
         hideDeleteButtons();
         applySafeAreaToTabBar();
-        fixTabBarLabels();
-        fixTabBarClicks();
         addContentPadding();
         initObservers();
       }, 100);
@@ -1038,8 +892,6 @@
       resizeTimeout = setTimeout(() => {
         hideDeleteButtons();
         applySafeAreaToTabBar();
-        fixTabBarLabels();
-        fixTabBarClicks();
         addContentPadding();
       }, 200);
     });
@@ -1050,8 +902,6 @@
         setTimeout(() => {
           hideDeleteButtons();
           applySafeAreaToTabBar();
-          fixTabBarLabels();
-          fixTabBarClicks();
           addContentPadding();
         }, 100);
       }
