@@ -506,6 +506,49 @@
         });
       }
       
+      // Перехватываем изменения в React Native Web stylesheet
+      function interceptReactNativeStylesheet() {
+        const stylesheet = document.getElementById('react-native-stylesheet');
+        if (stylesheet && stylesheet.sheet) {
+          try {
+            // Добавляем правило для переопределения padding у r-1uu6nss
+            const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
+            const rule = `a.r-1uu6nss[role="tab"], button.r-1uu6nss[role="tab"], a.r-1uu6nss, button.r-1uu6nss { padding: 8px 0 calc(8px + ${safeAreaBottom}) 0 !important; padding-top: 8px !important; padding-bottom: calc(8px + ${safeAreaBottom}) !important; padding-left: 0 !important; padding-right: 0 !important; }`;
+            stylesheet.sheet.insertRule(rule, stylesheet.sheet.cssRules.length);
+          } catch (e) {
+            // Игнорируем ошибки
+          }
+        }
+      }
+      
+      // Перехватываем установку стилей через Object.defineProperty
+      if (typeof HTMLElement !== 'undefined' && HTMLElement.prototype) {
+        const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
+        CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
+          if (property === 'padding' && this._element) {
+            const className = this._element.className && typeof this._element.className === 'string' ? this._element.className : '';
+            if (className.includes('r-1uu6nss') && (this._element.tagName === 'A' || this._element.tagName === 'BUTTON' || this._element.getAttribute('role') === 'tab')) {
+              const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
+              if (value === '5px' || value === '5px 5px' || value.includes('5px')) {
+                value = `8px 0 calc(8px + ${safeAreaBottom}) 0`;
+                priority = 'important';
+              }
+            }
+          }
+          return originalSetProperty.call(this, property, value, priority);
+        };
+        
+        // Сохраняем ссылку на элемент в style объекте
+        const originalGetter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style').get;
+        Object.defineProperty(HTMLElement.prototype, 'style', {
+          get: function() {
+            const style = originalGetter.call(this);
+            style._element = this;
+            return style;
+          }
+        });
+      }
+      
       // Также ищем все fixed элементы внизу экрана
       const allElements = document.querySelectorAll('*');
       const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -548,6 +591,7 @@
         // Исправляем padding для новых элементов r-1uu6nss
         fixR1uu6nssPadding();
         observeR1uu6nssStyles();
+        interceptReactNativeStylesheet();
       });
       
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
