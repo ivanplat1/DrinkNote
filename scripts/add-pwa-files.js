@@ -331,13 +331,27 @@ if (fs.existsSync(indexPath)) {
         padding: 0;
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
-        /* НЕ добавляем padding-bottom к #root - это сдвигает панель вкладок */
-        /* Вместо этого добавляем padding-bottom только к контейнерам контента через JavaScript */
+        /* Ограничиваем высоту #root до viewport, чтобы не было скролла */
+        #root {
+          height: 100vh;
+          max-height: 100vh;
+          overflow: hidden;
+        }
+        
+        /* Убеждаемся, что основной контейнер контента занимает оставшееся пространство */
+        #root > div {
+          flex: 1;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
         
         nav[role="tablist"],
         [data-testid="tab-bar"],
