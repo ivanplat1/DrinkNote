@@ -396,6 +396,27 @@
                 const btnPaddingBottom = btnStyle.paddingBottom || '8px';
                 btn.style.paddingTop = btnPaddingTop;
                 btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
+                
+                // Скрываем текстовые элементы внутри кнопок, оставляем только иконки
+                const textElements = btn.querySelectorAll('span:not([class*="icon"]):not([class*="Icon"]), label, div:not([class*="icon"]):not([class*="Icon"])');
+                textElements.forEach(el => {
+                  // Проверяем, не является ли элемент иконкой
+                  const hasIconClass = el.className && (el.className.includes('icon') || el.className.includes('Icon'));
+                  const hasSvg = el.querySelector('svg');
+                  if (!hasIconClass && !hasSvg && el.textContent.trim()) {
+                    el.style.display = 'none';
+                  }
+                });
+                
+                // Устанавливаем font-size: 0 для скрытия текста
+                btn.style.fontSize = '0';
+                
+                // Показываем иконки
+                const icons = btn.querySelectorAll('svg, [class*="icon"], [class*="Icon"]');
+                icons.forEach(icon => {
+                  icon.style.display = 'block';
+                  icon.style.fontSize = '24px';
+                });
               });
             });
           } else {
