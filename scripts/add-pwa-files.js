@@ -800,18 +800,48 @@ if (fs.existsSync(indexPath)) {
       if (typeof HTMLElement !== 'undefined' && HTMLElement.prototype) {
         const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
         CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
-          if (property === 'padding' && this._element) {
+          if ((property === 'padding' || property === 'padding-top' || property === 'padding-bottom' || property === 'padding-left' || property === 'padding-right') && this._element) {
             const className = this._element.className && typeof this._element.className === 'string' ? this._element.className : '';
             if (className.includes('r-1uu6nss') && (this._element.tagName === 'A' || this._element.tagName === 'BUTTON' || this._element.getAttribute('role') === 'tab')) {
               const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
-              if (value === '5px' || value === '5px 5px' || value.includes('5px')) {
+              if (property === 'padding' && (value === '5px' || value === '5px 5px' || value.includes('5px'))) {
                 value = \`8px 0 calc(8px + \${safeAreaBottom}) 0\`;
+                priority = 'important';
+              } else if (property === 'padding-top' && value === '5px') {
+                value = '8px';
+                priority = 'important';
+              } else if (property === 'padding-bottom' && value === '5px') {
+                value = \`calc(8px + \${safeAreaBottom})\`;
+                priority = 'important';
+              } else if ((property === 'padding-left' || property === 'padding-right') && value === '5px') {
+                value = '0';
                 priority = 'important';
               }
             }
           }
           return originalSetProperty.call(this, property, value, priority);
         };
+        
+        // Также перехватываем cssText для переопределения всех padding свойств сразу
+        const originalCssTextSetter = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText').set;
+        Object.defineProperty(CSSStyleDeclaration.prototype, 'cssText', {
+          set: function(value) {
+            if (this._element) {
+              const className = this._element.className && typeof this._element.className === 'string' ? this._element.className : '';
+              if (className.includes('r-1uu6nss') && (this._element.tagName === 'A' || this._element.tagName === 'BUTTON' || this._element.getAttribute('role') === 'tab')) {
+                const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0px';
+                // Заменяем padding: 5px на наши значения
+                value = value.replace(/padding:\s*5px[^;]*/gi, \`padding: 8px 0 calc(8px + \${safeAreaBottom}) 0\`);
+                value = value.replace(/padding-top:\s*5px/gi, 'padding-top: 8px');
+                value = value.replace(/padding-bottom:\s*5px/gi, \`padding-bottom: calc(8px + \${safeAreaBottom})\`);
+                value = value.replace(/padding-left:\s*5px/gi, 'padding-left: 0');
+                value = value.replace(/padding-right:\s*5px/gi, 'padding-right: 0');
+              }
+            }
+            return originalCssTextSetter.call(this, value);
+          },
+          get: Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'cssText').get
+        });
         
         // Сохраняем ссылку на элемент в style объекте
         const originalGetter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style').get;
