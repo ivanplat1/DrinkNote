@@ -545,27 +545,57 @@ if (fs.existsSync(indexPath)) {
     
       // Функция для удаления подписей вкладок, оставляем только иконки
       function fixTabBarLabels() {
-        const textDivs = document.querySelectorAll('nav[role="tablist"] div[dir="auto"], [data-testid="tab-bar"] div[dir="auto"], .tab-bar div[dir="auto"], nav[role="tablist"] div[class*="css-146c3p1"], [data-testid="tab-bar"] div[class*="css-146c3p1"], .tab-bar div[class*="css-146c3p1"], nav[role="tablist"] div[class*="r-dnmrzs"], [data-testid="tab-bar"] div[class*="r-dnmrzs"], .tab-bar div[class*="r-dnmrzs"]');
-        textDivs.forEach(textDiv => {
-          // Проверяем, что это не иконка (нет svg внутри и нет ionicons класса)
-          const hasSvg = textDiv.querySelector('svg');
-          const hasIconClass = textDiv.className && typeof textDiv.className === 'string' && (textDiv.className.includes('ionicons') || textDiv.className.includes('icon'));
-          const isIcon = hasSvg || hasIconClass;
-          
-          if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
-            // Удаляем элемент с текстом
-            textDiv.style.setProperty('display', 'none', 'important');
-            textDiv.style.setProperty('visibility', 'hidden', 'important');
-            textDiv.style.setProperty('opacity', '0', 'important');
-            textDiv.style.setProperty('height', '0', 'important');
-            textDiv.style.setProperty('width', '0', 'important');
-            textDiv.style.setProperty('overflow', 'hidden', 'important');
-            textDiv.style.setProperty('font-size', '0', 'important');
-            textDiv.style.setProperty('line-height', '0', 'important');
-            textDiv.style.setProperty('padding', '0', 'important');
-            textDiv.style.setProperty('margin', '0', 'important');
-            // Также очищаем textContent для надежности
-            textDiv.textContent = '';
+        // Ищем все возможные элементы с подписями
+        const selectors = [
+          'nav[role="tablist"] div[dir="auto"]',
+          '[data-testid="tab-bar"] div[dir="auto"]',
+          '.tab-bar div[dir="auto"]',
+          'nav[role="tablist"] div[class*="css-146c3p1"]',
+          '[data-testid="tab-bar"] div[class*="css-146c3p1"]',
+          '.tab-bar div[class*="css-146c3p1"]',
+          'nav[role="tablist"] div[class*="r-dnmrzs"]',
+          '[data-testid="tab-bar"] div[class*="r-dnmrzs"]',
+          '.tab-bar div[class*="r-dnmrzs"]',
+          'a[role="tab"] div[dir="auto"]',
+          'button[role="tab"] div[dir="auto"]',
+        ];
+        
+        selectors.forEach(selector => {
+          try {
+            const textDivs = document.querySelectorAll(selector);
+            textDivs.forEach(textDiv => {
+              // Проверяем, что это не иконка
+              const hasSvg = textDiv.querySelector('svg');
+              const className = textDiv.className && typeof textDiv.className === 'string' ? textDiv.className : '';
+              const hasIconClass = className.includes('ionicons') || className.includes('icon') || className.includes('r-lrvibr');
+              const isIcon = hasSvg || hasIconClass;
+              
+              // Проверяем, содержит ли элемент текст (подпись вкладки)
+              const text = textDiv.textContent && textDiv.textContent.trim();
+              const isLabel = text && (text === 'Сегодня' || text === 'Календарь' || text === 'Статистика' || text === 'Настройки' || text.length > 0);
+              
+              if (!isIcon && isLabel) {
+                // Полностью удаляем элемент из DOM
+                try {
+                  textDiv.remove();
+                } catch (e) {
+                  // Если remove не работает, скрываем агрессивно
+                  textDiv.style.setProperty('display', 'none', 'important');
+                  textDiv.style.setProperty('visibility', 'hidden', 'important');
+                  textDiv.style.setProperty('opacity', '0', 'important');
+                  textDiv.style.setProperty('height', '0', 'important');
+                  textDiv.style.setProperty('width', '0', 'important');
+                  textDiv.style.setProperty('overflow', 'hidden', 'important');
+                  textDiv.style.setProperty('font-size', '0', 'important');
+                  textDiv.style.setProperty('line-height', '0', 'important');
+                  textDiv.style.setProperty('padding', '0', 'important');
+                  textDiv.style.setProperty('margin', '0', 'important');
+                  textDiv.textContent = '';
+                }
+              }
+            });
+          } catch (e) {
+            // Игнорируем ошибки селекторов
           }
         });
       }
@@ -750,31 +780,25 @@ if (fs.existsSync(indexPath)) {
       fixTabBarLabels();
       
       // Также применяем через MutationObserver для динамически созданных элементов
+      // Используем debounce для оптимизации производительности
+      let tabBarObserverTimeout;
       const tabBarObserver = new MutationObserver(() => {
-        tabBarSelectors.forEach(selector => {
-          try {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(applyPadding);
-          } catch (e) {
-            // Игнорируем ошибки
-          }
-        });
-        
-        // Проверяем новые fixed элементы
-        const newElements = document.querySelectorAll('*');
-        newElements.forEach(el => {
-          const style = window.getComputedStyle(el);
-          if (style.position === 'fixed' && (style.bottom === '0px' || style.bottom === '0')) {
-            applyPadding(el);
-          }
-        });
-        
-        // Исправляем размер шрифта надписей для новых элементов
-        fixTabBarLabels();
+        clearTimeout(tabBarObserverTimeout);
+        tabBarObserverTimeout = setTimeout(() => {
+          tabBarSelectors.forEach(selector => {
+            try {
+              const elements = document.querySelectorAll(selector);
+              elements.forEach(applyPadding);
+            } catch (e) {
+              // Игнорируем ошибки
+            }
+          });
+          fixTabBarLabels();
+        }, 100); // Debounce на 100ms
       });
       
       if (document.body) {
-        tabBarObserver.observe(document.body, { childList: true, subtree: true });
+        tabBarObserver.observe(document.body, { childList: true, subtree: false }); // Только прямые дети для производительности
       }
     }
     
@@ -782,11 +806,22 @@ if (fs.existsSync(indexPath)) {
     function initObservers() {
       if (!document.body) return;
       
-      // Наблюдаем за изменениями в таб-баре
+      // Наблюдаем за изменениями в таб-баре с debounce
+      let labelObserverTimeout;
       const labelObserver = new MutationObserver(() => {
-        fixTabBarLabels();
+        clearTimeout(labelObserverTimeout);
+        labelObserverTimeout = setTimeout(() => {
+          fixTabBarLabels();
+        }, 200); // Debounce на 200ms
       });
-      labelObserver.observe(document.body, { childList: true, subtree: true });
+      // Наблюдаем только за навигацией, а не за всем body
+      const navElement = document.querySelector('nav[role="tablist"]');
+      if (navElement) {
+        labelObserver.observe(navElement, { childList: true, subtree: true });
+      } else {
+        // Fallback на body, но только прямые дети
+        labelObserver.observe(document.body, { childList: true, subtree: false });
+      }
     }
     
     // Применяем после загрузки DOM
@@ -809,22 +844,16 @@ if (fs.existsSync(indexPath)) {
         fixTabBarLabels();
         initObservers();
       }, 100);
-      setTimeout(() => {
-        applySafeAreaToTabBar();
-        fixTabBarLabels();
-      }, 500);
-      setTimeout(() => {
-        applySafeAreaToTabBar();
-        fixTabBarLabels();
-      }, 1000);
     });
     
-    // Также применяем при изменении размера окна (для поворота экрана)
+    // Также применяем при изменении размера окна (для поворота экрана) с debounce
+    let resizeTimeout;
     window.addEventListener('resize', () => {
-      setTimeout(() => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
         applySafeAreaToTabBar();
         fixTabBarLabels();
-      }, 100);
+      }, 200);
     });
     
     // Применяем при изменении видимости (когда приложение становится активным)
@@ -836,11 +865,6 @@ if (fs.existsSync(indexPath)) {
         }, 100);
       }
     });
-    
-    // Постоянно проверяем и исправляем размер шрифта каждые 500ms
-    setInterval(() => {
-      fixTabBarLabels();
-    }, 500);
     
   })();
 </script>`;
