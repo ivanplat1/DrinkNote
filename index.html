@@ -612,31 +612,136 @@
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
     }
     
+    // Функция для агрессивного скрытия текста в панели вкладок
+    function hideTabBarLabels() {
+      const tabBarButtons = document.querySelectorAll('nav[role="tablist"] button, nav[role="tablist"] a, [data-testid="tab-bar"] button, [data-testid="tab-bar"] a, .tab-bar button, .tab-bar a');
+      tabBarButtons.forEach(btn => {
+        // Устанавливаем font-size: 0 для скрытия текста
+        btn.style.setProperty('font-size', '0', 'important');
+        btn.style.setProperty('line-height', '0', 'important');
+        btn.style.setProperty('color', 'transparent', 'important');
+        
+        // Скрываем все дочерние элементы, кроме иконок
+        const allChildren = btn.querySelectorAll('*');
+        allChildren.forEach(child => {
+          const tagName = child.tagName.toLowerCase();
+          const className = child.className && typeof child.className === 'string' ? child.className : '';
+          const hasIconClass = className.includes('icon') || className.includes('Icon');
+          const isSvg = tagName === 'svg';
+          const hasSvgChild = child.querySelector('svg');
+          const hasText = child.textContent && child.textContent.trim();
+          const isTextElement = hasText && !hasIconClass && !isSvg && !hasSvgChild;
+          
+          // Специальная проверка для div элементов с текстом (как "Статистика")
+          const isTextDiv = tagName === 'div' && hasText && !hasIconClass && !hasSvgChild;
+          
+          // Если это не иконка и содержит текст - скрываем агрессивно
+          if (isTextElement || isTextDiv) {
+            child.style.setProperty('display', 'none', 'important');
+            child.style.setProperty('visibility', 'hidden', 'important');
+            child.style.setProperty('opacity', '0', 'important');
+            child.style.setProperty('height', '0', 'important');
+            child.style.setProperty('width', '0', 'important');
+            child.style.setProperty('overflow', 'hidden', 'important');
+            child.style.setProperty('font-size', '0', 'important');
+            child.style.setProperty('line-height', '0', 'important');
+            child.style.setProperty('color', 'transparent', 'important');
+            child.style.setProperty('position', 'absolute', 'important');
+            child.style.setProperty('left', '-9999px', 'important');
+            child.style.setProperty('text-indent', '-9999px', 'important');
+            child.style.setProperty('margin', '0', 'important');
+            child.style.setProperty('padding', '0', 'important');
+            // Также очищаем textContent для надежности
+            if (hasText && !hasIconClass && !isSvg && !hasSvgChild) {
+              child.textContent = '';
+            }
+          }
+        });
+        
+        // Показываем иконки
+        const icons = btn.querySelectorAll('svg, [class*="icon"], [class*="Icon"]');
+        icons.forEach(icon => {
+          icon.style.setProperty('display', 'block', 'important');
+          icon.style.setProperty('visibility', 'visible', 'important');
+          icon.style.setProperty('opacity', '1', 'important');
+          icon.style.setProperty('font-size', '24px', 'important');
+          icon.style.setProperty('width', '24px', 'important');
+          icon.style.setProperty('height', '24px', 'important');
+          icon.style.setProperty('color', 'inherit', 'important');
+        });
+        
+        // Скрываем прямые текстовые узлы
+        const walker = document.createTreeWalker(
+          btn,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        
+        let textNode;
+        while (textNode = walker.nextNode()) {
+          const text = textNode.textContent.trim();
+          if (text && text.length > 0) {
+            const parent = textNode.parentElement;
+            const hasIconParent = parent && parent.className && typeof parent.className === 'string' && (parent.className.includes('icon') || parent.className.includes('Icon'));
+            if (!hasIconParent) {
+              textNode.textContent = '';
+            }
+          }
+        }
+      });
+    }
+    
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', applySafeAreaToTabBar);
+      document.addEventListener('DOMContentLoaded', () => {
+        applySafeAreaToTabBar();
+        hideTabBarLabels();
+      });
     } else {
       applySafeAreaToTabBar();
+      hideTabBarLabels();
     }
     
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
-      setTimeout(applySafeAreaToTabBar, 100);
-      setTimeout(applySafeAreaToTabBar, 500);
-      setTimeout(applySafeAreaToTabBar, 1000);
+      setTimeout(() => {
+        applySafeAreaToTabBar();
+        hideTabBarLabels();
+      }, 100);
+      setTimeout(() => {
+        applySafeAreaToTabBar();
+        hideTabBarLabels();
+      }, 500);
+      setTimeout(() => {
+        applySafeAreaToTabBar();
+        hideTabBarLabels();
+      }, 1000);
     });
     
     // Также применяем при изменении размера окна (для поворота экрана)
     window.addEventListener('resize', () => {
-      setTimeout(applySafeAreaToTabBar, 100);
+      setTimeout(() => {
+        applySafeAreaToTabBar();
+        hideTabBarLabels();
+      }, 100);
     });
     
     // Применяем при изменении видимости (когда приложение становится активным)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        setTimeout(applySafeAreaToTabBar, 100);
+        setTimeout(() => {
+          applySafeAreaToTabBar();
+          hideTabBarLabels();
+        }, 100);
       }
     });
+    
+    // Также применяем через MutationObserver для динамически созданных элементов
+    const labelObserver = new MutationObserver(() => {
+      hideTabBarLabels();
+    });
+    labelObserver.observe(document.body, { childList: true, subtree: true });
   })();
 </script>
 </head>
