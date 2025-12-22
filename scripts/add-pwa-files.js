@@ -376,11 +376,11 @@ if (fs.existsSync(indexPath)) {
         div[style*="position: fixed"][style*="bottom: 0"],
         div[style*="bottom: 0px"],
         div[style*="bottom:0px"] {
-          padding-bottom: env(safe-area-inset-bottom) !important;
+          padding-bottom: calc(20px + env(safe-area-inset-bottom) + 12px) !important;
           margin-bottom: 0 !important;
           /* Увеличиваем минимальную высоту панели вкладок, чтобы она была достаточно высокой */
           /* Увеличиваем базовую высоту с 49px до 70px для лучшего размещения текста */
-          min-height: calc(70px + env(safe-area-inset-bottom)) !important;
+          min-height: calc(70px + env(safe-area-inset-bottom) + 32px) !important;
           /* Убеждаемся, что панель вкладок поверх всего контента */
           z-index: 1000 !important;
         }
