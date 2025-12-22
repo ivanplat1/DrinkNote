@@ -413,12 +413,22 @@
             tabBar.style.setProperty('z-index', '1000', 'important');
             
             // Ищем все кликабельные элементы внутри таб-бара (ссылки и кнопки)
-            const clickableElements = tabBar.querySelectorAll('a[role="tab"], button[role="tab"], a[href], button');
+            // Важно: получаем элементы в порядке их появления в DOM
+            const clickableElements = Array.from(tabBar.querySelectorAll('a[role="tab"], button[role="tab"], a[href], button'));
+            
+            // Сортируем элементы по их позиции в DOM (слева направо)
+            clickableElements.sort((a, b) => {
+              const rectA = a.getBoundingClientRect();
+              const rectB = b.getBoundingClientRect();
+              return rectA.left - rectB.left;
+            });
+            
             clickableElements.forEach((element, index) => {
               // Убеждаемся, что элемент кликабелен
               element.style.setProperty('pointer-events', 'auto', 'important');
               element.style.setProperty('cursor', 'pointer', 'important');
-              element.style.setProperty('z-index', String(1001 + index), 'important');
+              // Используем одинаковый z-index для всех элементов, чтобы не было перекрытий
+              element.style.setProperty('z-index', '1001', 'important');
               
               // Убеждаемся, что элемент видим и не скрыт
               const computedStyle = window.getComputedStyle(element);
@@ -435,6 +445,36 @@
               // Убеждаемся, что элемент имеет правильную позицию
               if (computedStyle.position === 'static') {
                 element.style.setProperty('position', 'relative', 'important');
+              }
+              
+              // Убеждаемся, что элемент не перекрыт другими элементами
+              // Проверяем, что элемент не перекрыт по горизонтали
+              const rect = element.getBoundingClientRect();
+              
+              // Убеждаемся, что элемент имеет правильную ширину и не перекрыт
+              if (rect.width === 0 || rect.height === 0) {
+                element.style.setProperty('min-width', '60px', 'important');
+                element.style.setProperty('min-height', '60px', 'important');
+              }
+              
+              // Убеждаемся, что клики не блокируются
+              element.style.setProperty('touch-action', 'manipulation', 'important');
+              
+              // Убеждаемся, что элемент не имеет overflow: hidden, который может скрывать клики
+              if (computedStyle.overflow === 'hidden') {
+                element.style.setProperty('overflow', 'visible', 'important');
+              }
+              
+              // Убеждаемся, что родительские элементы не блокируют клики
+              let parent = element.parentElement;
+              let depth = 0;
+              while (parent && parent !== tabBar && depth < 3) {
+                const parentStyle = window.getComputedStyle(parent);
+                if (parentStyle.pointerEvents === 'none') {
+                  parent.style.setProperty('pointer-events', 'auto', 'important');
+                }
+                parent = parent.parentElement;
+                depth++;
               }
             });
             
