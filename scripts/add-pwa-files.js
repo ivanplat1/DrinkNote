@@ -556,7 +556,7 @@ if (fs.existsSync(indexPath)) {
             
             // Парсим значение padding-bottom
             if (currentPaddingBottom !== '0px' && currentPaddingBottom !== '0') {
-              const match = currentPaddingBottom.match(/(\\d+(?:\\.\\d+)?)/);
+              const match = currentPaddingBottom.match(/(\d+(?:\.\d+)?)/);
               if (match) {
                 currentPaddingBottomValue = parseFloat(match[1]);
               }
