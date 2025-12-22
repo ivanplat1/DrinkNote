@@ -636,12 +636,20 @@ if (fs.existsSync(indexPath)) {
       root.style.height = '100vh';
       root.style.maxHeight = '100vh';
       root.style.overflow = 'hidden';
-      root.style.overscrollBehavior = 'none';
-      root.style.overscrollBehaviorY = 'none';
+      root.style.position = 'relative';
       
-      // Также отключаем overscroll на body и html
+      // Фиксируем body и html, чтобы предотвратить прокрутку страницы
+      document.body.style.height = '100vh';
+      document.body.style.maxHeight = '100vh';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
       document.body.style.overscrollBehavior = 'none';
       document.body.style.overscrollBehaviorY = 'none';
+      
+      document.documentElement.style.height = '100vh';
+      document.documentElement.style.maxHeight = '100vh';
+      document.documentElement.style.overflow = 'hidden';
       document.documentElement.style.overscrollBehavior = 'none';
       document.documentElement.style.overscrollBehaviorY = 'none';
       
