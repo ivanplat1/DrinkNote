@@ -358,134 +358,6 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
         
-        /* Агрессивное скрытие всех текстовых элементов в панели вкладок */
-        nav[role="tablist"] button *,
-        nav[role="tablist"] a *,
-        [data-testid="tab-bar"] button *,
-        [data-testid="tab-bar"] a *,
-        .tab-bar button *,
-        .tab-bar a * {
-          font-size: 0 !important;
-          line-height: 0 !important;
-          color: transparent !important;
-        }
-        
-        /* Показываем только иконки (SVG и элементы с классами icon) */
-        nav[role="tablist"] button svg,
-        nav[role="tablist"] a svg,
-        [data-testid="tab-bar"] button svg,
-        [data-testid="tab-bar"] a svg,
-        .tab-bar button svg,
-        .tab-bar a svg {
-          display: block !important;
-          font-size: 24px !important;
-          width: 24px !important;
-          height: 24px !important;
-          color: inherit !important;
-        }
-        
-        nav[role="tablist"] button [class*="icon"],
-        nav[role="tablist"] a [class*="icon"],
-        [data-testid="tab-bar"] button [class*="icon"],
-        [data-testid="tab-bar"] a [class*="icon"],
-        .tab-bar button [class*="icon"],
-        .tab-bar a [class*="icon"] {
-          display: block !important;
-          font-size: 24px !important;
-          color: inherit !important;
-        }
-        
-        /* Скрываем все span, label, div, p, text элементы, которые не являются иконками */
-        nav[role="tablist"] button span,
-        nav[role="tablist"] a span,
-        [data-testid="tab-bar"] button span,
-        [data-testid="tab-bar"] a span,
-        .tab-bar button span,
-        .tab-bar a span,
-        nav[role="tablist"] button label,
-        nav[role="tablist"] a label,
-        [data-testid="tab-bar"] button label,
-        [data-testid="tab-bar"] a label,
-        .tab-bar button label,
-        .tab-bar a label,
-        nav[role="tablist"] button div,
-        nav[role="tablist"] a div,
-        [data-testid="tab-bar"] button div,
-        [data-testid="tab-bar"] a div,
-        .tab-bar button div,
-        .tab-bar a div,
-        nav[role="tablist"] button p,
-        nav[role="tablist"] a p,
-        [data-testid="tab-bar"] button p,
-        [data-testid="tab-bar"] a p,
-        .tab-bar button p,
-        .tab-bar a p {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          height: 0 !important;
-          width: 0 !important;
-          overflow: hidden !important;
-          font-size: 0 !important;
-          line-height: 0 !important;
-          color: transparent !important;
-        }
-        
-        /* Скрываем все div элементы с текстом внутри кнопок вкладок (более агрессивно) */
-        nav[role="tablist"] button div[dir],
-        nav[role="tablist"] a div[dir],
-        [data-testid="tab-bar"] button div[dir],
-        [data-testid="tab-bar"] a div[dir],
-        .tab-bar button div[dir],
-        .tab-bar a div[dir],
-        nav[role="tablist"] button div[class*="css-"],
-        nav[role="tablist"] a div[class*="css-"],
-        [data-testid="tab-bar"] button div[class*="css-"],
-        [data-testid="tab-bar"] a div[class*="css-"],
-        .tab-bar button div[class*="css-"],
-        .tab-bar a div[class*="css-"],
-        nav[role="tablist"] button div[class*="r-"],
-        nav[role="tablist"] a div[class*="r-"],
-        [data-testid="tab-bar"] button div[class*="r-"],
-        [data-testid="tab-bar"] a div[class*="r-"],
-        .tab-bar button div[class*="r-"],
-        .tab-bar a div[class*="r-"] {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          height: 0 !important;
-          width: 0 !important;
-          overflow: hidden !important;
-          font-size: 0 !important;
-          line-height: 0 !important;
-          color: transparent !important;
-          position: absolute !important;
-          left: -9999px !important;
-          text-indent: -9999px !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        
-        /* Исключаем SVG и иконки из скрытия */
-        nav[role="tablist"] button svg,
-        nav[role="tablist"] a svg,
-        [data-testid="tab-bar"] button svg,
-        [data-testid="tab-bar"] a svg,
-        .tab-bar button svg,
-        .tab-bar a svg,
-        nav[role="tablist"] button [class*="icon"],
-        nav[role="tablist"] a [class*="icon"],
-        [data-testid="tab-bar"] button [class*="icon"],
-        [data-testid="tab-bar"] a [class*="icon"],
-        .tab-bar button [class*="icon"],
-        .tab-bar a [class*="icon"] {
-          display: block !important;
-          visibility: visible !important;
-          opacity: 1 !important;
-          height: auto !important;
-          width: auto !important;
-          overflow: visible !important;
-        }
       }
       
       /* Альтернативный подход: применяем через JavaScript после загрузки */
@@ -875,104 +747,25 @@ if (fs.existsSync(indexPath)) {
       tabBarObserver.observe(document.body, { childList: true, subtree: true });
     }
     
-    // Функция для агрессивного удаления текста в панели вкладок
-    function hideTabBarLabels() {
-      // Удаляем явные div с текстом в таб-баре
-      const textDivSelectors = [
-        'nav[role="tablist"] div[class*="css-"]',
-        'nav[role="tablist"] div[class*="r-"]',
-        '[data-testid="tab-bar"] div[class*="css-"]',
-        '[data-testid="tab-bar"] div[class*="r-"]',
-        '.tab-bar div[class*="css-"]',
-        '.tab-bar div[class*="r-"]',
-        'nav[role="tablist"] div[dir]',
-        '[data-testid="tab-bar"] div[dir]',
-        '.tab-bar div[dir]',
-      ];
-      textDivSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(node => {
-          const hasText = node.textContent && node.textContent.trim();
-          const hasSvg = node.querySelector('svg');
-          if (hasText && !hasSvg) {
-            node.remove();
-          }
-        });
-      });
-      
-      const tabBarButtons = document.querySelectorAll('nav[role="tablist"] button, nav[role="tablist"] a, [data-testid="tab-bar"] button, [data-testid="tab-bar"] a, .tab-bar button, .tab-bar a');
-      tabBarButtons.forEach(btn => {
-        // Удаляем текстовые узлы
-        const walker = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, null, false);
-        let textNode;
-        while (textNode = walker.nextNode()) {
-          const text = textNode.textContent.trim();
-          const parent = textNode.parentElement;
-          const parentClass = parent && parent.className && typeof parent.className === 'string' ? parent.className : '';
-          const hasIconParent = parent && (parentClass.includes('icon') || parentClass.includes('Icon') || parent.tagName.toLowerCase() === 'svg');
-          if (text && !hasIconParent) {
-            if (textNode.parentNode) textNode.parentNode.removeChild(textNode);
-          }
-        }
-        
-        // Удаляем дочерние элементы с текстом (без svg и без классов icon)
-        const allChildren = btn.querySelectorAll('*');
-        allChildren.forEach(child => {
-          const tagName = child.tagName.toLowerCase();
-          const className = child.className && typeof child.className === 'string' ? child.className : '';
-          const hasIconClass = className.includes('icon') || className.includes('Icon');
-          const hasSvgChild = child.querySelector('svg');
-          const hasText = child.textContent && child.textContent.trim();
-          
-          const hasDirAttr = child.hasAttribute('dir');
-          const hasCssClass = className.includes('css-');
-          const hasRClass = className.includes(' r-');
-          const isTextDiv = tagName === 'div' && hasText && (hasDirAttr || hasCssClass || hasRClass) && !hasIconClass && !hasSvgChild;
-          const isTextElement = hasText && !hasIconClass && !hasSvgChild && tagName !== 'svg';
-          
-          if (isTextDiv || isTextElement) {
-            child.remove();
-          }
-        });
-        
-        // Показываем иконки
-        const icons = btn.querySelectorAll('svg, [class*="icon"], [class*="Icon"]');
-        icons.forEach(icon => {
-          icon.style.setProperty('display', 'block', 'important');
-          icon.style.setProperty('visibility', 'visible', 'important');
-          icon.style.setProperty('opacity', '1', 'important');
-          icon.style.setProperty('font-size', '24px', 'important');
-          icon.style.setProperty('width', '24px', 'important');
-          icon.style.setProperty('height', '24px', 'important');
-          icon.style.setProperty('color', 'inherit', 'important');
-        });
-        
-      });
-    }
-    
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         applySafeAreaToTabBar();
-        hideTabBarLabels();
       });
     } else {
       applySafeAreaToTabBar();
-      hideTabBarLabels();
     }
     
     // Также применяем после полной загрузки страницы
     window.addEventListener('load', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
-        hideTabBarLabels();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
-        hideTabBarLabels();
       }, 500);
       setTimeout(() => {
         applySafeAreaToTabBar();
-        hideTabBarLabels();
       }, 1000);
     });
     
@@ -980,7 +773,6 @@ if (fs.existsSync(indexPath)) {
     window.addEventListener('resize', () => {
       setTimeout(() => {
         applySafeAreaToTabBar();
-        hideTabBarLabels();
       }, 100);
     });
     
@@ -989,21 +781,10 @@ if (fs.existsSync(indexPath)) {
       if (!document.hidden) {
         setTimeout(() => {
           applySafeAreaToTabBar();
-          hideTabBarLabels();
         }, 100);
       }
     });
     
-    // Также применяем через MutationObserver для динамически созданных элементов
-    const labelObserver = new MutationObserver(() => {
-      hideTabBarLabels();
-    });
-    labelObserver.observe(document.body, { childList: true, subtree: true });
-    
-    // Также применяем периодически для надежности (каждые 500ms)
-    setInterval(() => {
-      hideTabBarLabels();
-    }, 500);
   })();
 </script>`;
     html = html.replace('</head>', `${pathFixScript}\n</head>`);
