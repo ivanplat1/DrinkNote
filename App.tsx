@@ -61,8 +61,13 @@ function AppContent() {
               borderTopWidth: 1,
               paddingBottom: isIOS ? Math.max(8, insets.bottom) : 8, // Минимальный отступ от Home индикатора
               paddingTop: 8, // Padding сверху
-              height: isIOS ? undefined : 70, // Автоматическая высота для iOS с учетом padding
-              minHeight: isIOS ? 60 : 70, // Минимальная высота
+              height: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Фиксированная высота с учетом padding
+              minHeight: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Минимальная высота
+              elevation: 8, // Тень для Android (фиксирует поверх контента)
+              shadowColor: '#000', // Тень для iOS
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
             },
             tabBarActiveTintColor: colors.primaryLight || colors.primary,
             tabBarInactiveTintColor: colors.textTertiary,
