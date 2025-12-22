@@ -53,20 +53,40 @@ if (fs.existsSync(iconPath)) {
     }
   }
   
-  icons.push(
-    {
+  // Создаем дополнительные размеры иконок для лучшей совместимости
+  const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
+  iconSizes.forEach(size => {
+    try {
+      const iconSizePath = path.join(distAssetsDir, `icon-${size}.png`);
+      execSync(`sips -z ${size} ${size} "${iconPath}" --out "${iconSizePath}"`, { stdio: 'ignore' });
+      icons.push({
+        src: `/DrinkNote/assets/icon-${size}.png`,
+        sizes: `${size}x${size}`,
+        type: 'image/png',
+        purpose: 'any maskable'
+      });
+    } catch (e) {
+      // Игнорируем ошибки для отдельных размеров
+    }
+  });
+  
+  // Убеждаемся, что есть минимум обязательные размеры
+  if (!icons.some(icon => icon.sizes === '192x192')) {
+    icons.push({
       src: '/DrinkNote/assets/icon-192.png',
       sizes: '192x192',
       type: 'image/png',
       purpose: 'any'
-    },
-    {
+    });
+  }
+  if (!icons.some(icon => icon.sizes === '512x512')) {
+    icons.push({
       src: '/DrinkNote/assets/icon-512.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any'
-    }
-  );
+    });
+  }
   
   console.log('✅ Созданы иконки: icon-192.png, icon-512.png');
 } else {
@@ -95,9 +115,12 @@ const manifest = {
   theme_color: '#1a1a1a',
   orientation: 'portrait',
   scope: '/DrinkNote/',
+  categories: ['health', 'lifestyle'],
+  lang: 'ru',
+  dir: 'ltr',
   icons: icons.length > 0 ? icons : [
     {
-      src: '/favicon.ico',
+      src: '/DrinkNote/favicon.ico',
       sizes: '64x64 32x32 24x24 16x16',
       type: 'image/x-icon'
     }
