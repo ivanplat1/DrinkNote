@@ -399,17 +399,27 @@
                 btn.style.paddingTop = btnPaddingTop;
                 btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
                 
-                // Уменьшаем размер шрифта надписей в таб-баре
-                const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"]');
+                // Удаляем подписи вкладок, оставляем только иконки
+                const textDivs = btn.querySelectorAll('div[dir="auto"], div[class*="css-146c3p1"], div[class*="r-dnmrzs"]');
                 textDivs.forEach(textDiv => {
-                  // Проверяем, что это не иконка (нет svg внутри)
-                  if (!textDiv.querySelector('svg')) {
-                    textDiv.style.setProperty('font-size', '9px', 'important');
-                    textDiv.style.setProperty('line-height', '1.1', 'important');
+                  // Проверяем, что это не иконка (нет svg внутри и нет ionicons класса)
+                  const hasSvg = textDiv.querySelector('svg');
+                  const hasIconClass = textDiv.className && typeof textDiv.className === 'string' && (textDiv.className.includes('ionicons') || textDiv.className.includes('icon') || textDiv.className.includes('r-lrvibr'));
+                  const isIcon = hasSvg || hasIconClass;
+                  
+                  if (!isIcon && textDiv.textContent && textDiv.textContent.trim()) {
+                    // Скрываем и удаляем элемент с текстом
+                    textDiv.style.setProperty('display', 'none', 'important');
+                    textDiv.style.setProperty('visibility', 'hidden', 'important');
+                    textDiv.style.setProperty('opacity', '0', 'important');
+                    textDiv.style.setProperty('height', '0', 'important');
+                    textDiv.style.setProperty('width', '0', 'important');
+                    textDiv.style.setProperty('overflow', 'hidden', 'important');
+                    textDiv.style.setProperty('font-size', '0', 'important');
+                    textDiv.style.setProperty('line-height', '0', 'important');
                     textDiv.style.setProperty('padding', '0', 'important');
                     textDiv.style.setProperty('margin', '0', 'important');
-                    textDiv.style.setProperty('white-space', 'nowrap', 'important');
-                    textDiv.style.setProperty('overflow', 'visible', 'important');
+                    textDiv.textContent = '';
                   }
                 });
               });
