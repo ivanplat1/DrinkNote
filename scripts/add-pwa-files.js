@@ -358,10 +358,17 @@ if (fs.existsSync(indexPath)) {
           align-items: center !important;
         }
 
-        /* Убираем лишний padding у элементов с классом r-1uu6nss (чтобы текст не обрезался) */
+        /* Убираем padding:5px у элементов с классом r-1uu6nss (корень кнопки таба) */
         nav[role="tablist"] .r-1uu6nss,
+        nav[role="tablist"] a.r-1uu6nss,
+        nav[role="tablist"] button.r-1uu6nss,
         [data-testid="tab-bar"] .r-1uu6nss,
-        .tab-bar .r-1uu6nss {
+        [data-testid="tab-bar"] a.r-1uu6nss,
+        [data-testid="tab-bar"] button.r-1uu6nss,
+        .tab-bar .r-1uu6nss,
+        .tab-bar a.r-1uu6nss,
+        .tab-bar button.r-1uu6nss,
+        .r-1uu6nss[role="tab"] {
           padding-top: 8px !important;
           padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
           padding-left: 0 !important;
