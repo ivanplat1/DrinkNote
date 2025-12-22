@@ -1,10 +1,12 @@
 // Service Worker для DrinkNote PWA
-const CACHE_NAME = 'drinknote-v2';
+const CACHE_NAME = 'drinknote-v3';
 const BASE_PATH = '/DrinkNote';
 const urlsToCache = [
   BASE_PATH + '/',
   BASE_PATH + '/index.html',
-  BASE_PATH + '/manifest.json'
+  BASE_PATH + '/manifest.json',
+  BASE_PATH + '/assets/icon-192.png',
+  BASE_PATH + '/assets/icon-512.png'
 ];
 
 // Установка Service Worker
