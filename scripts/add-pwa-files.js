@@ -610,12 +610,11 @@ if (fs.existsSync(indexPath)) {
       const root = document.getElementById('root');
       if (!root) return;
       
-      // Ограничиваем высоту root до viewport и отключаем overscroll
-      root.style.height = '100vh';
-      root.style.maxHeight = '100vh';
-      root.style.overflow = 'hidden';
+      // Отключаем только overscroll, но не весь скролл
       root.style.overscrollBehavior = 'none';
       root.style.overscrollBehaviorY = 'none';
+      // Убеждаемся, что overflow не заблокирован для скролла
+      root.style.overflow = 'auto';
       
       // Также отключаем overscroll на body и html
       document.body.style.overscrollBehavior = 'none';
