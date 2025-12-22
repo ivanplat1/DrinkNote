@@ -693,26 +693,64 @@ if (fs.existsSync(indexPath)) {
                 btn.style.paddingTop = btnPaddingTop;
                 btn.style.paddingBottom = \`calc(\${btnPaddingBottom} + \${safeAreaBottom})\`;
                 
-                // Скрываем текстовые элементы внутри кнопок, оставляем только иконки
-                const textElements = btn.querySelectorAll('span:not([class*="icon"]):not([class*="Icon"]), label, div:not([class*="icon"]):not([class*="Icon"])');
-                textElements.forEach(el => {
-                  // Проверяем, не является ли элемент иконкой
-                  const hasIconClass = el.className && (el.className.includes('icon') || el.className.includes('Icon'));
-                  const hasSvg = el.querySelector('svg');
-                  if (!hasIconClass && !hasSvg && el.textContent.trim()) {
-                    el.style.display = 'none';
+                // Агрессивно скрываем все текстовые элементы
+                btn.style.fontSize = '0';
+                btn.style.lineHeight = '0';
+                btn.style.color = 'transparent';
+                
+                // Скрываем все дочерние элементы, кроме иконок
+                const allChildren = btn.querySelectorAll('*');
+                allChildren.forEach(child => {
+                  const tagName = child.tagName.toLowerCase();
+                  const hasIconClass = child.className && typeof child.className === 'string' && (child.className.includes('icon') || child.className.includes('Icon'));
+                  const isSvg = tagName === 'svg';
+                  const hasSvgChild = child.querySelector('svg');
+                  const hasText = child.textContent && child.textContent.trim() && !hasIconClass && !isSvg && !hasSvgChild;
+                  
+                  // Если это не иконка и содержит текст - скрываем
+                  if (!hasIconClass && !isSvg && !hasSvgChild && hasText) {
+                    child.style.display = 'none';
+                    child.style.visibility = 'hidden';
+                    child.style.opacity = '0';
+                    child.style.height = '0';
+                    child.style.width = '0';
+                    child.style.overflow = 'hidden';
+                    child.style.fontSize = '0';
+                    child.style.lineHeight = '0';
                   }
                 });
-                
-                // Устанавливаем font-size: 0 для скрытия текста
-                btn.style.fontSize = '0';
                 
                 // Показываем иконки
                 const icons = btn.querySelectorAll('svg, [class*="icon"], [class*="Icon"]');
                 icons.forEach(icon => {
                   icon.style.display = 'block';
+                  icon.style.visibility = 'visible';
+                  icon.style.opacity = '1';
                   icon.style.fontSize = '24px';
+                  icon.style.width = '24px';
+                  icon.style.height = '24px';
+                  icon.style.color = 'inherit';
                 });
+                
+                // Скрываем прямые текстовые узлы
+                const walker = document.createTreeWalker(
+                  btn,
+                  NodeFilter.SHOW_TEXT,
+                  null,
+                  false
+                );
+                
+                let textNode;
+                while (textNode = walker.nextNode()) {
+                  const text = textNode.textContent.trim();
+                  if (text && text.length > 0) {
+                    const parent = textNode.parentElement;
+                    const hasIconParent = parent && parent.className && typeof parent.className === 'string' && (parent.className.includes('icon') || parent.className.includes('Icon'));
+                    if (!hasIconParent) {
+                      textNode.textContent = '';
+                    }
+                  }
+                }
               });
             });
           } else {
