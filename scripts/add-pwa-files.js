@@ -777,6 +777,7 @@ if (fs.existsSync(indexPath)) {
       // Применяем исправление padding для r-1uu6nss
       fixR1uu6nssPadding();
       observeR1uu6nssStyles();
+      interceptReactNativeStylesheet();
       
       // Также применяем через MutationObserver для динамически созданных элементов
       const tabBarObserver = new MutationObserver(() => {
@@ -812,11 +813,13 @@ if (fs.existsSync(indexPath)) {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
         observeR1uu6nssStyles();
+        interceptReactNativeStylesheet();
       });
     } else {
       applySafeAreaToTabBar();
       fixR1uu6nssPadding();
       observeR1uu6nssStyles();
+      interceptReactNativeStylesheet();
     }
     
     // Также применяем после полной загрузки страницы
@@ -825,16 +828,19 @@ if (fs.existsSync(indexPath)) {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
         observeR1uu6nssStyles();
+        interceptReactNativeStylesheet();
       }, 100);
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
         observeR1uu6nssStyles();
+        interceptReactNativeStylesheet();
       }, 500);
       setTimeout(() => {
         applySafeAreaToTabBar();
         fixR1uu6nssPadding();
         observeR1uu6nssStyles();
+        interceptReactNativeStylesheet();
       }, 1000);
     });
     
@@ -861,7 +867,14 @@ if (fs.existsSync(indexPath)) {
     // Постоянно проверяем и исправляем padding каждые 100ms
     setInterval(() => {
       fixR1uu6nssPadding();
+      interceptReactNativeStylesheet();
     }, 100);
+    
+    // Наблюдаем за созданием/изменением React Native stylesheet
+    const stylesheetObserver = new MutationObserver(() => {
+      interceptReactNativeStylesheet();
+    });
+    stylesheetObserver.observe(document.head, { childList: true, subtree: true });
     
   })();
 </script>`;
