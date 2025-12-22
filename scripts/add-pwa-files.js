@@ -309,10 +309,7 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
-        height: 100vh;
-        max-height: 100vh;
-        overflow: hidden;
-        /* Отключаем pull-to-refresh и overscroll */
+        /* Отключаем только overscroll, но не весь скролл */
         overscroll-behavior: none;
         overscroll-behavior-y: none;
         -webkit-overflow-scrolling: touch;
@@ -321,9 +318,8 @@ if (fs.existsSync(indexPath)) {
       /* В standalone режиме расширяем body до низа экрана, чтобы покрыть home indicator */
       @media (display-mode: standalone) {
         body {
-          height: 100vh;
-          max-height: 100vh;
-          overflow: hidden;
+          min-height: calc(100vh + env(safe-area-inset-bottom));
+          /* Отключаем только overscroll, но не весь скролл */
           overscroll-behavior: none;
           overscroll-behavior-y: none;
         }
@@ -334,10 +330,7 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
-        height: 100%;
-        max-height: 100%;
-        overflow: hidden;
-        /* Отключаем pull-to-refresh и overscroll */
+        /* Отключаем только overscroll, но не весь скролл */
         overscroll-behavior: none;
         overscroll-behavior-y: none;
       }
@@ -348,24 +341,14 @@ if (fs.existsSync(indexPath)) {
         padding: 0;
         display: flex;
         flex-direction: column;
-        height: 100vh;
-        max-height: 100vh;
-        overflow: hidden;
+        min-height: 100vh;
       }
       
       /* Применяем safe area к таб-бару React Navigation только в standalone режиме */
       @media (display-mode: standalone) {
-        /* Ограничиваем высоту #root до viewport, чтобы не было скролла */
-        #root {
-          height: 100vh;
-          max-height: 100vh;
-          overflow: hidden;
-        }
-        
         /* Убеждаемся, что основной контейнер контента занимает оставшееся пространство */
         #root > div {
           flex: 1;
-          overflow: hidden;
           display: flex;
           flex-direction: column;
         }
@@ -681,10 +664,7 @@ if (fs.existsSync(indexPath)) {
                            computedStyle.overflowY === 'auto';
         
         if (hasOverflow) {
-          // Ограничиваем высоту ScrollView и добавляем padding-bottom
-          container.style.maxHeight = \`calc(100vh - \${tabBarHeight}px)\`;
-          container.style.height = \`calc(100vh - \${tabBarHeight}px)\`;
-          
+          // Добавляем padding-bottom, чтобы контент не перекрывался панелью вкладок
           const currentPaddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
           const minPaddingBottom = tabBarHeight + 10; // Высота панели + небольшой отступ
           
