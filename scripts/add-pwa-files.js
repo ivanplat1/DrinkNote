@@ -904,6 +904,7 @@ if (fs.existsSync(indexPath)) {
           applySafeAreaToTabBar();
           fixR1uu6nssPadding();
           observeR1uu6nssStyles();
+          interceptReactNativeStylesheet();
         }, 100);
       }
     });
