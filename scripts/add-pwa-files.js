@@ -309,12 +309,28 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        /* Отключаем pull-to-refresh и overscroll */
+        overscroll-behavior: none;
+        overscroll-behavior-y: none;
+        -webkit-overflow-scrolling: touch;
       }
       
       /* В standalone режиме расширяем body до низа экрана, чтобы покрыть home indicator */
       @media (display-mode: standalone) {
         body {
-          min-height: calc(100vh + env(safe-area-inset-bottom));
+          height: 100vh;
+          max-height: 100vh;
+          overflow: hidden;
+          position: fixed;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
         }
       }
       
@@ -323,6 +339,12 @@ if (fs.existsSync(indexPath)) {
         background-color: #000000;
         margin: 0;
         padding: 0;
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+        /* Отключаем pull-to-refresh и overscroll */
+        overscroll-behavior: none;
+        overscroll-behavior-y: none;
       }
       
       /* Для black-translucent НЕ добавляем padding-top к root - контент должен быть под статус-баром */
@@ -889,15 +911,57 @@ if (fs.existsSync(indexPath)) {
       }
     }
     
+    // Отключаем pull-to-refresh и overscroll
+    function preventOverscroll() {
+      let lastTouchY = 0;
+      let touchStartY = 0;
+      
+      // Предотвращаем pull-to-refresh
+      document.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+      
+      document.addEventListener('touchmove', (e) => {
+        const touchY = e.touches[0].clientY;
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight || document.body.clientHeight;
+        
+        // Если мы вверху страницы и тянем вниз - предотвращаем
+        if (scrollTop === 0 && touchY > touchStartY) {
+          e.preventDefault();
+        }
+        
+        // Если мы внизу страницы и тянем вверх - предотвращаем
+        if (scrollTop + clientHeight >= scrollHeight && touchY < touchStartY) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      // Предотвращаем overscroll на body
+      document.body.addEventListener('touchmove', (e) => {
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight || document.body.clientHeight;
+        
+        // Если пытаемся прокрутить за пределы - предотвращаем
+        if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+    }
+    
     // Применяем после загрузки DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+        preventOverscroll();
         applySafeAreaToTabBar();
         fixTabBarLabels();
         addContentPadding();
         initObservers();
       });
     } else {
+      preventOverscroll();
       applySafeAreaToTabBar();
       fixTabBarLabels();
       addContentPadding();
