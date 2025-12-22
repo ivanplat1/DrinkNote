@@ -657,6 +657,25 @@
       if (root) {
         contentObserver.observe(root, { childList: true, subtree: true });
       }
+      
+      // Агрессивно применяем отступы к панели вкладок каждые 500ms
+      // Это необходимо, так как React Navigation может переопределять стили
+      if (isStandalone) {
+        setInterval(() => {
+          const tabBar = document.querySelector('nav[role="tablist"]') || 
+                         document.querySelector('[data-testid="tab-bar"]');
+          if (tabBar) {
+            const additionalPadding = 32;
+            tabBar.style.setProperty('padding-bottom', `calc(env(safe-area-inset-bottom) + ${additionalPadding}px)`, 'important');
+            
+            // Также применяем к кнопкам
+            const buttons = tabBar.querySelectorAll('button, a');
+            buttons.forEach(btn => {
+              btn.style.setProperty('padding-bottom', `calc(env(safe-area-inset-bottom) + ${additionalPadding}px)`, 'important');
+            });
+          }
+        }, 500);
+      }
     }
     
     // Отключаем pull-to-refresh и overscroll
