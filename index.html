@@ -469,29 +469,44 @@
                 btn.style.paddingBottom = `calc(${btnPaddingBottom} + ${safeAreaBottom})`;
                 
                 // Агрессивно скрываем все текстовые элементы
-                btn.style.fontSize = '0';
-                btn.style.lineHeight = '0';
-                btn.style.color = 'transparent';
+                btn.style.setProperty('font-size', '0', 'important');
+                btn.style.setProperty('line-height', '0', 'important');
+                btn.style.setProperty('color', 'transparent', 'important');
                 
                 // Скрываем все дочерние элементы, кроме иконок
                 const allChildren = btn.querySelectorAll('*');
                 allChildren.forEach(child => {
                   const tagName = child.tagName.toLowerCase();
-                  const hasIconClass = child.className && typeof child.className === 'string' && (child.className.includes('icon') || child.className.includes('Icon'));
+                  const className = child.className && typeof child.className === 'string' ? child.className : '';
+                  const hasIconClass = className.includes('icon') || className.includes('Icon');
                   const isSvg = tagName === 'svg';
                   const hasSvgChild = child.querySelector('svg');
-                  const hasText = child.textContent && child.textContent.trim() && !hasIconClass && !isSvg && !hasSvgChild;
+                  const hasText = child.textContent && child.textContent.trim();
+                  const isTextElement = hasText && !hasIconClass && !isSvg && !hasSvgChild;
                   
-                  // Если это не иконка и содержит текст - скрываем
-                  if (!hasIconClass && !isSvg && !hasSvgChild && hasText) {
-                    child.style.display = 'none';
-                    child.style.visibility = 'hidden';
-                    child.style.opacity = '0';
-                    child.style.height = '0';
-                    child.style.width = '0';
-                    child.style.overflow = 'hidden';
-                    child.style.fontSize = '0';
-                    child.style.lineHeight = '0';
+                  // Специальная проверка для div элементов с текстом (как "Статистика")
+                  const isTextDiv = tagName === 'div' && hasText && !hasIconClass && !hasSvgChild;
+                  
+                  // Если это не иконка и содержит текст - скрываем агрессивно
+                  if (isTextElement || isTextDiv) {
+                    child.style.setProperty('display', 'none', 'important');
+                    child.style.setProperty('visibility', 'hidden', 'important');
+                    child.style.setProperty('opacity', '0', 'important');
+                    child.style.setProperty('height', '0', 'important');
+                    child.style.setProperty('width', '0', 'important');
+                    child.style.setProperty('overflow', 'hidden', 'important');
+                    child.style.setProperty('font-size', '0', 'important');
+                    child.style.setProperty('line-height', '0', 'important');
+                    child.style.setProperty('color', 'transparent', 'important');
+                    child.style.setProperty('position', 'absolute', 'important');
+                    child.style.setProperty('left', '-9999px', 'important');
+                    child.style.setProperty('text-indent', '-9999px', 'important');
+                    child.style.setProperty('margin', '0', 'important');
+                    child.style.setProperty('padding', '0', 'important');
+                    // Также очищаем textContent для надежности
+                    if (hasText && !hasIconClass && !isSvg && !hasSvgChild) {
+                      child.textContent = '';
+                    }
                   }
                 });
                 
