@@ -1562,26 +1562,29 @@ export default function CalendarScreen() {
       }
       
       // Тепловая карта: градиент от зеленого до красного
+      // НЕ применяем для дней в серии воздержания (они должны быть зелеными)
       let cellColorStyle = null;
       
-      if (dailyGoal !== null && dailyGoal > 0 && total > 0) {
-        if (total <= dailyGoal * 0.5) {
-          cellColorStyle = styles.cellLowAmount; // Светло-зеленый
-        } else if (total <= dailyGoal) {
-          cellColorStyle = styles.cellModerateAmount; // Желто-зеленый
-        } else if (total <= dailyGoal * 1.5) {
-          cellColorStyle = styles.cellHighAmount; // Оранжевый
-        } else if (total < lethalDose) {
-          cellColorStyle = styles.cellVeryHighAmount; // Красный
-        } else {
-          cellColorStyle = styles.cellCriticalAmount; // Темно-красный
-        }
-      } else if (total > 0) {
-        // Если цель не установлена, показываем только факт употребления
-        if (total >= lethalDose) {
-          cellColorStyle = styles.cellCriticalAmount;
-        } else {
-          cellColorStyle = styles.cellModerateAmount;
+      if (!isInCurrentStreak && !isInBestStreak) {
+        if (dailyGoal !== null && dailyGoal > 0 && total > 0) {
+          if (total <= dailyGoal * 0.5) {
+            cellColorStyle = styles.cellLowAmount; // Светло-зеленый
+          } else if (total <= dailyGoal) {
+            cellColorStyle = styles.cellModerateAmount; // Желто-зеленый
+          } else if (total <= dailyGoal * 1.5) {
+            cellColorStyle = styles.cellHighAmount; // Оранжевый
+          } else if (total < lethalDose) {
+            cellColorStyle = styles.cellVeryHighAmount; // Красный
+          } else {
+            cellColorStyle = styles.cellCriticalAmount; // Темно-красный
+          }
+        } else if (total > 0) {
+          // Если цель не установлена, показываем только факт употребления
+          if (total >= lethalDose) {
+            cellColorStyle = styles.cellCriticalAmount;
+          } else {
+            cellColorStyle = styles.cellModerateAmount;
+          }
         }
       }
       
@@ -1591,10 +1594,11 @@ export default function CalendarScreen() {
           style={[
             styles.cell,
             { width: cellWidth, height: cellHeight - 4, margin: 0 },
-            isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent,
+            // Для дней в серии не применяем cellCurrent/cellAdjacent, чтобы зеленый фон был виден
+            !glowStyle && (isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent),
+            glowStyle, // glowStyle применяется после, чтобы перекрыть фон
             cellColorStyle,
             isToday && styles.cellToday,
-            glowStyle,
           ]}
           onPress={() => openDay(d)}
         >
@@ -1607,24 +1611,26 @@ export default function CalendarScreen() {
               />
             )}
             <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
-            <View style={styles.badgeContainer}>
-              {total >= lethalDose ? (
-                <View style={styles.deadIconContainer}>
-                  <Text style={styles.deadEmoji}>💀</Text>
-                </View>
-              ) : total > 0 ? (
-                <View style={styles.badge}>
-                  <MaterialCommunityIcons name="glass-cocktail" size={14} color="#f59e0b" />
-                  <Text style={styles.badgeUnits}>{total.toFixed(1)}</Text>
-                  <Text style={styles.badgeAlcohol}>{(total * 10).toFixed(0)}г</Text>
-                </View>
-              ) : isInBestStreak && bestCompletedStreak ? (
-                <Text style={styles.awardEmoji}>
-                  {bestCompletedStreak.length >= 30 ? '🏆' : 
-                   bestCompletedStreak.length >= 14 ? '🥈' : '🥉'}
-                </Text>
-              ) : null}
-            </View>
+            {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) && (
+              <View style={styles.badgeContainer}>
+                {total >= lethalDose ? (
+                  <View style={styles.deadIconContainer}>
+                    <Text style={styles.deadEmoji}>💀</Text>
+                  </View>
+                ) : total > 0 ? (
+                  <View style={styles.badge}>
+                    <MaterialCommunityIcons name="cup" size={14} color="#f59e0b" />
+                    <Text style={styles.badgeUnits}>{total.toFixed(1)}</Text>
+                    <Text style={styles.badgeAlcohol}>{(total * 10).toFixed(0)}г</Text>
+                  </View>
+                ) : isInBestStreak && bestCompletedStreak ? (
+                  <Text style={styles.awardEmoji}>
+                    {bestCompletedStreak.length >= 30 ? '🏆' : 
+                     bestCompletedStreak.length >= 14 ? '🥈' : '🥉'}
+                  </Text>
+                ) : null}
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       );
@@ -1859,10 +1865,13 @@ export default function CalendarScreen() {
             <TouchableWithoutFeedback onPress={() => {}}>
               <Animated.View style={[styles.modalCard, dayModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
-                  .activeOffsetY([10, 100])
-                  .failOffsetX([-50, 50])
+                  .minDistance(5)
+                  .activeOffsetY([5, 100])
+                  .failOffsetX([-30, 30])
                   .onUpdate((e) => {
-                    dayModalTranslateY.value = e.translationY;
+                    if (e.translationY > 0) {
+                      dayModalTranslateY.value = e.translationY;
+                    }
                   })
                   .onEnd((e) => {
                     if (e.translationY > 50) {
@@ -1977,10 +1986,13 @@ export default function CalendarScreen() {
                   addModalAnimatedStyle
                 ]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      addModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        addModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
@@ -2105,10 +2117,13 @@ export default function CalendarScreen() {
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      customModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        customModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
@@ -2277,11 +2292,11 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   badgeContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     zIndex: 10,
+    minHeight: 20,
   },
   cellEmpty: {
     padding: 8,
@@ -2331,107 +2346,118 @@ const styles = StyleSheet.create({
   // Subtle Glow для текущей серии - детальная прогрессия с фоном
   // Первые 5 дней - каждый день усиливается
   cellGlow1: {
-    backgroundColor: '#10b98110',
+    backgroundColor: '#10b981', // Полностью непрозрачный зеленый цвет
+    opacity: 0.3, // Используем opacity для контроля яркости
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
     shadowRadius: 3,
     elevation: 3,
-    borderWidth: 1,
-    borderColor: '#10b98120',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow2: {
-    backgroundColor: '#10b98118',
+    backgroundColor: '#10b981',
+    opacity: 0.35,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 4,
-    borderWidth: 1,
-    borderColor: '#10b98130',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow3: {
-    backgroundColor: '#10b98120',
+    backgroundColor: '#10b981',
+    opacity: 0.4,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 5,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: '#10b98140',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow4: {
-    backgroundColor: '#10b98128',
+    backgroundColor: '#10b981',
+    opacity: 0.45,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 5,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: '#10b98145',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow5: {
-    backgroundColor: '#10b98130',
+    backgroundColor: '#10b981',
+    opacity: 0.5,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.65,
     shadowRadius: 6,
     elevation: 6,
-    borderWidth: 1,
-    borderColor: '#10b98150',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow6: {
-    backgroundColor: '#10b98138',
+    backgroundColor: '#10b981',
+    opacity: 0.55,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.68,
     shadowRadius: 6,
     elevation: 6,
-    borderWidth: 1,
-    borderColor: '#10b98155',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow7: {
-    backgroundColor: '#10b98135',
+    backgroundColor: '#10b981',
+    opacity: 0.6,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 7,
     elevation: 7,
-    borderWidth: 1,
-    borderColor: '#10b98160',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow10: {
-    backgroundColor: '#10b98145',
+    backgroundColor: '#10b981',
+    opacity: 0.7,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.75,
     shadowRadius: 8,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: '#10b98170',
+    borderWidth: 1.5,
+    borderColor: '#10b981',
   },
   cellGlow14: {
-    backgroundColor: '#10b98160',
+    backgroundColor: '#10b981',
+    opacity: 0.75,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 9,
     elevation: 9,
     borderWidth: 1.5,
-    borderColor: '#10b98180',
+    borderColor: '#10b981',
   },
   cellGlow21: {
-    backgroundColor: '#10b98180',
+    backgroundColor: '#10b981',
+    opacity: 0.8,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.85,
     shadowRadius: 10,
     elevation: 10,
     borderWidth: 1.5,
-    borderColor: '#10b98190',
+    borderColor: '#10b981',
   },
   cellGlow30Plus: {
-    backgroundColor: '#10b981a0',
+    backgroundColor: '#10b981',
+    opacity: 0.9,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,

@@ -1,7 +1,9 @@
 import 'react-native-gesture-handler';
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,9 +13,14 @@ import TodayScreen from './screens/TodayScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import PremiumScreen from './screens/PremiumScreen';
 import { colors } from './theme/colors';
+import { generateTestDrinks, generateTestPresets } from './utils/testData';
+import { getAllDrinks, setAllDrinks } from './storage/drinks';
+import { getUserPresets, setUserPresets } from './storage/presets';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 // Оптимизированные функции иконок вынесены наружу, чтобы не пересоздавались при каждом рендере
 const TodayIcon = ({ color, size }: { color: string; size: number }) => (
@@ -41,9 +48,51 @@ function AppContent() {
                  (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)));
   
+  // TODO: Удалить перед релизом - загрузка тестовых данных
+  // Установите FORCE_LOAD_TEST_DATA = true для принудительной загрузки
+  const FORCE_LOAD_TEST_DATA = true; // Изменить на false перед релизом
+  
+  React.useEffect(() => {
+    const loadTestData = async () => {
+      try {
+        const existingDrinks = await getAllDrinks();
+        const existingPresets = await getUserPresets();
+        
+        console.log(`📊 Существующие записи: ${existingDrinks.length}, пресеты: ${existingPresets.length}`);
+        
+        // Загружаем тестовые данные если их нет или если включена принудительная загрузка
+        if (existingDrinks.length === 0 || FORCE_LOAD_TEST_DATA) {
+          const testDrinks = generateTestDrinks();
+          console.log(`🔄 Генерирую ${testDrinks.length} тестовых записей...`);
+          await setAllDrinks(testDrinks);
+          console.log(`✅ Загружено ${testDrinks.length} тестовых записей о напитках`);
+          
+          // Проверяем, что данные сохранились
+          const verify = await getAllDrinks();
+          console.log(`✓ Проверка: сохранено ${verify.length} записей`);
+        } else {
+          console.log(`⏭️ Пропускаю загрузку тестовых данных (уже есть ${existingDrinks.length} записей)`);
+        }
+        
+        if (existingPresets.length === 0 || FORCE_LOAD_TEST_DATA) {
+          const testPresets = generateTestPresets();
+          await setUserPresets(testPresets);
+          console.log(`✅ Загружено ${testPresets.length} тестовых пресетов`);
+        }
+      } catch (error) {
+        console.error('❌ Ошибка загрузки тестовых данных:', error);
+      }
+    };
+    
+    loadTestData();
+  }, []);
+  
   return (
     <NavigationContainer>
         <StatusBar style="light" />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs">
+            {() => (
         <Tab.Navigator
           screenOptions={{
             headerShown: true,
@@ -109,6 +158,17 @@ function AppContent() {
             }}
           />
         </Tab.Navigator>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="Premium" 
+            component={PremiumScreen}
+            options={{
+              presentation: 'card',
+              headerShown: false,
+            }}
+          />
+        </Stack.Navigator>
       </NavigationContainer>
   );
 }

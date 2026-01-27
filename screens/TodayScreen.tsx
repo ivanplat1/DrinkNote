@@ -831,10 +831,13 @@ export default function TodayScreen() {
                   addModalAnimatedStyle
                 ]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      addModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        addModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       // Свайп вниз закрывает модальное окно
@@ -919,10 +922,13 @@ export default function TodayScreen() {
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      customModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        customModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       // Свайп вниз закрывает модальное окно
@@ -1033,10 +1039,13 @@ export default function TodayScreen() {
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, editModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      editModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        editModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
@@ -1128,10 +1137,13 @@ export default function TodayScreen() {
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, editPresetModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
-                    .activeOffsetY([10, 100])
-                    .failOffsetX([-50, 50])
+                    .minDistance(5)
+                    .activeOffsetY([5, 100])
+                    .failOffsetX([-30, 30])
                     .onUpdate((e) => {
-                      editPresetModalTranslateY.value = e.translationY;
+                      if (e.translationY > 0) {
+                        editPresetModalTranslateY.value = e.translationY;
+                      }
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
@@ -1234,10 +1246,13 @@ export default function TodayScreen() {
             <TouchableWithoutFeedback onPress={() => {}}>
               <Animated.View style={[styles.datePickerCard, datePickerModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
-                  .activeOffsetY([10, 100])
-                  .failOffsetX([-50, 50])
+                  .minDistance(5)
+                  .activeOffsetY([5, 100])
+                  .failOffsetX([-30, 30])
                   .onUpdate((e) => {
-                    datePickerModalTranslateY.value = e.translationY;
+                    if (e.translationY > 0) {
+                      datePickerModalTranslateY.value = e.translationY;
+                    }
                   })
                   .onEnd((e) => {
                     if (e.translationY > 50) {

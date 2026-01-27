@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -9,8 +9,10 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
 import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
 import { colors } from '../theme/colors';
+import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 
 export default function SettingsScreen() {
+  const navigation = useNavigation();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -27,6 +29,7 @@ export default function SettingsScreen() {
   const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
   const importModalTranslateY = useSharedValue(0);
 
   const updateRecommendation = useCallback(async () => {
@@ -71,8 +74,14 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSettings();
+      checkPremiumStatus();
     }, [loadSettings])
   );
+
+  const checkPremiumStatus = async () => {
+    const premium = await isPremiumUser();
+    setIsPremium(premium);
+  };
 
   const handleSaveGoal = async () => {
     const value = parseFloat(dailyGoal.replace(',', '.'));
@@ -444,6 +453,48 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+
+        {/* Премиум */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => navigation.navigate('Premium' as never)}
+          >
+            <MaterialCommunityIcons name="crown" size={24} color={isPremium ? "#f4c430" : colors.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.actionButtonText}>
+                {isPremium ? 'Премиум активен' : 'Премиум'}
+              </Text>
+              {!isPremium && (
+                <Text style={styles.actionButtonSubtext}>Разблокировать все функции</Text>
+              )}
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={[styles.actionButton, { marginTop: 8, opacity: 0.7 }]} 
+              onPress={async () => {
+                if (isPremium) {
+                  await disableDevPremium();
+                  await checkPremiumStatus();
+                  Alert.alert('Dev Mode', 'Премиум отключен (dev mode)');
+                } else {
+                  await enableDevPremium();
+                  await checkPremiumStatus();
+                  Alert.alert('Dev Mode', 'Премиум включен (dev mode)');
+                }
+              }}
+            >
+              <MaterialCommunityIcons name="bug" size={24} color={colors.textSecondary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { fontSize: 14 }]}>
+                  {isPremium ? 'Отключить Premium (Dev)' : 'Включить Premium (Dev)'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Экспорт и импорт данных */}
@@ -855,6 +906,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+  },
+  actionButtonSubtext: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   dangerButtonText: {
     color: colors.error,

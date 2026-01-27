@@ -138,4 +138,10 @@ export async function updatePreset(id: string, preset: Omit<PresetDrink, 'id'>):
   return next;
 }
 
+// Заменяет все пресеты новым списком (для тестовых данных)
+export async function setUserPresets(presets: PresetDrink[]): Promise<void> {
+  await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  presetsEventEmitter.emit(presets);
+}
+
 

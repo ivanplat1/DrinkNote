@@ -16,12 +16,14 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.drinknote.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -39,6 +41,11 @@
     },
     "plugins": [
       "expo-localization"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1f026970-5d72-4828-915f-6b0955bbcaf1"
+      }
+    }
   }
 }
