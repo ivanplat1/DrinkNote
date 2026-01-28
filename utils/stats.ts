@@ -375,3 +375,291 @@ export function getTopDrinks(drinks: Drink[], limit: number = 5): Array<{
     .slice(0, limit);
 }
 
+// ========== PREMIUM: Расширенная статистика ==========
+
+// Сравнение двух периодов (месяц к месяцу, год к году)
+export function comparePeriods(
+  drinks: Drink[],
+  period1Start: Date,
+  period1End: Date,
+  period2Start: Date,
+  period2End: Date
+): {
+  period1: { totalUnits: number; daysWithDrinks: number; averagePerDay: number };
+  period2: { totalUnits: number; daysWithDrinks: number; averagePerDay: number };
+  change: { units: number; unitsPercent: number; days: number; daysPercent: number };
+} {
+  const period1ISOStart = formatISO(period1Start);
+  const period1ISOEnd = formatISO(period1End);
+  const period2ISOStart = formatISO(period2Start);
+  const period2ISOEnd = formatISO(period2End);
+  
+  const period1Drinks = drinks.filter(d => d.dateISO >= period1ISOStart && d.dateISO <= period1ISOEnd);
+  const period2Drinks = drinks.filter(d => d.dateISO >= period2ISOStart && d.dateISO <= period2ISOEnd);
+  
+  const period1Units = period1Drinks.reduce((sum, d) => sum + d.standardUnits, 0);
+  const period2Units = period2Drinks.reduce((sum, d) => sum + d.standardUnits, 0);
+  
+  const period1Dates = new Set(period1Drinks.map(d => d.dateISO));
+  const period2Dates = new Set(period2Drinks.map(d => d.dateISO));
+  
+  const period1Days = period1Dates.size;
+  const period2Days = period2Dates.size;
+  
+  const period1Avg = period1Days > 0 ? period1Units / period1Days : 0;
+  const period2Avg = period2Days > 0 ? period2Units / period2Days : 0;
+  
+  const unitsChange = period2Units - period1Units;
+  const unitsPercent = period1Units > 0 ? ((unitsChange / period1Units) * 100) : 0;
+  
+  const daysChange = period2Days - period1Days;
+  const daysPercent = period1Days > 0 ? ((daysChange / period1Days) * 100) : 0;
+  
+  return {
+    period1: {
+      totalUnits: Math.round(period1Units * 100) / 100,
+      daysWithDrinks: period1Days,
+      averagePerDay: Math.round(period1Avg * 100) / 100,
+    },
+    period2: {
+      totalUnits: Math.round(period2Units * 100) / 100,
+      daysWithDrinks: period2Days,
+      averagePerDay: Math.round(period2Avg * 100) / 100,
+    },
+    change: {
+      units: Math.round(unitsChange * 100) / 100,
+      unitsPercent: Math.round(unitsPercent * 10) / 10,
+      days: daysChange,
+      daysPercent: Math.round(daysPercent * 10) / 10,
+    },
+  };
+}
+
+// Тренд по месяцам (для линейного графика)
+export function getMonthlyTrend(drinks: Drink[], months: number = 12): Array<{
+  month: Date;
+  totalUnits: number;
+  daysWithDrinks: number;
+  averagePerDay: number;
+}> {
+  const result: Array<{ month: Date; totalUnits: number; daysWithDrinks: number; averagePerDay: number }> = [];
+  const today = new Date();
+  
+  for (let i = months - 1; i >= 0; i--) {
+    const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const stats = getMonthStats(drinks, monthDate);
+    result.push({
+      month: monthDate,
+      totalUnits: stats.totalUnits,
+      daysWithDrinks: stats.daysWithDrinks,
+      averagePerDay: stats.averagePerDay,
+    });
+  }
+  
+  return result;
+}
+
+// Тренд по неделям (для линейного графика)
+export function getWeeklyTrend(drinks: Drink[], weeks: number = 12): Array<{
+  weekStart: Date;
+  totalUnits: number;
+  daysWithDrinks: number;
+  averagePerDay: number;
+}> {
+  const result: Array<{ weekStart: Date; totalUnits: number; daysWithDrinks: number; averagePerDay: number }> = [];
+  const today = new Date();
+  
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekDate = new Date(today);
+    weekDate.setDate(weekDate.getDate() - (i * 7));
+    const weekStart = startOfWeek(weekDate);
+    const stats = getWeekStats(drinks, weekStart);
+    result.push({
+      weekStart,
+      totalUnits: stats.totalUnits,
+      daysWithDrinks: stats.daysWithDrinks,
+      averagePerDay: stats.averagePerDay,
+    });
+  }
+  
+  return result;
+}
+
+// Детальная аналитика по дням недели (средние значения и паттерны)
+export function getDetailedWeekdayAnalytics(drinks: Drink[]): Array<{
+  weekday: number;
+  weekdayName: string;
+  totalUnits: number;
+  averageUnits: number;
+  daysCount: number;
+  percentageOfTotal: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+}> {
+  const weekdayStats = getWeekdayStats(drinks);
+  const totalUnits = drinks.reduce((sum, d) => sum + d.standardUnits, 0);
+  const WEEKDAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+  
+  // Вычисляем тренд (сравниваем с предыдущим днем)
+  return weekdayStats.map((stat, index) => {
+    const prevStat = index > 0 ? weekdayStats[index - 1] : weekdayStats[6]; // Сравниваем с предыдущим днем недели
+    let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
+    
+    if (stat.averageUnits > prevStat.averageUnits * 1.1) {
+      trend = 'increasing';
+    } else if (stat.averageUnits < prevStat.averageUnits * 0.9) {
+      trend = 'decreasing';
+    }
+    
+    return {
+      weekday: stat.weekday,
+      weekdayName: WEEKDAY_NAMES[stat.weekday],
+      totalUnits: stat.totalUnits,
+      averageUnits: stat.averageUnits,
+      daysCount: stat.daysCount,
+      percentageOfTotal: totalUnits > 0 ? Math.round((stat.totalUnits / totalUnits) * 1000) / 10 : 0,
+      trend,
+    };
+  });
+}
+
+// Прогрессия серий воздержания
+export function getStreakProgression(drinks: Drink[]): Array<{
+  streakStart: string;
+  streakEnd: string;
+  length: number;
+  completed: boolean;
+}> {
+  const dayMap = new Map<string, number>();
+  drinks.forEach(drink => {
+    const existing = dayMap.get(drink.dateISO) || 0;
+    dayMap.set(drink.dateISO, existing + drink.standardUnits);
+  });
+  
+  const allDates = Array.from(dayMap.keys()).sort();
+  const today = formatISO(new Date());
+  const streaks: Array<{ streakStart: string; streakEnd: string; length: number; completed: boolean }> = [];
+  
+  if (allDates.length === 0) return streaks;
+  
+  // Находим все серии между записями
+  for (let i = 0; i < allDates.length - 1; i++) {
+    const current = new Date(allDates[i] + 'T00:00:00');
+    const next = new Date(allDates[i + 1] + 'T00:00:00');
+    const diffDays = Math.floor((next.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 1) {
+      const streakStart = new Date(current);
+      streakStart.setDate(streakStart.getDate() + 1);
+      const streakEnd = new Date(next);
+      streakEnd.setDate(streakEnd.getDate() - 1);
+      
+      streaks.push({
+        streakStart: formatISO(streakStart),
+        streakEnd: formatISO(streakEnd),
+        length: diffDays - 1,
+        completed: true,
+      });
+    }
+  }
+  
+  // Проверяем текущую серию
+  const lastRecordDate = new Date(allDates[allDates.length - 1] + 'T00:00:00');
+  const todayDate = new Date(today + 'T00:00:00');
+  const daysSinceLastRecord = Math.floor((todayDate.getTime() - lastRecordDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysSinceLastRecord > 0) {
+    const currentStreakStart = new Date(lastRecordDate);
+    currentStreakStart.setDate(currentStreakStart.getDate() + 1);
+    
+    streaks.push({
+      streakStart: formatISO(currentStreakStart),
+      streakEnd: today,
+      length: daysSinceLastRecord - 1,
+      completed: false,
+    });
+  }
+  
+  return streaks.sort((a, b) => b.length - a.length);
+}
+
+// Сравнение текущей недели с предыдущей
+export function compareCurrentWeekWithPrevious(drinks: Drink[]): ReturnType<typeof comparePeriods> {
+  const today = new Date();
+  const currentWeekStart = startOfWeek(today);
+  const currentWeekEnd = endOfWeek(today);
+  
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekEnd = new Date(previousWeekStart);
+  previousWeekEnd.setDate(previousWeekEnd.getDate() + 6);
+  
+  return comparePeriods(drinks, previousWeekStart, previousWeekEnd, currentWeekStart, currentWeekEnd);
+}
+
+// Сравнение текущей недели с предыдущей за схожий период
+export function compareCurrentWeekWithPreviousAdjusted(drinks: Drink[]): ReturnType<typeof comparePeriods> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const currentWeekStart = startOfWeek(today);
+  
+  // Вычисляем текущий день недели (0 = понедельник, 6 = воскресенье)
+  const dayOfWeek = (today.getDay() + 6) % 7; // Преобразуем к понедельник=0
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekStart.getDate() + dayOfWeek);
+  
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekEnd = new Date(previousWeekStart);
+  previousWeekEnd.setDate(previousWeekStart.getDate() + dayOfWeek);
+  
+  return comparePeriods(drinks, previousWeekStart, previousWeekEnd, currentWeekStart, currentWeekEnd);
+}
+
+// Сравнение текущего месяца с предыдущим
+export function compareCurrentMonthWithPrevious(drinks: Drink[]): ReturnType<typeof comparePeriods> {
+  const today = new Date();
+  const currentMonthStart = startOfMonth(today);
+  const currentMonthEnd = endOfMonth(today);
+  
+  const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const previousMonthStart = startOfMonth(previousMonth);
+  const previousMonthEnd = endOfMonth(previousMonth);
+  
+  return comparePeriods(drinks, previousMonthStart, previousMonthEnd, currentMonthStart, currentMonthEnd);
+}
+
+// Сравнение текущего месяца с предыдущим за схожий период
+export function compareCurrentMonthWithPreviousAdjusted(drinks: Drink[]): ReturnType<typeof comparePeriods> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const currentMonthStart = startOfMonth(today);
+  const currentDayOfMonth = today.getDate();
+  
+  // Текущий месяц: с начала до текущего дня включительно
+  const currentMonthEnd = new Date(today);
+  
+  // Предыдущий месяц: с начала до того же дня месяца
+  const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const previousMonthStart = startOfMonth(previousMonth);
+  
+  // Определяем последний день предыдущего месяца
+  const lastDayOfPreviousMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  const dayToCompare = Math.min(currentDayOfMonth, lastDayOfPreviousMonth);
+  
+  const previousMonthEnd = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), dayToCompare);
+  
+  return comparePeriods(drinks, previousMonthStart, previousMonthEnd, currentMonthStart, currentMonthEnd);
+}
+
+// Сравнение текущего года с предыдущим
+export function compareCurrentYearWithPrevious(drinks: Drink[]): ReturnType<typeof comparePeriods> {
+  const today = new Date();
+  const currentYearStart = new Date(today.getFullYear(), 0, 1);
+  const currentYearEnd = new Date(today.getFullYear(), 11, 31);
+  
+  const previousYearStart = new Date(today.getFullYear() - 1, 0, 1);
+  const previousYearEnd = new Date(today.getFullYear() - 1, 11, 31);
+  
+  return comparePeriods(drinks, previousYearStart, previousYearEnd, currentYearStart, currentYearEnd);
+}
+
