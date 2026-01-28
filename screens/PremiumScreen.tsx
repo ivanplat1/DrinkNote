@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { colors as defaultColors } from '../theme/colors';
 import { isPremiumUser } from '../storage/premium';
 import { initPurchases, purchasePremium, restorePurchases } from '../services/purchases';
 import { useNavigation } from '@react-navigation/native';
 
 export default function PremiumScreen() {
+  const { colors } = useTheme();
   const navigation = useNavigation();
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,18 +107,18 @@ export default function PremiumScreen() {
 
   if (isPremium) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Премиум</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Премиум</Text>
           <View style={styles.backButton} />
         </View>
         <View style={styles.premiumActiveContainer}>
           <MaterialCommunityIcons name="crown" size={64} color="#f4c430" />
-          <Text style={styles.premiumActiveTitle}>Премиум активен!</Text>
-          <Text style={styles.premiumActiveText}>
+          <Text style={[styles.premiumActiveTitle, { color: colors.text }]}>Премиум активен!</Text>
+          <Text style={[styles.premiumActiveText, { color: colors.textSecondary }]}>
             Все премиум функции разблокированы и доступны для использования.
           </Text>
         </View>
@@ -125,22 +127,22 @@ export default function PremiumScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Премиум</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Премиум</Text>
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Hero Section */}
           <View style={styles.heroSection}>
             <MaterialCommunityIcons name="crown" size={80} color="#f4c430" />
-            <Text style={styles.heroTitle}>Разблокируйте все возможности</Text>
-            <Text style={styles.heroSubtitle}>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>Разблокируйте все возможности</Text>
+            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
               Получите доступ к расширенной статистике, темам оформления, виджетам и интеграциям
             </Text>
           </View>
@@ -149,12 +151,12 @@ export default function PremiumScreen() {
           <View style={styles.featuresSection}>
             {premiumFeatures.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
-                <View style={styles.featureIconContainer}>
+                <View style={[styles.featureIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
                   <MaterialCommunityIcons name={feature.icon as any} size={32} color={colors.primary} />
                 </View>
                 <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDescription}>{feature.description}</Text>
+                  <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
+                  <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{feature.description}</Text>
                 </View>
               </View>
             ))}
@@ -162,7 +164,7 @@ export default function PremiumScreen() {
 
           {/* Purchase Button */}
           <TouchableOpacity
-            style={[styles.purchaseButton, isLoading && styles.purchaseButtonDisabled]}
+            style={[styles.purchaseButton, isLoading && styles.purchaseButtonDisabled, { backgroundColor: colors.primary }]}
             onPress={handlePurchase}
             disabled={isLoading}
           >
@@ -185,13 +187,13 @@ export default function PremiumScreen() {
             {isRestoring ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <Text style={styles.restoreButtonText}>Восстановить покупки</Text>
+              <Text style={[styles.restoreButtonText, { color: colors.primary }]}>Восстановить покупки</Text>
             )}
           </TouchableOpacity>
 
           {/* Info */}
-          <View style={styles.infoSection}>
-            <Text style={styles.infoText}>
+          <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               • Одноразовая покупка, без подписок{'\n'}
               • Работает офлайн, без серверов{'\n'}
               • Все функции доступны сразу после покупки
@@ -206,7 +208,7 @@ export default function PremiumScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: defaultColors.background,
   },
   header: {
     flexDirection: 'row',
@@ -215,7 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   backButton: {
     width: 40,
@@ -226,7 +228,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   scrollView: {
     flex: 1,
@@ -241,14 +243,14 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -263,8 +265,8 @@ const styles = StyleSheet.create({
   featureIconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 12,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -275,16 +277,16 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 4,
   },
   featureDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     lineHeight: 20,
   },
   purchaseButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -323,17 +325,17 @@ const styles = StyleSheet.create({
   },
   restoreButtonText: {
     fontSize: 14,
-    color: colors.primary,
+    color: defaultColors.primary,
     fontWeight: '600',
   },
   infoSection: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     padding: 16,
   },
   infoText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     lineHeight: 20,
   },
   premiumActiveContainer: {
@@ -345,13 +347,14 @@ const styles = StyleSheet.create({
   premiumActiveTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   premiumActiveText: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },

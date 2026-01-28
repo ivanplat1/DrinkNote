@@ -14,7 +14,7 @@ import CalendarScreen from './screens/CalendarScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PremiumScreen from './screens/PremiumScreen';
-import { colors } from './theme/colors';
+import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { generateTestDrinks, generateTestPresets } from './utils/testData';
 import { getAllDrinks, setAllDrinks } from './storage/drinks';
 import { getUserPresets, setUserPresets } from './storage/presets';
@@ -41,12 +41,16 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 
 function AppContent() {
   const insets = useSafeAreaInsets();
+  const { colors, themeName } = useTheme();
   
   // Определяем iOS в веб-версии (PWA)
   const isIOS = Platform.OS === 'ios' || 
                 (Platform.OS === 'web' && typeof window !== 'undefined' && 
                  (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)));
+  
+  // Определяем стиль статус-бара в зависимости от темы
+  const statusBarStyle = themeName === 'light' ? 'dark' : 'light';
   
   // TODO: Удалить перед релизом - загрузка тестовых данных
   // Установите FORCE_LOAD_TEST_DATA = true для принудительной загрузки
@@ -89,7 +93,7 @@ function AppContent() {
   
   return (
     <NavigationContainer>
-        <StatusBar style="light" />
+        <StatusBar style={statusBarStyle} />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs">
             {() => (
@@ -118,8 +122,8 @@ function AppContent() {
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
             },
-            tabBarActiveTintColor: colors.primaryLight || colors.primary,
-            tabBarInactiveTintColor: colors.textTertiary,
+            tabBarActiveTintColor: colors.primary,
+            tabBarInactiveTintColor: themeName === 'light' ? colors.textSecondary : colors.textTertiary,
             tabBarLabelStyle: {
               fontWeight: '600',
               fontSize: 10, // Уменьшаем размер шрифта подписей
@@ -176,9 +180,11 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <AppContent />
-      </GestureHandlerRootView>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AppContent />
+        </GestureHandlerRootView>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

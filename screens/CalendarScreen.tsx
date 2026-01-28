@@ -12,7 +12,8 @@ import { PresetDrink } from '../types/preset';
 import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from '../storage/presets';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { colors as defaultColors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
 
 // Сколько недель одновременно видно на экране
@@ -120,12 +121,14 @@ function MonthHeader({
   monthStyle, 
   sobrietyStats,
   animatedStyle,
+  colors,
 }: { 
   label: string;
   headerStyle: any; 
   monthStyle: any;
   sobrietyStats?: { currentStreak: number; bestStreak: number };
   animatedStyle?: any;
+  colors: any;
 }) {
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
@@ -149,7 +152,7 @@ function MonthHeader({
 }
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, onRemove, onQuantityChange }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void }) {
+function SwipeableListItem({ item, onRemove, onQuantityChange, colors }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true);
@@ -266,12 +269,12 @@ function SwipeableListItem({ item, onRemove, onQuantityChange }: { item: Drink; 
           </TouchableOpacity>
         </Animated.View>
         
-        <Animated.View style={[styles.listItem, animatedStyle]}>
+        <Animated.View style={[styles.listItem, animatedStyle, { backgroundColor: colors.backgroundTertiary }]}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{item.name}</Text>
-                <Text style={styles.itemSub}>
+                <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
+                <Text style={[styles.itemSub, { color: colors.textSecondary }]}>
                   {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
                   {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
                 </Text>
@@ -279,18 +282,18 @@ function SwipeableListItem({ item, onRemove, onQuantityChange }: { item: Drink; 
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
                 <TouchableOpacity
                   onPress={() => onQuantityChange(item.id, -1)}
-                  style={[styles.qtyButton, { marginRight: 4 }]}
+                  style={[styles.qtyButton, { marginRight: 4, backgroundColor: 'transparent', borderWidth: 0 }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.qtyButtonText}>−</Text>
+                  <Text style={[styles.qtyButtonText, { color: colors.text }]}>−</Text>
                 </TouchableOpacity>
-                <Text style={[styles.qtyValue, { minWidth: 24, textAlign: 'center' }]}>{item.quantity ?? 1}</Text>
+                <Text style={[styles.qtyValue, { minWidth: 24, textAlign: 'center', color: colors.text }]}>{item.quantity ?? 1}</Text>
                 <TouchableOpacity
                   onPress={() => onQuantityChange(item.id, 1)}
-                  style={[styles.qtyButton, { marginLeft: 4 }]}
+                  style={[styles.qtyButton, { marginLeft: 4, backgroundColor: 'transparent', borderWidth: 0 }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.qtyButtonText}>+</Text>
+                  <Text style={[styles.qtyButtonText, { color: colors.text }]}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -312,6 +315,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
   screenWidth,
   screenHeight,
   insets,
+  colors,
 }: {
   year: number;
   totalsByDate: Record<string, number>;
@@ -322,6 +326,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
   screenWidth: number;
   screenHeight: number;
   insets: { top: number; bottom: number };
+  colors: any;
 }) {
   const todayISO = useMemo(() => formatISO(new Date()), []);
   const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
@@ -534,6 +539,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
               justifyContent: 'center',
               alignItems: 'center',
               backgroundColor: colors.backgroundCard,
+              borderWidth: 1,
+              borderColor: colors.border,
               opacity: 1,
               marginRight: gapBetweenDays / 2,
               marginBottom: gapBetweenDays / 2,
@@ -562,6 +569,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
               }
               cellStyle.opacity = 1;
             } else if (total > 0) {
+              // Убираем стандартную границу для дней с данными
+              cellStyle.borderWidth = 0;
               // Градация по количеству алкоголя
               if (dailyGoal !== null && dailyGoal > 0) {
                 if (total <= dailyGoal * 0.5) {
@@ -601,7 +610,11 @@ const YearCalendarView = React.memo(function YearCalendarView({
                   fontSize: 8,
                   color: (isInCurrentStreak || isInBestStreak) 
                     ? (streakType === 'gold' || streakType === 'bronze' ? '#ffffff' : '#000000')
-                    : (total > 0 && total >= lethalDose ? '#ffffff' : colors.text),
+                    : (total > 0 && total >= lethalDose 
+                        ? '#ffffff' 
+                        : (total > 0 
+                            ? '#ffffff' 
+                            : colors.text)),
                   fontWeight: isToday ? '700' : '400'
                 }}>
                   {date.getDate()}
@@ -612,7 +625,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
         </View>
       </View>
     );
-  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose]);
+  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors]);
   
   const months = useMemo(() => {
     return monthNames.map((_, index) => index);
@@ -645,6 +658,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
 });
 
 export default function CalendarScreen() {
+  const { colors, themeName } = useTheme();
   const [all, setAll] = useState<Drink[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
@@ -1623,14 +1637,32 @@ export default function CalendarScreen() {
         }
       }
       
+      const isLightTheme = themeName === 'light' || themeName === 'highContrast';
+      const hasData = total > 0 || total >= lethalDose;
+      
       return (
         <TouchableOpacity
           key={`${iso}_${idx}`}
           style={[
             styles.cell,
             { width: cellWidth, height: cellHeight - 4, margin: 0 },
+            // Для дней с данными на светлых темах убираем тени и затемненные границы
+            isLightTheme && hasData && {
+              shadowColor: 'transparent',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0,
+              shadowRadius: 0,
+              elevation: 0,
+              borderTopColor: 'transparent',
+              borderRightColor: 'transparent',
+              borderBottomColor: 'transparent',
+              borderLeftColor: 'transparent',
+            },
             // Для дней в серии не применяем cellCurrent/cellAdjacent, чтобы зеленый фон был виден
-            !glowStyle && (isCurrentMonth ? styles.cellCurrent : styles.cellAdjacent),
+            // Для дней с данными на светлых темах тоже не применяем cellCurrent/cellAdjacent, чтобы цветной фон был виден
+            !glowStyle && !(cellColorStyle && isLightTheme) && (isCurrentMonth 
+              ? [styles.cellCurrent, { backgroundColor: colors.backgroundCard }] 
+              : [styles.cellAdjacent, { backgroundColor: colors.backgroundCard }]),
             glowStyle, // glowStyle применяется после, чтобы перекрыть фон
             cellColorStyle,
             isToday && styles.cellToday,
@@ -1645,7 +1677,21 @@ export default function CalendarScreen() {
                      bestCompletedStreak.length >= 14 ? 'silver' : 'bronze'} 
               />
             )}
-            <Text style={[styles.dayNum, !isCurrentMonth && styles.dayNumMuted]}>{d.getDate()}</Text>
+            <Text style={[
+              styles.dayNum, 
+              !isCurrentMonth && styles.dayNumMuted,
+              { 
+                color: !isCurrentMonth 
+                  ? colors.textTertiary 
+                  : (glowStyle 
+                      ? '#ffffff' 
+                      : (total >= lethalDose 
+                          ? '#ffffff' 
+                          : (cellColorStyle && total > 0 
+                              ? colors.text 
+                              : colors.text)))
+              }
+            ]}>{d.getDate()}</Text>
             {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) && (
               <View style={styles.badgeContainer}>
                 {total >= lethalDose ? (
@@ -1653,10 +1699,22 @@ export default function CalendarScreen() {
                     <Text style={styles.deadEmoji}>💀</Text>
                   </View>
                 ) : total > 0 ? (
-                  <View style={styles.badge}>
+                  <View style={[
+                    styles.badge, 
+                    themeName === 'light' || themeName === 'highContrast' 
+                      ? { 
+                          backgroundColor: 'transparent', 
+                          borderRadius: 0, 
+                          paddingHorizontal: 0, 
+                          paddingVertical: 0,
+                          minWidth: 0,
+                          minHeight: 0
+                        } 
+                      : { backgroundColor: colors.primaryLight }
+                  ]}>
                     <MaterialCommunityIcons name="cup" size={14} color="#f59e0b" />
-                    <Text style={styles.badgeUnits}>{total.toFixed(1)}</Text>
-                    <Text style={styles.badgeAlcohol}>{(total * 10).toFixed(0)}г</Text>
+                    <Text style={[styles.badgeUnits, { color: colors.text }]}>{total.toFixed(1)}</Text>
+                    <Text style={[styles.badgeAlcohol, { color: colors.textSecondary }]}>{(total * 10).toFixed(0)}г</Text>
                   </View>
                 ) : isInBestStreak && bestCompletedStreak ? (
                   <Text style={styles.awardEmoji}>
@@ -1762,24 +1820,24 @@ export default function CalendarScreen() {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Переключатель режима календаря */}
-      <View style={styles.viewModeSwitcher}>
+      <View style={[styles.viewModeSwitcher, { backgroundColor: colors.backgroundSecondary }]}>
         <TouchableOpacity
-          style={[styles.viewModeButton, calendarViewMode === 'month' && styles.viewModeButtonActive]}
+            style={[styles.viewModeButton, calendarViewMode === 'month' && styles.viewModeButtonActive, calendarViewMode === 'month' && { backgroundColor: colors.primaryLight }]}
           onPress={() => setCalendarViewMode('month')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? colors.text : colors.textSecondary }]}>
             Месяц
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.viewModeButton, calendarViewMode === 'year' && styles.viewModeButtonActive]}
+            style={[styles.viewModeButton, calendarViewMode === 'year' && styles.viewModeButtonActive, calendarViewMode === 'year' && { backgroundColor: colors.primaryLight }]}
           onPress={() => setCalendarViewMode('year')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? colors.text : colors.textSecondary }]}>
             Год
           </Text>
         </TouchableOpacity>
@@ -1799,9 +1857,10 @@ export default function CalendarScreen() {
             <MonthHeader 
               label={monthLabel}
               headerStyle={styles.headerRow} 
-              monthStyle={styles.month}
+              monthStyle={[styles.month, { color: colors.text }]}
               sobrietyStats={sobrietyStats}
               animatedStyle={monthHeaderAnimatedStyle}
+              colors={colors}
             />
           </View>
 
@@ -1816,7 +1875,7 @@ export default function CalendarScreen() {
             }}
           >
             {WEEKDAY_SHORT_RU.map((w) => (
-              <Text key={w} style={styles.weekCell}>{w}</Text>
+              <Text key={w} style={[styles.weekCell, { color: colors.textSecondary }]}>{w}</Text>
             ))}
           </View>
 
@@ -1829,7 +1888,7 @@ export default function CalendarScreen() {
               flex: 1,
               justifyContent: 'center', 
               alignItems: 'center',
-              backgroundColor: colors.background
+              backgroundColor: defaultColors.background
             }}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
@@ -1839,21 +1898,21 @@ export default function CalendarScreen() {
         <>
           <View style={styles.yearHeader}>
             <TouchableOpacity
-              style={styles.yearNavButton}
+              style={[styles.yearNavButton, { backgroundColor: colors.backgroundSecondary }]}
               onPress={() => setSelectedYear(selectedYear - 1)}
             >
               <MaterialIcons name="chevron-left" size={20} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.yearLabel}>{selectedYear}</Text>
+            <Text style={[styles.yearLabel, { color: colors.textSecondary }]}>{selectedYear}</Text>
             {selectedYear < currentYear ? (
               <TouchableOpacity
-                style={styles.yearNavButton}
+                style={[styles.yearNavButton, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={() => setSelectedYear(selectedYear + 1)}
               >
                 <MaterialIcons name="chevron-right" size={20} color={colors.text} />
               </TouchableOpacity>
             ) : (
-              <View style={styles.yearNavButton}>
+              <View style={[styles.yearNavButton, { backgroundColor: colors.backgroundSecondary }]}>
                 <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
             )}
@@ -1869,6 +1928,7 @@ export default function CalendarScreen() {
               screenWidth={screenWidth}
               screenHeight={screenHeight}
               insets={insets}
+              colors={colors}
             />
           </View>
         </>
@@ -1898,7 +1958,7 @@ export default function CalendarScreen() {
           <View style={styles.modalBackdrop}>
             <View style={styles.modalSpacer} />
             <TouchableWithoutFeedback onPress={() => {}}>
-              <Animated.View style={[styles.modalCard, dayModalAnimatedStyle]}>
+              <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, dayModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
                   .minDistance(5)
                   .activeOffsetY([5, 100])
@@ -1929,7 +1989,7 @@ export default function CalendarScreen() {
                     }}
                     activeOpacity={1}
                   >
-                    <View style={styles.modalDragBar} />
+                    <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                   </TouchableOpacity>
                 </GestureDetector>
                 <View style={[styles.modalHeader, { marginTop: 4 }]}>
@@ -1941,7 +2001,7 @@ export default function CalendarScreen() {
                       const dayNumber = date.getDate();
                       const month = date.toLocaleDateString('ru-RU', { month: 'short' });
                       return (
-                        <Text style={styles.modalTitle}>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>
                           {weekdayShort}, {dayNumber} {month}
                         </Text>
                       );
@@ -1950,15 +2010,15 @@ export default function CalendarScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                       <MaterialCommunityIcons name="cup" size={14} color={colors.textSecondary} />
-                      <Text style={styles.modalTotal}>{formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
+                      <Text style={[styles.modalTotal, { color: colors.textSecondary }]}>{formatTotalVolume(dayTotalVolumeMl, 1)}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                       <MaterialIcons name="water-drop" size={14} color={colors.textSecondary} />
-                      <Text style={styles.modalTotal}>{(dayTotalUnits * 10).toFixed(0)}г</Text>
+                      <Text style={[styles.modalTotal, { color: colors.textSecondary }]}>{(dayTotalUnits * 10).toFixed(0)}г</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                       <MaterialCommunityIcons name="calculator" size={14} color={colors.textSecondary} />
-                      <Text style={styles.modalTotal}>{dayTotalUnits.toFixed(1)}</Text>
+                      <Text style={[styles.modalTotal, { color: colors.textSecondary }]}>{dayTotalUnits.toFixed(1)}</Text>
                     </View>
                   </View>
                 </View>
@@ -1970,6 +2030,7 @@ export default function CalendarScreen() {
                     contentContainerStyle={{ paddingBottom: 10 + insets.bottom }}
                     renderItem={({ item }) => (
                       <SwipeableListItem
+                        colors={colors}
                         item={item}
                         onRemove={deleteEntry}
                         onQuantityChange={changeQuantity}
@@ -1983,10 +2044,10 @@ export default function CalendarScreen() {
                     ListFooterComponent={
                       <TouchableOpacity 
                         onPress={openAddModal}
-                        style={styles.addDrinkButton}
+                        style={[styles.addDrinkButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.addDrinkButtonText}>+ Добавить напиток</Text>
+                        <Text style={[styles.addDrinkButtonText, { color: colors.primary }]}>+ Добавить напиток</Text>
                       </TouchableOpacity>
                     }
                   />
@@ -2017,6 +2078,7 @@ export default function CalendarScreen() {
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[
                   styles.modalCard,
+                  { backgroundColor: colors.backgroundCard },
                   searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
                   addModalAnimatedStyle
                 ]}>
@@ -2045,11 +2107,11 @@ export default function CalendarScreen() {
                       onPress={closeAddModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
-                    <Text style={styles.modalTitle}>Добавить напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из избранного или добавьте свой</Text>
                   
                     {/* Строка поиска для предложенных пресетов */}
@@ -2058,7 +2120,7 @@ export default function CalendarScreen() {
                       placeholderTextColor={colors.textTertiary}
                       value={searchQuery}
                       onChangeText={setSearchQuery}
-                      style={styles.searchInput}
+                      style={[styles.searchInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       returnKeyType="search"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -2078,6 +2140,7 @@ export default function CalendarScreen() {
                           key={preset.id}
                           style={({ pressed }) => [
                             styles.presetItem,
+                            { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
                             pressed && { opacity: 0.7 }
                           ]}
                           onPressIn={() => {
@@ -2088,8 +2151,8 @@ export default function CalendarScreen() {
                           }}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={styles.presetText}>{preset.name}</Text>
-                            <Text style={styles.presetDetails}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                            <Text style={[styles.presetText, { color: colors.text }]}>{preset.name}</Text>
+                            <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
                         </Pressable>
                       ))}
@@ -2104,6 +2167,7 @@ export default function CalendarScreen() {
                           key={preset.id}
                           style={({ pressed }) => [
                             styles.suggestedItem,
+                            { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
                             pressed && { opacity: 0.7 }
                           ]}
                           onPressIn={() => {
@@ -2114,8 +2178,8 @@ export default function CalendarScreen() {
                           }}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={styles.suggestedText}>{preset.name}</Text>
-                            <Text style={styles.suggestedDetails}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                            <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
+                            <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
                         </Pressable>
                       ))}
@@ -2123,13 +2187,13 @@ export default function CalendarScreen() {
                   )}
                   
                   <TouchableOpacity
-                    style={styles.addCustomButton}
+                    style={[styles.addCustomButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
                     onPress={() => {
                       Keyboard.dismiss();
                       openCustomModal();
                     }}
                   >
-                    <Text style={styles.addCustomButtonText}>+ Добавить свой напиток</Text>
+                    <Text style={[styles.addCustomButtonText, { color: colors.primaryLight }]}>+ Добавить свой напиток</Text>
                   </TouchableOpacity>
                 </ScrollView>
                   </View>
@@ -2150,7 +2214,7 @@ export default function CalendarScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
+                <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .minDistance(5)
                     .activeOffsetY([5, 100])
@@ -2176,11 +2240,11 @@ export default function CalendarScreen() {
                       onPress={closeCustomModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                    <Text style={styles.modalTitle}>Новый напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Объём и крепость будут автоматически добавлены в название
                     </Text>
@@ -2189,21 +2253,25 @@ export default function CalendarScreen() {
                       placeholderTextColor={colors.textTertiary}
                       value={newName}
                       onChangeText={setNewName}
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       returnKeyType="done"
                       blurOnSubmit
                       onSubmitEditing={Keyboard.dismiss}
                     />
                     <View style={styles.row}>
-                      <Text style={styles.label}>Тип:</Text>
+                      <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                       <View style={styles.typeRow}>
                         {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                           <TouchableOpacity
                             key={t}
-                            style={[styles.typeChip, newType === t && styles.typeChipActive]}
+                            style={[
+                              styles.typeChip, 
+                              { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                              newType === t && [styles.typeChipActive, { backgroundColor: colors.primaryDark, borderColor: colors.primary }]
+                            ]}
                             onPress={() => setNewType(t)}
                           >
-                            <Text style={styles.typeChipText}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -2215,7 +2283,7 @@ export default function CalendarScreen() {
                         keyboardType="numeric"
                         value={newVolume}
                         onChangeText={setNewVolume}
-                        style={[styles.input, { flex: 1, marginRight: 8 }]}
+                        style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="done"
                         blurOnSubmit
                         onSubmitEditing={Keyboard.dismiss}
@@ -2226,15 +2294,15 @@ export default function CalendarScreen() {
                         keyboardType="numeric"
                         value={newAbv}
                         onChangeText={setNewAbv}
-                        style={[styles.input, { flex: 1 }]}
+                        style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="done"
                         blurOnSubmit
                         onSubmitEditing={Keyboard.dismiss}
                       />
                     </View>
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
-                      <TouchableOpacity style={styles.saveBtn} onPress={saveCustomPreset}>
-                        <Text style={styles.saveBtnText}>Сохранить</Text>
+                      <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primaryLight || colors.primary, shadowColor: colors.primary }]} onPress={saveCustomPreset}>
+                        <Text style={[styles.saveBtnText, { color: '#fff' }]}>Сохранить</Text>
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
@@ -2254,7 +2322,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 0,
     paddingBottom: 0,
-    backgroundColor: colors.background,
+    backgroundColor: defaultColors.background,
   },
   headerRow: {
     flexDirection: 'row',
@@ -2267,13 +2335,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
   },
   month: {
     fontSize: 20,
     fontWeight: '700',
     textTransform: 'capitalize',
-    color: colors.text,
+    color: defaultColors.text,
   },
   weekRow: {
     flexDirection: 'row',
@@ -2284,7 +2352,7 @@ const styles = StyleSheet.create({
   weekCell: {
     flex: 1,
     textAlign: 'center',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -2306,17 +2374,6 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(255, 255, 255, 0.1)',
     borderBottomColor: 'rgba(0, 0, 0, 0.3)',
     borderLeftColor: 'rgba(0, 0, 0, 0.3)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: -2, height: 2 },
-        shadowOpacity: 0.4,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
   cellContent: {
     alignItems: 'center',
@@ -2340,43 +2397,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
     textAlign: 'center',
-    color: colors.text,
+    color: defaultColors.text,
     marginTop: 2,
     zIndex: 10,
   },
   dayNumMuted: {
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     opacity: 0.5,
     fontSize: 14,
   },
   cellCurrent: {
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     opacity: 1,
   },
   cellAdjacent: {
     // Та же база, но чуть приглушённая по яркости — визуально мягче при переключении месяца
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     opacity: 0.55,
   },
   // Металлические стили (прозрачная рамка, анимированная рамка поверх)
   cellGoldLight: {
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     borderColor: 'transparent',
   },
   cellGoldMedium: {
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     borderColor: 'transparent',
   },
   cellGoldStrong: {
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     borderColor: 'transparent',
   },
   cellToday: {
     borderWidth: 2,
-    borderTopColor: colors.primary,
-    borderRightColor: colors.primary,
-    borderBottomColor: colors.primary,
-    borderLeftColor: colors.primary,
+    borderTopColor: defaultColors.primary,
+    borderRightColor: defaultColors.primary,
+    borderBottomColor: defaultColors.primary,
+    borderLeftColor: defaultColors.primary,
   },
   // Subtle Glow для текущей серии - детальная прогрессия с фоном
   // Первые 5 дней - каждый день усиливается
@@ -2509,34 +2566,34 @@ const styles = StyleSheet.create({
   },
   // Тепловая карта: от зеленого к красному (больше оттенков)
   cellVeryLowAmount: {
-    backgroundColor: '#10b98125', // Очень светло-зеленый - минимальное количество
+    backgroundColor: '#22c55e70', // Светло-зеленый - минимальное количество (70% непрозрачности)
   },
   cellLowAmount: {
-    backgroundColor: '#10b98140', // Светло-зеленый - небольшое количество
+    backgroundColor: '#22c55e75', // Светло-зеленый - небольшое количество (75% непрозрачности)
   },
   cellLowModerateAmount: {
-    backgroundColor: '#84cc1640', // Зелено-желтый - низко-умеренное
+    backgroundColor: '#84cc1675', // Желто-зеленый - низко-умеренное (75% непрозрачности)
   },
   cellModerateAmount: {
-    backgroundColor: '#fbbf2440', // Желтый - умеренное количество (в пределах нормы)
+    backgroundColor: '#fbbf2480', // Желтый - умеренное количество (80% непрозрачности)
   },
   cellModerateHighAmount: {
-    backgroundColor: '#f59e0b45', // Желто-оранжевый - умеренно-высокое
+    backgroundColor: '#f59e0b85', // Желто-оранжевый - умеренно-высокое (85% непрозрачности)
   },
   cellHighAmount: {
-    backgroundColor: '#f59e0b50', // Оранжевый - превышение нормы
+    backgroundColor: '#f59e0b90', // Оранжевый - превышение нормы (90% непрозрачности)
   },
   cellHighVeryHighAmount: {
-    backgroundColor: '#ef444455', // Оранжево-красный - высоко-очень высокое
+    backgroundColor: '#ef444495', // Оранжево-красный - высоко-очень высокое (95% непрозрачности)
   },
   cellVeryHighAmount: {
-    backgroundColor: '#ef444460', // Красный - значительное превышение
+    backgroundColor: '#ef4444a0', // Красный - значительное превышение (100% непрозрачности, a0 = 160/255 ≈ 63%)
   },
   cellCriticalAmount: {
-    backgroundColor: '#991b1b80', // Темно-красный - критическое количество
+    backgroundColor: '#991b1b', // Темно-красный - критическое количество (полностью непрозрачный)
   },
   badge: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: defaultColors.primaryLight,
     borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 3,
@@ -2546,12 +2603,12 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   badgeUnits: {
-    color: colors.text,
+    color: defaultColors.text,
     fontSize: 14,
     fontWeight: '700',
   },
   badgeAlcohol: {
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -2571,7 +2628,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   modalCard: {
-    backgroundColor: colors.backgroundCard || colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
     minHeight: '33%',
     maxHeight: '70%',
     borderTopLeftRadius: 20,
@@ -2599,7 +2656,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: colors.textTertiary,
+    backgroundColor: defaultColors.textTertiary,
     alignSelf: 'center',
   },
   modalHeader: {
@@ -2614,14 +2671,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     flex: 1,
     paddingBottom: 8,
     minHeight: 32,
     lineHeight: 28,
   },
   modalTotal: {
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -2665,17 +2722,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: colors.backgroundTertiary,
+    backgroundColor: defaultColors.backgroundTertiary,
     borderRadius: 12,
   },
   itemTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 4,
   },
   itemSub: {
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -2683,22 +2740,22 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
   },
   qtyButtonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     lineHeight: 20,
   },
   qtyValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginHorizontal: 8,
   },
   backToTodayButton: {
@@ -2730,7 +2787,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   centerCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     minWidth: 280,
@@ -2740,18 +2797,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundCard,
+    borderBottomColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundCard,
   },
   presetText: {
     fontSize: 16,
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '500',
     flex: 1,
   },
   presetDetails: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontWeight: '400',
     marginLeft: 8,
   },
@@ -2759,34 +2816,34 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundCard,
+    borderBottomColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundCard,
   },
   suggestedText: {
     fontSize: 16,
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '500',
     flex: 1,
   },
   suggestedDetails: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontWeight: '400',
     marginLeft: 8,
   },
   addCustomButton: {
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginTop: 8,
     alignItems: 'center',
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
   },
   addCustomButtonText: {
-    color: colors.primaryLight || colors.primary,
+    color: defaultColors.primaryLight || defaultColors.primary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -2798,47 +2855,47 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addButtonText: {
-    color: colors.text,
+    color: defaultColors.text,
     fontSize: 16,
     fontWeight: '600',
   },
   addDrinkButton: {
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginTop: 8,
     marginBottom: 4,
     alignItems: 'center',
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.primaryLight || colors.primary,
+    borderColor: defaultColors.primaryLight || defaultColors.primary,
   },
   addDrinkButtonText: {
-    color: colors.primaryLight || colors.primary,
+    color: defaultColors.primaryLight || defaultColors.primary,
     fontSize: 16,
     fontWeight: '700',
   },
   input: {
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.background,
+    color: defaultColors.text,
+    backgroundColor: defaultColors.background,
     marginBottom: 12,
   },
   searchInput: {
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.backgroundSecondary,
+    color: defaultColors.text,
+    backgroundColor: defaultColors.backgroundSecondary,
     marginBottom: 12,
   },
   row: {
@@ -2849,7 +2906,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   typeRow: {
     flexDirection: 'row',
@@ -2860,18 +2917,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     marginRight: 8,
     marginBottom: 8,
   },
   typeChipActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primary,
+    backgroundColor: defaultColors.primaryDark,
+    borderColor: defaultColors.primary,
   },
   typeChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
+    color: defaultColors.text,
   },
   modalActions: {
     flexDirection: 'row',
@@ -2882,13 +2939,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 5,
   },
   cancelBtnText: {
-    color: colors.text,
+    color: defaultColors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2896,12 +2953,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight || colors.primary,
+    backgroundColor: defaultColors.primaryLight || defaultColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
-    color: colors.text,
+    color: defaultColors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2911,7 +2968,7 @@ const styles = StyleSheet.create({
   },
   viewModeSwitcher: {
     flexDirection: 'row',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 10,
     padding: 4,
     marginHorizontal: 12,
@@ -2926,15 +2983,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   viewModeButtonActive: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: defaultColors.primaryLight,
   },
   viewModeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   viewModeButtonTextActive: {
-    color: colors.text,
+    color: defaultColors.text,
   },
   yearHeader: {
     flexDirection: 'row',
@@ -2947,12 +3004,12 @@ const styles = StyleSheet.create({
   yearNavButton: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
   },
   yearLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   yearCalendarContainer: {
     flex: 1,

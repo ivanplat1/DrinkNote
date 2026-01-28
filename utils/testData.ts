@@ -36,6 +36,11 @@ export function generateTestDrinks(): Drink[] {
   // Разные типы напитков
   const beverageTypes: Drink['beverageType'][] = ['beer', 'wine', 'spirit', 'cocktail', 'other'];
   
+  let previousYearCount = 0;
+  let currentYearCount = 0;
+  
+  console.log('🔄 Начинаю генерацию тестовых данных...');
+  
   // Варианты напитков
   const drinkVariants = [
     // Пиво
@@ -74,7 +79,8 @@ export function generateTestDrinks(): Drink[] {
   // Используем фиксированный seed для воспроизводимости, но с вариативностью
   const usedDates = new Set<string>();
   
-  for (let daysAgo = 0; daysAgo < 90; daysAgo++) {
+  // Генерируем данные за весь предыдущий год (365 дней: от 365 до 729 дней назад)
+  for (let daysAgo = 365; daysAgo < 730; daysAgo++) {
     const dateISO = randomDate(daysAgo);
     
     // Пропускаем если уже использовали эту дату
@@ -83,11 +89,11 @@ export function generateTestDrinks(): Drink[] {
     const dayOfWeek = new Date(dateISO).getDay();
     
     // Разная вероятность в разные дни недели (пятница-воскресенье чаще)
-    let probability = 0.3; // базовая вероятность
+    let probability = 0.25; // немного меньше вероятность для прошлого года
     if (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0) {
-      probability = 0.6; // Пятница, суббота, воскресенье
+      probability = 0.5; // Пятница, суббота, воскресенье
     } else if (dayOfWeek === 4) {
-      probability = 0.4; // Четверг
+      probability = 0.35; // Четверг
     }
     
     // Решаем, добавлять ли записи в этот день
@@ -114,14 +120,15 @@ export function generateTestDrinks(): Drink[] {
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
         });
+        previousYearCount++;
       }
     }
   }
   
-  // Гарантируем минимум записей - добавляем записи за последние 30 дней более активно
-  for (let daysAgo = 0; daysAgo < 30; daysAgo++) {
+  // Гарантируем минимум записей за предыдущий год - добавляем записи более активно
+  for (let daysAgo = 365; daysAgo < 730; daysAgo++) {
     const dateISO = randomDate(daysAgo);
-    if (!usedDates.has(dateISO) && Math.random() < 0.5) {
+    if (!usedDates.has(dateISO) && Math.random() < 0.4) {
       usedDates.add(dateISO);
       // 1-2 вида напитков в день
       const entriesCount = randomInt(1, 2);
@@ -142,9 +149,136 @@ export function generateTestDrinks(): Drink[] {
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
         });
+        previousYearCount++;
       }
     }
   }
+  
+  // Добавляем несколько тяжелых дней за предыдущий год
+  const heavyDaysPreviousYear = [
+    randomDate(randomInt(400, 450)),
+    randomDate(randomInt(500, 550)),
+    randomDate(randomInt(600, 650)),
+  ];
+  
+  heavyDaysPreviousYear.forEach(dateISO => {
+    usedDates.add(dateISO);
+    // 2-3 вида напитков, но больше порций
+    const entriesCount = randomInt(2, 3);
+    const variant = drinkVariants[randomInt(0, drinkVariants.length - 1)];
+    
+    for (let i = 0; i < entriesCount; i++) {
+      const volume = variant.volumes[randomInt(0, variant.volumes.length - 1)];
+      const abv = variant.abvs[randomInt(0, variant.abvs.length - 1)];
+      const quantity = randomInt(2, 4); // Больше порций для тяжелых дней
+      
+      drinks.push({
+        id: `test_${idCounter++}`,
+        dateISO,
+        name: variant.name,
+        beverageType: variant.type,
+        volumeMl: volume,
+        abvPercent: abv,
+        quantity,
+        standardUnits: calculateUnits(volume, abv, quantity),
+      });
+      previousYearCount++;
+    }
+  });
+  
+  console.log(`📅 После тяжелых дней предыдущего года: ${previousYearCount} записей за предыдущий год`);
+  
+  // Генерируем данные за весь текущий год (0-365 дней назад)
+  for (let daysAgo = 0; daysAgo < 365; daysAgo++) {
+    const dateISO = randomDate(daysAgo);
+    
+    // Пропускаем если уже использовали эту дату
+    if (usedDates.has(dateISO)) continue;
+    
+    const dayOfWeek = new Date(dateISO).getDay();
+    
+    // Разная вероятность в разные дни недели (пятница-воскресенье чаще)
+    // Также уменьшаем вероятность для более старых дней года
+    let baseProbability = 0.3;
+    if (daysAgo > 180) {
+      baseProbability = 0.2; // Старые дни года - меньше вероятность
+    } else if (daysAgo > 90) {
+      baseProbability = 0.25; // Средние дни года
+    }
+    
+    let probability = baseProbability;
+    if (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0) {
+      probability = baseProbability * 2; // Пятница, суббота, воскресенье
+    } else if (dayOfWeek === 4) {
+      probability = baseProbability * 1.3; // Четверг
+    }
+    
+    // Решаем, добавлять ли записи в этот день
+    if (Math.random() < probability) {
+      usedDates.add(dateISO);
+      // Количество видов напитков в день (1-2 в среднем)
+      const entriesCount = randomInt(1, 2);
+      
+      // Выбираем один вариант напитка для дня
+      const variant = drinkVariants[randomInt(0, drinkVariants.length - 1)];
+      
+      for (let i = 0; i < entriesCount; i++) {
+        const volume = variant.volumes[randomInt(0, variant.volumes.length - 1)];
+        const abv = variant.abvs[randomInt(0, variant.abvs.length - 1)];
+        const quantity = randomInt(1, 3); // 1-3 порции
+        
+        drinks.push({
+          id: `test_${idCounter++}`,
+          dateISO,
+          name: variant.name,
+          beverageType: variant.type,
+          volumeMl: volume,
+          abvPercent: abv,
+          quantity,
+          standardUnits: calculateUnits(volume, abv, quantity),
+        });
+        currentYearCount++;
+      }
+    }
+  }
+  
+  // Гарантируем минимум записей - добавляем записи за весь текущий год более активно
+  for (let daysAgo = 0; daysAgo < 365; daysAgo++) {
+    const dateISO = randomDate(daysAgo);
+    // Уменьшаем вероятность для более старых дней
+    let probability = 0.4;
+    if (daysAgo > 180) {
+      probability = 0.25; // Старые дни года
+    } else if (daysAgo > 90) {
+      probability = 0.3; // Средние дни года
+    }
+    if (!usedDates.has(dateISO) && Math.random() < probability) {
+      usedDates.add(dateISO);
+      // 1-2 вида напитков в день
+      const entriesCount = randomInt(1, 2);
+      const variant = drinkVariants[randomInt(0, drinkVariants.length - 1)];
+      
+      for (let i = 0; i < entriesCount; i++) {
+        const volume = variant.volumes[randomInt(0, variant.volumes.length - 1)];
+        const abv = variant.abvs[randomInt(0, variant.abvs.length - 1)];
+        const quantity = randomInt(1, 2);
+        
+        drinks.push({
+          id: `test_${idCounter++}`,
+          dateISO,
+          name: variant.name,
+          beverageType: variant.type,
+          volumeMl: volume,
+          abvPercent: abv,
+          quantity,
+          standardUnits: calculateUnits(volume, abv, quantity),
+        });
+        currentYearCount++;
+      }
+    }
+  }
+  
+  console.log(`📅 Сгенерировано ${currentYearCount} записей за текущий год (0-365 дней назад)`);
   
   // Добавляем несколько дней с большим количеством (для тестирования рекордов)
   const heavyDays = [
@@ -174,6 +308,7 @@ export function generateTestDrinks(): Drink[] {
         quantity,
         standardUnits: calculateUnits(volume, abv, quantity),
       });
+      currentYearCount++;
     }
   });
   
@@ -201,6 +336,7 @@ export function generateTestDrinks(): Drink[] {
       quantity,
       standardUnits: calculateUnits(volume, abv, quantity),
     });
+    currentYearCount++;
   });
   
   // Добавляем серебряную серию (16 дней подряд без алкоголя) - должна быть видна
@@ -363,7 +499,34 @@ export function generateTestDrinks(): Drink[] {
     });
   }
   
-  return drinks.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  const sortedDrinks = drinks.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  
+  // Подсчитываем финальные значения
+  const finalPreviousYear = sortedDrinks.filter(d => {
+    const date = new Date(d.dateISO);
+    const today = new Date();
+    const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff >= 365 && daysDiff < 730;
+  }).length;
+  
+  const finalCurrentYear = sortedDrinks.filter(d => {
+    const date = new Date(d.dateISO);
+    const today = new Date();
+    const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff >= 0 && daysDiff < 365;
+  }).length;
+  
+  console.log(`✅ Всего сгенерировано ${sortedDrinks.length} записей`);
+  console.log(`   📊 За предыдущий год (365-730 дней назад): ${finalPreviousYear} записей`);
+  console.log(`   📊 За текущий год (0-365 дней назад): ${finalCurrentYear} записей`);
+  
+  if (sortedDrinks.length > 0) {
+    const firstDate = sortedDrinks[0].dateISO;
+    const lastDate = sortedDrinks[sortedDrinks.length - 1].dateISO;
+    console.log(`   📆 Диапазон дат: ${firstDate} - ${lastDate}`);
+  }
+  
+  return sortedDrinks;
 }
 
 export function generateTestPresets(): PresetDrink[] {

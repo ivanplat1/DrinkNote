@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Drink } from '../types/drink';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { colors as defaultColors } from '../theme/colors';
 import {
   getMonthlyTrend,
   getWeeklyTrend,
@@ -20,6 +21,7 @@ interface AdvancedStatsContentProps {
 }
 
 export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContentProps) {
+  const { colors } = useTheme();
   const [trendPeriod, setTrendPeriod] = useState<'weeks' | 'months'>('months');
 
   // Данные для графиков
@@ -47,22 +49,22 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
   }, [maxTrendValue]);
 
   return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}>
       {/* Переключатель периода тренда (дочерние табы) */}
-      <View style={styles.periodSelector}>
+      <View style={[styles.periodSelector, { backgroundColor: colors.backgroundSecondary }]}>
         <TouchableOpacity
-          style={[styles.periodButton, trendPeriod === 'months' && styles.periodButtonActive]}
+          style={[styles.periodButton, trendPeriod === 'months' && styles.periodButtonActive, trendPeriod === 'months' && { backgroundColor: colors.primary }]}
           onPress={() => setTrendPeriod('months')}
         >
-          <Text style={[styles.periodButtonText, trendPeriod === 'months' && styles.periodButtonTextActive]}>
+          <Text style={[styles.periodButtonText, trendPeriod === 'months' && styles.periodButtonTextActive, { color: trendPeriod === 'months' ? '#fff' : colors.textSecondary }]}>
             По месяцам
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.periodButton, trendPeriod === 'weeks' && styles.periodButtonActive]}
+          style={[styles.periodButton, trendPeriod === 'weeks' && styles.periodButtonActive, trendPeriod === 'weeks' && { backgroundColor: colors.primary }]}
           onPress={() => setTrendPeriod('weeks')}
         >
-          <Text style={[styles.periodButtonText, trendPeriod === 'weeks' && styles.periodButtonTextActive]}>
+          <Text style={[styles.periodButtonText, trendPeriod === 'weeks' && styles.periodButtonTextActive, { color: trendPeriod === 'weeks' ? '#fff' : colors.textSecondary }]}>
             По неделям
           </Text>
         </TouchableOpacity>
@@ -70,15 +72,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
       {/* График тренда */}
       {trendData.length > 0 && (
-        <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>
+        <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+          <Text style={[styles.chartTitle, { color: colors.text }]}>
             Тренд ({trendPeriod === 'months' ? '12 месяцев' : '12 недель'})
           </Text>
           <View style={styles.chartWithAxis}>
             {/* Шкала Y */}
             <View style={styles.yAxis}>
               {yAxisValues.map((value, index) => (
-                <Text key={index} style={styles.yAxisLabel}>
+                <Text key={index} style={[styles.yAxisLabel, { color: colors.textSecondary }]}>
                   {value === 0 ? '0' : value.toFixed(value >= 10 ? 0 : 1)}
                 </Text>
               ))}
@@ -96,7 +98,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   return (
                     <View key={index} style={styles.lineChartBar}>
                       <View style={styles.lineChartBarWrapper}>
-                        <View style={[styles.lineChartBarFill, { height: `${height}%` }]}>
+                        <View style={[styles.lineChartBarFill, { height: `${height}%`, backgroundColor: colors.primary, shadowColor: colors.primary }]}>
                           {height > 0 && (
                             <>
                               <View style={styles.lineChartBarGradient} />
@@ -109,7 +111,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                           )}
                         </View>
                       </View>
-                      <Text style={styles.lineChartLabel} numberOfLines={1}>
+                      <Text style={[styles.lineChartLabel, { color: colors.textSecondary }]} numberOfLines={1}>
                         {labelText}
                       </Text>
                     </View>
@@ -122,20 +124,20 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
         {/* Сравнение периодов */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Сравнение периодов</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Сравнение периодов</Text>
 
           {/* Текущая неделя vs предыдущая (только для режима "По неделям") */}
           {trendPeriod === 'weeks' && (
             <>
-              <View style={styles.comparisonCard}>
-                <Text style={styles.comparisonTitle}>Текущая неделя vs предыдущая</Text>
+              <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущая неделя vs предыдущая</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Предыдущая</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущая</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparison.period1.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {weekComparison.period1.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -147,11 +149,11 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Текущая</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущая</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparison.period2.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {weekComparison.period2.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -161,8 +163,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     style={[
                       styles.comparisonChangeText,
                       weekComparison.change.unitsPercent >= 0
-                        ? styles.comparisonChangePositive
-                        : styles.comparisonChangeNegative,
+                        ? [styles.comparisonChangePositive, { color: colors.error }]
+                        : [styles.comparisonChangeNegative, { color: colors.primary }],
                     ]}
                   >
                     {weekComparison.change.unitsPercent >= 0 ? '+' : ''}
@@ -170,15 +172,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   </Text>
                 </View>
               </View>
-              <View style={styles.comparisonCard}>
-                <Text style={styles.comparisonTitle}>Текущая неделя vs предыдущая (за схожий период)</Text>
+              <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущая неделя vs предыдущая (за схожий период)</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Предыдущая</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущая</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparisonAdjusted.period1.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {weekComparisonAdjusted.period1.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -190,11 +192,11 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Текущая</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущая</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparisonAdjusted.period2.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {weekComparisonAdjusted.period2.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -204,8 +206,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     style={[
                       styles.comparisonChangeText,
                       weekComparisonAdjusted.change.unitsPercent >= 0
-                        ? styles.comparisonChangePositive
-                        : styles.comparisonChangeNegative,
+                        ? [styles.comparisonChangePositive, { color: colors.error }]
+                        : [styles.comparisonChangeNegative, { color: colors.primary }],
                     ]}
                   >
                     {weekComparisonAdjusted.change.unitsPercent >= 0 ? '+' : ''}
@@ -219,15 +221,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
           {/* Текущий месяц vs предыдущий (только для режима "По месяцам") */}
           {trendPeriod === 'months' && (
             <>
-              <View style={styles.comparisonCard}>
-                <Text style={styles.comparisonTitle}>Текущий месяц vs предыдущий</Text>
+              <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий месяц vs предыдущий</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Предыдущий</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparison.period1.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {monthComparison.period1.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -239,11 +241,11 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Текущий</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparison.period2.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {monthComparison.period2.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -253,8 +255,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     style={[
                       styles.comparisonChangeText,
                       monthComparison.change.unitsPercent >= 0
-                        ? styles.comparisonChangePositive
-                        : styles.comparisonChangeNegative,
+                        ? [styles.comparisonChangePositive, { color: colors.error }]
+                        : [styles.comparisonChangeNegative, { color: colors.primary }],
                     ]}
                   >
                     {monthComparison.change.unitsPercent >= 0 ? '+' : ''}
@@ -262,15 +264,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   </Text>
                 </View>
               </View>
-              <View style={styles.comparisonCard}>
-                <Text style={styles.comparisonTitle}>Текущий месяц vs предыдущий (за схожий период)</Text>
+              <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий месяц vs предыдущий (за схожий период)</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Предыдущий</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparisonAdjusted.period1.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {monthComparisonAdjusted.period1.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -282,11 +284,11 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={styles.comparisonLabel}>Текущий</Text>
-                    <Text style={styles.comparisonValue}>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                    <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparisonAdjusted.period2.totalUnits.toFixed(1)} ед.
                     </Text>
-                    <Text style={styles.comparisonSubtext}>
+                    <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                       {monthComparisonAdjusted.period2.daysWithDrinks} дней
                     </Text>
                   </View>
@@ -296,8 +298,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     style={[
                       styles.comparisonChangeText,
                       monthComparisonAdjusted.change.unitsPercent >= 0
-                        ? styles.comparisonChangePositive
-                        : styles.comparisonChangeNegative,
+                        ? [styles.comparisonChangePositive, { color: colors.error }]
+                        : [styles.comparisonChangeNegative, { color: colors.primary }],
                     ]}
                   >
                     {monthComparisonAdjusted.change.unitsPercent >= 0 ? '+' : ''}
@@ -309,15 +311,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
           )}
 
           {/* Текущий год vs предыдущий */}
-          <View style={styles.comparisonCard}>
-            <Text style={styles.comparisonTitle}>Текущий год vs предыдущий</Text>
+          <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий год vs предыдущий</Text>
             <View style={styles.comparisonRow}>
               <View style={styles.comparisonItem}>
-                <Text style={styles.comparisonLabel}>Предыдущий</Text>
-                <Text style={styles.comparisonValue}>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period1.totalUnits.toFixed(1)} ед.
                 </Text>
-                <Text style={styles.comparisonSubtext}>
+                <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                   {yearComparison.period1.daysWithDrinks} дней
                 </Text>
               </View>
@@ -329,11 +331,11 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 />
               </View>
               <View style={styles.comparisonItem}>
-                <Text style={styles.comparisonLabel}>Текущий</Text>
-                <Text style={styles.comparisonValue}>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period2.totalUnits.toFixed(1)} ед.
                 </Text>
-                <Text style={styles.comparisonSubtext}>
+                <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
                   {yearComparison.period2.daysWithDrinks} дней
                 </Text>
               </View>
@@ -343,8 +345,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 style={[
                   styles.comparisonChangeText,
                   yearComparison.change.unitsPercent >= 0
-                    ? styles.comparisonChangePositive
-                    : styles.comparisonChangeNegative,
+                    ? [styles.comparisonChangePositive, { color: colors.error }]
+                    : [styles.comparisonChangeNegative, { color: colors.primary }],
                 ]}
               >
                 {yearComparison.change.unitsPercent >= 0 ? '+' : ''}
@@ -356,12 +358,12 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
       {/* Детальная аналитика по дням недели */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Аналитика по дням недели</Text>
-        <View style={styles.analyticsCard}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Аналитика по дням недели</Text>
+        <View style={[styles.analyticsCard, { backgroundColor: colors.backgroundCard }]}>
           {weekdayAnalytics.map((day) => (
-            <View key={day.weekday} style={styles.analyticsRow}>
+            <View key={day.weekday} style={[styles.analyticsRow, { borderBottomColor: colors.border }]}>
               <View style={styles.analyticsDay}>
-                <Text style={styles.analyticsDayName}>{day.weekdayName}</Text>
+                <Text style={[styles.analyticsDayName, { color: colors.text }]}>{day.weekdayName}</Text>
                 {day.trend === 'increasing' && (
                   <MaterialIcons name="trending-up" size={16} color={colors.error} />
                 )}
@@ -370,8 +372,8 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 )}
               </View>
               <View style={styles.analyticsValues}>
-                <Text style={styles.analyticsValue}>{day.averageUnits.toFixed(1)} ед.</Text>
-                <Text style={styles.analyticsSubtext}>
+                <Text style={[styles.analyticsValue, { color: colors.text }]}>{day.averageUnits.toFixed(1)} ед.</Text>
+                <Text style={[styles.analyticsSubtext, { color: colors.textSecondary }]}>
                   {day.daysCount} дней · {day.percentageOfTotal.toFixed(1)}% от общего
                 </Text>
               </View>
@@ -383,19 +385,19 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
       {/* Прогрессия серий */}
       {streakProgression.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Прогрессия серий воздержания</Text>
-          <View style={styles.streaksCard}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Прогрессия серий воздержания</Text>
+          <View style={[styles.streaksCard, { backgroundColor: colors.backgroundCard }]}>
             {streakProgression.slice(0, 5).map((streak, index) => (
-              <View key={index} style={styles.streakRow}>
+              <View key={index} style={[styles.streakRow, { borderBottomColor: colors.border }]}>
                 <View style={styles.streakInfo}>
-                  <Text style={styles.streakLength}>{streak.length} дней</Text>
-                  <Text style={styles.streakDates}>
+                  <Text style={[styles.streakLength, { color: colors.text }]}>{streak.length} дней</Text>
+                  <Text style={[styles.streakDates, { color: colors.textSecondary }]}>
                     {new Date(streak.streakStart).toLocaleDateString('ru-RU')} -{' '}
                     {new Date(streak.streakEnd).toLocaleDateString('ru-RU')}
                   </Text>
                 </View>
                 {!streak.completed && (
-                  <View style={styles.streakBadge}>
+                  <View style={[styles.streakBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.streakBadgeText}>Текущая</Text>
                   </View>
                 )}
@@ -417,7 +419,7 @@ const styles = StyleSheet.create({
   },
   periodSelector: {
     flexDirection: 'row',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
     padding: 3,
     marginHorizontal: 16,
@@ -432,18 +434,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   periodButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
   },
   periodButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   periodButtonTextActive: {
     color: '#fff',
   },
   chartCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -462,7 +464,7 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 20,
     letterSpacing: -0.3,
   },
@@ -480,7 +482,7 @@ const styles = StyleSheet.create({
   },
   yAxisLabel: {
     fontSize: 10,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'right',
   },
   lineChartContainer: {
@@ -506,7 +508,7 @@ const styles = StyleSheet.create({
   },
   lineChartBarFill: {
     width: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     borderRadius: 6,
     minHeight: 2,
     overflow: 'visible',
@@ -515,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: colors.primary,
+        shadowColor: defaultColors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -536,7 +538,7 @@ const styles = StyleSheet.create({
   },
   lineChartLabel: {
     fontSize: 9,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginTop: 4,
     textAlign: 'center',
     fontWeight: '500',
@@ -558,11 +560,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 12,
   },
   comparisonCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -581,7 +583,7 @@ const styles = StyleSheet.create({
   comparisonTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 12,
   },
   comparisonRow: {
@@ -595,17 +597,17 @@ const styles = StyleSheet.create({
   },
   comparisonLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 4,
   },
   comparisonValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   comparisonSubtext: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     marginTop: 2,
   },
   comparisonArrow: {
@@ -620,13 +622,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   comparisonChangePositive: {
-    color: colors.error,
+    color: defaultColors.error,
   },
   comparisonChangeNegative: {
-    color: colors.primary,
+    color: defaultColors.primary,
   },
   analyticsCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 12,
     ...Platform.select({
@@ -647,7 +649,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   analyticsDay: {
     flexDirection: 'row',
@@ -658,7 +660,7 @@ const styles = StyleSheet.create({
   analyticsDayName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   analyticsValues: {
     alignItems: 'flex-end',
@@ -666,15 +668,15 @@ const styles = StyleSheet.create({
   analyticsValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   analyticsSubtext: {
     fontSize: 11,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginTop: 2,
   },
   streaksCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 12,
     ...Platform.select({
@@ -695,7 +697,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   streakInfo: {
     flex: 1,
@@ -703,15 +705,15 @@ const styles = StyleSheet.create({
   streakLength: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   streakDates: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginTop: 2,
   },
   streakBadge: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,

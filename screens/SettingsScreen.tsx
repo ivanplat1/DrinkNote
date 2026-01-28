@@ -8,11 +8,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
 import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
-import { colors } from '../theme/colors';
+import { colors as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeName } from '../theme/themes';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { themeName, setTheme, colors } = useTheme();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -253,20 +256,20 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+      <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}>
         {/* Дневная цель */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Дневная цель</Text>
-          <Text style={styles.sectionSubtitle}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
-          <View style={styles.goalContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
+          <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Левая часть - Моя цель */}
             <View style={styles.goalColumn}>
-              <Text style={styles.goalColumnLabel}>Моя цель</Text>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Моя цель</Text>
               {isEditingGoal ? (
                 <View style={styles.goalInputRow}>
                   <TextInput
-                    style={styles.goalInput}
+                    style={[styles.goalInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
                     value={dailyGoal}
                     onChangeText={(text) => {
                       const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
@@ -280,7 +283,7 @@ export default function SettingsScreen() {
                     onBlur={handleSaveGoal}
                     autoFocus
                   />
-                  <Text style={styles.goalUnit}>ед.</Text>
+                  <Text style={[styles.goalUnit, { color: colors.textSecondary }]}>ед.</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -288,7 +291,7 @@ export default function SettingsScreen() {
                   onPress={() => setIsEditingGoal(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.goalValue}>
+                  <Text style={[styles.goalValue, { color: colors.text }]}>
                     {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : 'Не установлена'}
                   </Text>
                 </TouchableOpacity>
@@ -296,13 +299,13 @@ export default function SettingsScreen() {
             </View>
             
             {/* Разделитель */}
-            <View style={styles.goalDivider} />
+            <View style={[styles.goalDivider, { backgroundColor: colors.border }]} />
             
             {/* Правая часть - Условная норма */}
             <View style={styles.goalColumn}>
-              <Text style={styles.goalColumnLabel}>Условная норма</Text>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Условная норма</Text>
               <View style={[styles.goalDisplayRow, { flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
-                <Text style={[styles.goalValue, styles.goalRecommended]}>
+                <Text style={[styles.goalValue, styles.goalRecommended, { color: colors.primary }]}>
                   {recommendedLimit.toFixed(1)} ед.
                 </Text>
                 <TouchableOpacity
@@ -335,12 +338,12 @@ export default function SettingsScreen() {
 
         {/* Параметры профиля */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Параметры профиля</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Параметры профиля</Text>
           
-          <View style={styles.profileContainer}>
+          <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Вес */}
             <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Вес:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>Вес:</Text>
               <View style={styles.profileInputRow}>
                 <TouchableOpacity
                   style={styles.profileArrowButton}
@@ -357,7 +360,7 @@ export default function SettingsScreen() {
                   <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
                 </TouchableOpacity>
                 <TextInput
-                  style={[styles.profileInput, { textAlign: 'right' }]}
+                  style={[styles.profileInput, { textAlign: 'right', color: colors.text, backgroundColor: colors.backgroundSecondary }]}
                   value={weight}
                   onChangeText={(text) => {
                     const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
@@ -370,7 +373,7 @@ export default function SettingsScreen() {
                   onSubmitEditing={handleSaveWeight}
                   onBlur={handleSaveWeight}
                 />
-                <Text style={styles.profileUnit}>кг</Text>
+                <Text style={[styles.profileUnit, { color: colors.textSecondary }]}>кг</Text>
                 <TouchableOpacity
                   style={styles.profileArrowButton}
                   onPress={async () => {
@@ -390,22 +393,43 @@ export default function SettingsScreen() {
 
             {/* Пол */}
             <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Пол:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>Пол:</Text>
               <View style={styles.profileInputRow}>
                 <TouchableOpacity
-                  style={[styles.profileGenderIconButton, gender === 'female' && styles.profileGenderButtonActive]}
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'female' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'female' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'female' ? colors.primary : colors.border,
+                    }
+                  ]}
                   onPress={() => handleSaveGender('female')}
                 >
                   <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? colors.text : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.profileGenderIconButton, gender === 'male' && styles.profileGenderButtonActive]}
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'male' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'male' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'male' ? colors.primary : colors.border,
+                    }
+                  ]}
                   onPress={() => handleSaveGender('male')}
                 >
                   <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? colors.text : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.profileGenderIconButton, gender === 'genderless' && styles.profileGenderButtonActive]}
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'genderless' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'genderless' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'genderless' ? colors.primary : colors.border,
+                    }
+                  ]}
                   onPress={() => handleSaveGender('genderless')}
                 >
                   <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? colors.text : colors.textSecondary} />
@@ -415,7 +439,7 @@ export default function SettingsScreen() {
 
             {/* Дата рождения */}
             <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Дата рождения:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>Дата рождения:</Text>
               <TouchableOpacity
                 style={{ flex: 1, alignItems: 'flex-end' }}
                 onPress={() => {
@@ -423,7 +447,7 @@ export default function SettingsScreen() {
                   setShowBirthDatePicker(true);
                 }}
               >
-                <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder]}>
+                <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder, { color: birthDate ? colors.textSecondary : colors.textTertiary }]}>
                   {birthDate ? new Date(birthDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
                 </Text>
               </TouchableOpacity>
@@ -434,12 +458,12 @@ export default function SettingsScreen() {
 
         {/* Дата начала отсчета */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Дата начала отсчета</Text>
-          <Text style={styles.sectionSubtitle}>Рекорды будут считаться с этой даты</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дата начала отсчета</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Рекорды будут считаться с этой даты</Text>
           
-          <View style={styles.profileContainer}>
+          <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             <View style={styles.profileRow}>
-              <Text style={styles.profileLabel}>Дата отсчета:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>Дата отсчета:</Text>
               <TouchableOpacity
                 style={{ flex: 1, alignItems: 'flex-end' }}
                 onPress={() => {
@@ -447,7 +471,7 @@ export default function SettingsScreen() {
                   setShowStartDatePicker(true);
                 }}
               >
-                <Text style={[styles.profileValue, !appStartDate && styles.valuePlaceholder]}>
+                <Text style={[styles.profileValue, !appStartDate && styles.valuePlaceholder, { color: appStartDate ? colors.textSecondary : colors.textTertiary }]}>
                   {appStartDate ? new Date(appStartDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
                 </Text>
               </TouchableOpacity>
@@ -458,16 +482,16 @@ export default function SettingsScreen() {
         {/* Премиум */}
         <View style={styles.section}>
           <TouchableOpacity 
-            style={styles.actionButton} 
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} 
             onPress={() => navigation.navigate('Premium' as never)}
           >
             <MaterialCommunityIcons name="crown" size={24} color={isPremium ? "#f4c430" : colors.primary} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.actionButtonText}>
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
                 {isPremium ? 'Премиум активен' : 'Премиум'}
               </Text>
               {!isPremium && (
-                <Text style={styles.actionButtonSubtext}>Разблокировать все функции</Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>Разблокировать все функции</Text>
               )}
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
@@ -489,7 +513,7 @@ export default function SettingsScreen() {
             >
               <MaterialCommunityIcons name="bug" size={24} color={colors.textSecondary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.actionButtonText, { fontSize: 14 }]}>
+                <Text style={[styles.actionButtonText, { fontSize: 14, color: colors.text }]}>
                   {isPremium ? 'Отключить Premium (Dev)' : 'Включить Premium (Dev)'}
                 </Text>
               </View>
@@ -497,35 +521,75 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Темы оформления (только для премиум) */}
+        {isPremium && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Тема оформления</Text>
+            <View style={styles.themeContainer}>
+              {(['dark', 'light', 'sepia', 'highContrast'] as ThemeName[]).map((theme) => (
+                <TouchableOpacity
+                  key={theme}
+                  style={[
+                    styles.themeButton,
+                    themeName === theme && styles.themeButtonActive,
+                    { backgroundColor: themeName === theme ? colors.backgroundCard : colors.backgroundSecondary, borderColor: themeName === theme ? colors.primary : colors.border }
+                  ]}
+                  onPress={() => setTheme(theme)}
+                >
+                  <View style={[
+                    styles.themePreview,
+                    { backgroundColor: theme === 'dark' ? '#0f172a' : theme === 'light' ? '#ffffff' : theme === 'sepia' ? '#1c1917' : '#f1f5f9' }
+                  ]}>
+                    <View style={[
+                      styles.themePreviewAccent,
+                      { backgroundColor: theme === 'dark' ? '#6366f1' : theme === 'light' ? '#3b82f6' : theme === 'sepia' ? '#f59e0b' : '#475569' }
+                    ]} />
+                  </View>
+                  <Text style={[
+                    styles.themeButtonText,
+                    themeName === theme && styles.themeButtonTextActive,
+                    { color: themeName === theme ? colors.primary : colors.text }
+                  ]}>
+                    {theme === 'dark' ? 'Темная' : theme === 'light' ? 'Светлая' : theme === 'sepia' ? 'Теплая' : 'Строгая'}
+                  </Text>
+                  {themeName === theme && (
+                    <MaterialIcons name="check" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Экспорт и импорт данных */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
             <MaterialIcons name="file-download" size={24} color={colors.primary} />
-            <Text style={styles.actionButtonText}>Экспорт данных</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>Экспорт данных</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => setShowImportModal(true)}>
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={() => setShowImportModal(true)}>
             <MaterialIcons name="file-upload" size={24} color={colors.primary} />
-            <Text style={styles.actionButtonText}>Импорт данных</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>Импорт данных</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Удаление данных */}
         <View style={styles.section}>
-          <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={handleClearData}>
+          <TouchableOpacity style={[styles.actionButton, styles.dangerButton, { backgroundColor: colors.backgroundCard, borderColor: colors.error }]} onPress={handleClearData}>
             <MaterialIcons name="delete-forever" size={24} color={colors.error} />
-            <Text style={[styles.actionButtonText, styles.dangerButtonText]}>Удалить все данные</Text>
+            <Text style={[styles.actionButtonText, styles.dangerButtonText, { color: colors.error }]}>Удалить все данные</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Информация о приложении */}
         <View style={styles.section}>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>DrinkNote</Text>
-            <Text style={styles.infoText}>Версия 1.0.0</Text>
-            <Text style={styles.infoText}>Трекер потребления алкоголя</Text>
+          <View style={[styles.infoCard, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.infoTitle, { color: colors.text }]}>DrinkNote</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.0</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
           </View>
     </View>
       </ScrollView>
@@ -543,15 +607,15 @@ export default function SettingsScreen() {
             activeOpacity={1}
             onPress={() => setShowBirthDatePicker(false)}
           />
-          <View style={styles.datePickerModal}>
-            <View style={styles.datePickerHeader}>
+          <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
+            <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
               <TouchableOpacity
                 onPress={() => setShowBirthDatePicker(false)}
                 style={styles.datePickerButton}
               >
-                <Text style={styles.datePickerCancelText}>Отмена</Text>
+                <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
               </TouchableOpacity>
-              <Text style={styles.datePickerTitle}>Дата рождения</Text>
+              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата рождения</Text>
               <TouchableOpacity
                 onPress={async () => {
                   const dateISO = tempBirthDate.toISOString().split('T')[0];
@@ -566,7 +630,7 @@ export default function SettingsScreen() {
                 }}
                 style={styles.datePickerButton}
               >
-                <Text style={styles.datePickerDoneText}>Готово</Text>
+                <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -629,6 +693,7 @@ export default function SettingsScreen() {
               <Animated.View 
                 style={[
                   styles.importModal,
+                  { backgroundColor: colors.backgroundCard },
                   useAnimatedStyle(() => ({
                     transform: [{ translateY: importModalTranslateY.value }]
                   }))
@@ -639,11 +704,11 @@ export default function SettingsScreen() {
                   onPress={closeImportModal}
                   activeOpacity={1}
                 >
-                  <View style={styles.modalDragBar} />
+                  <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                 </TouchableOpacity>
               
-              <View style={styles.importHeader}>
-                <Text style={styles.importTitle}>Импорт данных</Text>
+              <View style={[styles.importHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.importTitle, { color: colors.text }]}>Импорт данных</Text>
                 <TouchableOpacity
                   onPress={closeImportModal}
                   style={styles.closeButton}
@@ -660,20 +725,20 @@ export default function SettingsScreen() {
                   showsVerticalScrollIndicator={true}
                   nestedScrollEnabled={true}
                 >
-                  <Text style={styles.importHint}>
+                  <Text style={[styles.importHint, { color: colors.textSecondary }]}>
                     Выберите файл или вставьте JSON данные из экспортированного файла
                   </Text>
                   
                   <TouchableOpacity
-                    style={styles.filePickerButton}
+                    style={[styles.filePickerButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                     onPress={handlePickFile}
                   >
                     <MaterialIcons name="insert-drive-file" size={24} color={colors.primary} />
-                    <Text style={styles.filePickerButtonText}>Выбрать файл</Text>
+                    <Text style={[styles.filePickerButtonText, { color: colors.primary }]}>Выбрать файл</Text>
                   </TouchableOpacity>
                   
                   <TextInput
-                    style={styles.importTextInput}
+                    style={[styles.importTextInput, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
                     value={importText}
                     onChangeText={setImportText}
                     placeholder="Или вставьте JSON данные здесь..."
@@ -683,20 +748,20 @@ export default function SettingsScreen() {
                   />
                 </ScrollView>
                 
-                <View style={styles.importButtonsContainer}>
+                <View style={[styles.importButtonsContainer, { backgroundColor: colors.backgroundCard, borderTopColor: colors.border }]}>
                   <TouchableOpacity
-                    style={[styles.importButton, styles.importButtonReplace, !importText.trim() && styles.importButtonDisabled]}
+                    style={[styles.importButton, styles.importButtonReplace, { backgroundColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
                     onPress={() => handleImport(false)}
                     disabled={!importText.trim()}
                   >
-                    <Text style={styles.importButtonText}>Заменить все</Text>
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>Заменить все</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.importButton, styles.importButtonMerge, !importText.trim() && styles.importButtonDisabled]}
+                    style={[styles.importButton, styles.importButtonMerge, { backgroundColor: colors.primaryDark, borderColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
                     onPress={() => handleImport(true)}
                     disabled={!importText.trim()}
                   >
-                    <Text style={styles.importButtonText}>Добавить</Text>
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>Добавить</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -719,15 +784,15 @@ export default function SettingsScreen() {
             activeOpacity={1}
             onPress={() => setShowStartDatePicker(false)}
           />
-          <View style={styles.datePickerModal}>
-            <View style={styles.datePickerHeader}>
+          <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
+            <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
               <TouchableOpacity
                 onPress={() => setShowStartDatePicker(false)}
                 style={styles.datePickerButton}
               >
-                <Text style={styles.datePickerCancelText}>Отмена</Text>
+                <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
               </TouchableOpacity>
-              <Text style={styles.datePickerTitle}>Дата начала отсчета</Text>
+              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата начала отсчета</Text>
               <TouchableOpacity
                 onPress={async () => {
                   const dateISO = tempStartDate.toISOString().split('T')[0];
@@ -737,7 +802,7 @@ export default function SettingsScreen() {
                 }}
                 style={styles.datePickerButton}
               >
-                <Text style={styles.datePickerDoneText}>Готово</Text>
+                <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -764,7 +829,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: defaultColors.background,
   },
   scrollView: {
     flex: 1,
@@ -779,7 +844,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
     marginHorizontal: 16,
-    color: colors.text,
+    color: defaultColors.text,
     letterSpacing: -0.5,
   },
   section: {
@@ -788,16 +853,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 12,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 12,
   },
   goalContainer: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -819,13 +884,13 @@ const styles = StyleSheet.create({
   },
   goalColumnLabel: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 8,
     fontWeight: '600',
   },
   goalDivider: {
     width: 1,
-    backgroundColor: colors.border,
+    backgroundColor: defaultColors.border,
     marginHorizontal: 16,
     alignSelf: 'stretch',
   },
@@ -838,24 +903,24 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
-    backgroundColor: colors.backgroundSecondary,
+    color: defaultColors.text,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   goalUnit: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   saveButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
   saveButtonText: {
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -870,10 +935,10 @@ const styles = StyleSheet.create({
   goalValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   goalRecommended: {
-    color: colors.primary,
+    color: defaultColors.primary,
   },
   editButton: {
     padding: 4,
@@ -881,7 +946,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -899,25 +964,25 @@ const styles = StyleSheet.create({
   },
   dangerButton: {
     borderWidth: 1,
-    borderColor: colors.error,
+    borderColor: defaultColors.error,
   },
   actionButtonText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   actionButtonSubtext: {
     fontSize: 12,
     fontWeight: '400',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginTop: 2,
   },
   dangerButtonText: {
-    color: colors.error,
+    color: defaultColors.error,
   },
   infoCard: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -925,12 +990,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 4,
   },
   genderRow: {
@@ -944,26 +1009,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
   },
   genderButtonActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primary,
+    backgroundColor: defaultColors.primaryDark,
+    borderColor: defaultColors.primary,
   },
   genderButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   genderButtonTextActive: {
-    color: colors.text,
+    color: defaultColors.text,
   },
   lethalDoseInfo: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -971,20 +1036,20 @@ const styles = StyleSheet.create({
   },
   lethalDoseLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   lethalDoseValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.error,
+    color: defaultColors.error,
   },
   ageText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginTop: 4,
   },
   profileContainer: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     gap: 16,
@@ -1009,7 +1074,7 @@ const styles = StyleSheet.create({
   profileLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     minWidth: 120,
   },
   profileValueRow: {
@@ -1021,7 +1086,7 @@ const styles = StyleSheet.create({
   },
   profileValue: {
     fontSize: 15,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'right',
   },
   profileInputRow: {
@@ -1037,8 +1102,8 @@ const styles = StyleSheet.create({
   },
   profileInput: {
     fontSize: 15,
-    color: colors.text,
-    backgroundColor: colors.backgroundSecondary,
+    color: defaultColors.text,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1046,7 +1111,7 @@ const styles = StyleSheet.create({
   },
   profileUnit: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginLeft: 4,
   },
   profileEditButton: {
@@ -1066,28 +1131,28 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundSecondary,
+    borderColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileGenderButtonActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primary,
+    backgroundColor: defaultColors.primaryDark,
+    borderColor: defaultColors.primary,
   },
   profileAgeText: {
     fontSize: 12,
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     marginTop: 2,
     textAlign: 'right',
   },
   profileLethalValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.error,
+    color: defaultColors.error,
   },
   valuePlaceholder: {
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     opacity: 0.7,
   },
   modalOverlay: {
@@ -1099,7 +1164,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   datePickerModal: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: Platform.select({ ios: 34, android: 20 }),
@@ -1111,12 +1176,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   datePickerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     flex: 1,
     textAlign: 'center',
   },
@@ -1126,12 +1191,12 @@ const styles = StyleSheet.create({
   },
   datePickerCancelText: {
     fontSize: 17,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   datePickerDoneText: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.primary,
+    color: defaultColors.primary,
     textAlign: 'right',
   },
   importModalContainer: {
@@ -1143,7 +1208,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   importModal: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     flex: 1,
@@ -1160,7 +1225,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: colors.textTertiary,
+    backgroundColor: defaultColors.textTertiary,
     alignSelf: 'center',
   },
   importContentWrapper: {
@@ -1179,20 +1244,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,
     marginHorizontal: 20,
     marginBottom: 12,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     borderStyle: 'dashed',
   },
   filePickerButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.primary,
+    color: defaultColors.primary,
     marginLeft: 8,
   },
   importHeader: {
@@ -1203,12 +1268,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   importTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     flex: 1,
   },
   closeButton: {
@@ -1216,13 +1281,13 @@ const styles = StyleSheet.create({
   },
   importHint: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
   },
   importTextInput: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 20,
@@ -1230,7 +1295,7 @@ const styles = StyleSheet.create({
     minHeight: 200,
     maxHeight: 300,
     fontSize: 14,
-    color: colors.text,
+    color: defaultColors.text,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
   },
   importButtonsContainer: {
@@ -1239,9 +1304,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: Platform.select({ ios: 34, android: 20 }),
     gap: 12,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: defaultColors.border,
   },
   importButton: {
     flex: 1,
@@ -1251,12 +1316,12 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   importButtonReplace: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
   },
   importButtonMerge: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: defaultColors.primaryDark,
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: defaultColors.primary,
   },
   importButtonDisabled: {
     opacity: 0.5,
@@ -1264,7 +1329,53 @@ const styles = StyleSheet.create({
   importButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+  },
+  themeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  themeButton: {
+    flex: 1,
+    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: defaultColors.backgroundSecondary,
+    borderWidth: 1.5,
+    borderColor: defaultColors.border,
+  },
+  themeButtonActive: {
+    borderColor: defaultColors.primary,
+    backgroundColor: defaultColors.backgroundCard,
+  },
+  themePreview: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: defaultColors.border,
+  },
+  themePreviewAccent: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  themeButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: defaultColors.text,
+  },
+  themeButtonTextActive: {
+    color: defaultColors.primary,
+    fontWeight: '600',
   },
 });
 

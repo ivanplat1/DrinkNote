@@ -1,13 +1,16 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getAllDrinks } from '../storage/drinks';
 import { Drink } from '../types/drink';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { colors as defaultColors } from '../theme/colors';
 import { formatTotalVolume } from '../utils/units';
 import { WEEKDAY_SHORT_RU } from '../utils/date';
+import { isPremiumUser } from '../storage/premium';
+import AdvancedStatsContent from './AdvancedStatsContent';
 import {
   getOverallStats,
   getWeekStats,
@@ -24,34 +27,58 @@ import {
 } from '../utils/stats';
 
 type PeriodType = 'overall' | 'week' | 'month';
+type StatsTabType = 'basic' | 'advanced';
 
 export default function StatsScreen() {
+  const navigation = useNavigation();
+  const { colors } = useTheme();
   const [allDrinks, setAllDrinks] = useState<Drink[]>([]);
   const [period, setPeriod] = useState<PeriodType>('overall');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [activeTab, setActiveTab] = useState<StatsTabType>('basic');
+  const [isPremium, setIsPremium] = useState(false);
 
   const loadDrinks = useCallback(async () => {
     const drinks = await getAllDrinks();
     setAllDrinks(drinks);
   }, []);
 
+  // Фильтруем данные для базовой версии - только последние 3 месяца
+  const filteredDrinks = useMemo(() => {
+    if (isPremium || activeTab === 'advanced') {
+      return allDrinks;
+    }
+    
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgoISO = threeMonthsAgo.toISOString().split('T')[0];
+    
+    return allDrinks.filter(drink => drink.dateISO >= threeMonthsAgoISO);
+  }, [allDrinks, isPremium, activeTab]);
+
+  const checkPremium = useCallback(async () => {
+    const premium = await isPremiumUser();
+    setIsPremium(premium);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadDrinks();
-    }, [loadDrinks])
+      checkPremium();
+    }, [loadDrinks, checkPremium])
   );
 
-  const overallStats = useMemo(() => getOverallStats(allDrinks), [allDrinks]);
-  const weekStats = useMemo(() => getWeekStats(allDrinks, selectedDate), [allDrinks, selectedDate]);
-  const monthStats = useMemo(() => getMonthStats(allDrinks, selectedDate), [allDrinks, selectedDate]);
+  const overallStats = useMemo(() => getOverallStats(filteredDrinks), [filteredDrinks]);
+  const weekStats = useMemo(() => getWeekStats(filteredDrinks, selectedDate), [filteredDrinks, selectedDate]);
+  const monthStats = useMemo(() => getMonthStats(filteredDrinks, selectedDate), [filteredDrinks, selectedDate]);
 
   const currentStats = period === 'overall' ? overallStats : period === 'week' ? weekStats : monthStats;
 
   // Новая статистика (только для общей статистики)
-  const beverageTypeStats = useMemo(() => getBeverageTypeStats(allDrinks), [allDrinks]);
-  const weekdayStats = useMemo(() => getWeekdayStats(allDrinks), [allDrinks]);
-  const records = useMemo(() => getRecords(allDrinks), [allDrinks]);
-  const topDrinks = useMemo(() => getTopDrinks(allDrinks, 5), [allDrinks]);
+  const beverageTypeStats = useMemo(() => getBeverageTypeStats(filteredDrinks), [filteredDrinks]);
+  const weekdayStats = useMemo(() => getWeekdayStats(filteredDrinks), [filteredDrinks]);
+  const records = useMemo(() => getRecords(filteredDrinks), [filteredDrinks]);
+  const topDrinks = useMemo(() => getTopDrinks(filteredDrinks, 5), [filteredDrinks]);
 
   // Максимальное значение для графика дней недели
   const maxWeekdayValue = useMemo(() => {
@@ -62,12 +89,14 @@ export default function StatsScreen() {
   // Данные для графика (дни выбранной недели или последние 8 месяцев)
   const chartData = useMemo(() => {
     if (period === 'week') {
-      return getWeekDaysStats(allDrinks, selectedDate);
+      return getWeekDaysStats(filteredDrinks, selectedDate);
     } else if (period === 'month') {
-      return getLastNMonths(allDrinks, 8);
+      // Для базовой версии показываем только последние 3 месяца
+      const monthsToShow = isPremium ? 8 : 3;
+      return getLastNMonths(filteredDrinks, monthsToShow);
     }
     return [];
-  }, [allDrinks, period, selectedDate]);
+  }, [filteredDrinks, period, selectedDate, isPremium]);
 
   const maxChartValue = useMemo(() => {
     if (chartData.length === 0) return 1;
@@ -77,6 +106,20 @@ export default function StatsScreen() {
       return Math.max(...chartData.map(d => d.stats.totalUnits), 1);
     }
   }, [chartData, period]);
+
+  // Генерируем значения для шкалы Y графика тренда (5 делений)
+  const chartYAxisValues = useMemo(() => {
+    if (maxChartValue <= 0) return [0];
+    const step = maxChartValue / 4;
+    return [maxChartValue, step * 3, step * 2, step, 0].map(v => Math.round(v * 10) / 10);
+  }, [maxChartValue]);
+
+  // Генерируем значения для шкалы Y графика дней недели (5 делений)
+  const weekdayYAxisValues = useMemo(() => {
+    if (maxWeekdayValue <= 0) return [0];
+    const step = maxWeekdayValue / 4;
+    return [maxWeekdayValue, step * 3, step * 2, step, 0].map(v => Math.round(v * 10) / 10);
+  }, [maxWeekdayValue]);
 
   const formatPeriodLabel = (date: Date, type: PeriodType): string => {
     if (type === 'week') {
@@ -91,31 +134,111 @@ export default function StatsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Выбор периода */}
-        <View style={styles.periodSelector}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+      {/* Переключатель вкладок (родительские) */}
+      <View style={styles.parentTabContainer}>
+        <TouchableOpacity
+          style={styles.parentTabButton}
+          onPress={() => setActiveTab('basic')}
+        >
+            <Text style={[styles.parentTabText, activeTab === 'basic' && styles.parentTabTextActive, { color: activeTab === 'basic' ? colors.primary : colors.textSecondary }]}>
+            Базовая
+          </Text>
+          {activeTab === 'basic' && <View style={[styles.parentTabIndicator, { backgroundColor: colors.primary }]} />}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.parentTabButton}
+          onPress={() => {
+            if (isPremium) {
+              setActiveTab('advanced');
+            } else {
+              navigation.navigate('Premium' as never);
+            }
+          }}
+        >
+          <View style={styles.parentTabButtonContent}>
+            <Text style={[styles.parentTabText, activeTab === 'advanced' && styles.parentTabTextActive, { color: activeTab === 'advanced' ? colors.primary : colors.textSecondary }]}>
+              Расширенная
+            </Text>
+            {!isPremium && (
+              <MaterialCommunityIcons name="crown" size={14} color={activeTab === 'advanced' ? colors.primary : colors.textSecondary} />
+            )}
+          </View>
+          {activeTab === 'advanced' && <View style={[styles.parentTabIndicator, { backgroundColor: colors.primary }]} />}
+        </TouchableOpacity>
+      </View>
+
+      {/* Показываем расширенную статистику или блокировку */}
+      {activeTab === 'advanced' ? (
+        !isPremium ? (
+          <View style={styles.lockedContainer}>
+            <MaterialCommunityIcons name="lock" size={64} color={colors.textSecondary} />
+            <Text style={styles.lockedTitle}>Расширенная статистика</Text>
+            <Text style={styles.lockedText}>
+              Эта функция доступна только в премиум версии
+            </Text>
+            <TouchableOpacity
+              style={[styles.premiumButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('Premium' as never)}
+            >
+              <MaterialCommunityIcons name="crown" size={20} color="#f4c430" />
+              <Text style={styles.premiumButtonText}>Разблокировать Премиум</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <AdvancedStatsContent allDrinks={allDrinks} />
+        )
+      ) : (
+        <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}>
+        {/* Предупреждение о ограничении для базовой версии */}
+        {!isPremium && allDrinks.length > filteredDrinks.length && (
+          <View style={styles.limitWarning}>
+            <MaterialCommunityIcons name="information" size={18} color={colors.warning} />
+            <Text style={styles.limitWarningText}>
+              Базовая версия показывает статистику только за последние 3 месяца
+            </Text>
+            <TouchableOpacity
+              style={styles.limitWarningButton}
+              onPress={() => navigation.navigate('Premium' as never)}
+            >
+              <MaterialCommunityIcons name="crown" size={14} color={colors.primary} />
+              <Text style={styles.limitWarningButtonText}>Премиум</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Выбор периода (дочерние табы) */}
+        <View style={[styles.periodSelector, { backgroundColor: colors.backgroundSecondary }]}>
           <TouchableOpacity
-            style={[styles.periodButton, period === 'overall' && styles.periodButtonActive]}
+            style={[styles.periodButton, period === 'overall' && styles.periodButtonActive, period === 'overall' && { backgroundColor: colors.primary }]}
             onPress={() => setPeriod('overall')}
           >
-            <Text style={[styles.periodButtonText, period === 'overall' && styles.periodButtonTextActive]}>
+            <Text 
+              style={[styles.periodButtonText, period === 'overall' && styles.periodButtonTextActive, { color: period === 'overall' ? '#fff' : colors.textSecondary }]}
+              numberOfLines={1}
+            >
               Общая
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.periodButton, period === 'week' && styles.periodButtonActive]}
+            style={[styles.periodButton, period === 'week' && styles.periodButtonActive, period === 'week' && { backgroundColor: colors.primary }]}
             onPress={() => setPeriod('week')}
           >
-            <Text style={[styles.periodButtonText, period === 'week' && styles.periodButtonTextActive]}>
+            <Text 
+              style={[styles.periodButtonText, period === 'week' && styles.periodButtonTextActive, { color: period === 'week' ? '#fff' : colors.textSecondary }]}
+              numberOfLines={1}
+            >
               Неделя
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.periodButton, period === 'month' && styles.periodButtonActive]}
+            style={[styles.periodButton, period === 'month' && styles.periodButtonActive, period === 'month' && { backgroundColor: colors.primary }]}
             onPress={() => setPeriod('month')}
           >
-            <Text style={[styles.periodButtonText, period === 'month' && styles.periodButtonTextActive]}>
+            <Text 
+              style={[styles.periodButtonText, period === 'month' && styles.periodButtonTextActive, { color: period === 'month' ? '#fff' : colors.textSecondary }]}
+              numberOfLines={1}
+            >
               Месяц
             </Text>
           </TouchableOpacity>
@@ -123,7 +246,7 @@ export default function StatsScreen() {
 
         {/* Навигация по периодам */}
         {period !== 'overall' && (
-          <View style={styles.periodNavigation}>
+          <View style={[styles.periodNavigation, { backgroundColor: colors.backgroundCard }]}>
             <TouchableOpacity
               style={styles.navButton}
               onPress={() => {
@@ -138,7 +261,7 @@ export default function StatsScreen() {
             >
               <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.periodLabel}>{formatPeriodLabel(selectedDate, period)}</Text>
+            <Text style={[styles.periodLabel, { color: colors.textSecondary }]}>{formatPeriodLabel(selectedDate, period)}</Text>
             <TouchableOpacity
               style={styles.navButton}
               onPress={() => {
@@ -161,24 +284,24 @@ export default function StatsScreen() {
         )}
 
         {/* Основная статистика */}
-        <View style={styles.statsCard}>
+        <View style={[styles.statsCard, { backgroundColor: colors.backgroundCard }]}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentStats.totalUnits.toFixed(2)}</Text>
-              <Text style={styles.statLabel}>Стандартных единиц</Text>
-              <Text style={styles.statSubLabel}>{(currentStats.totalUnits * 10).toFixed(1)} г спирта</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.totalUnits.toFixed(2)}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Стандартных единиц</Text>
+              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{(currentStats.totalUnits * 10).toFixed(1)} г спирта</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{formatTotalVolume(currentStats.totalVolumeMl, 1)}</Text>
-              <Text style={styles.statLabel}>Объем</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{formatTotalVolume(currentStats.totalVolumeMl, 1)}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Объем</Text>
             </View>
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentStats.daysWithDrinks || currentStats.totalDays}</Text>
-              <Text style={styles.statLabel}>Дней с записями</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.daysWithDrinks || currentStats.totalDays}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Дней с записями</Text>
               {period !== 'overall' && (
-                <Text style={styles.statSubLabel}>
+                <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>
                   {period === 'week' 
                     ? `${Math.round(((currentStats.daysWithDrinks || 0) / 7) * 100)}% недели`
                     : period === 'month' 
@@ -189,53 +312,79 @@ export default function StatsScreen() {
               )}
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentStats.averagePerDay.toFixed(2)}</Text>
-              <Text style={styles.statLabel}>Среднее в день</Text>
-              <Text style={styles.statSubLabel}>{(currentStats.averagePerDay * 10).toFixed(1)} г спирта</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.averagePerDay.toFixed(2)}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Среднее в день</Text>
+              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{(currentStats.averagePerDay * 10).toFixed(1)} г спирта</Text>
             </View>
           </View>
         </View>
 
         {/* График тренда */}
         {chartData.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Тренд ({period === 'week' ? 'дни недели' : 'месяцы'})</Text>
-            <View style={styles.chartContainer}>
-              {chartData.map((item, index) => {
-                const height = period === 'week' 
-                  ? (maxChartValue > 0 ? (item.units / maxChartValue) * 100 : 0)
-                  : (maxChartValue > 0 ? (item.stats.totalUnits / maxChartValue) * 100 : 0);
-                return (
-                  <View key={index} style={styles.chartBarContainer}>
-                    <View style={styles.chartBarWrapper}>
-                      <View style={[styles.chartBar, { height: `${height}%` }]} />
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>Тренд ({period === 'week' ? 'дни недели' : 'месяцы'})</Text>
+            <View style={styles.chartWithAxis}>
+              {/* Шкала Y */}
+              <View style={styles.yAxis}>
+                {chartYAxisValues.map((value, index) => (
+                  <Text key={index} style={[styles.yAxisLabel, { color: colors.textSecondary }]}>
+                    {value === 0 ? '0' : value.toFixed(value >= 10 ? 0 : 1)}
+                  </Text>
+                ))}
+              </View>
+              {/* График */}
+              <View style={styles.chartContainer}>
+                {chartData.map((item, index) => {
+                  const height = period === 'week' 
+                    ? (maxChartValue > 0 ? (item.units / maxChartValue) * 100 : 0)
+                    : (maxChartValue > 0 ? (item.stats.totalUnits / maxChartValue) * 100 : 0);
+                  const value = period === 'week' ? item.units : item.stats.totalUnits;
+                  return (
+                    <View key={index} style={styles.chartBarContainer}>
+                      <View style={styles.chartBarWrapper}>
+                        <View style={[styles.chartBar, { height: `${height}%`, backgroundColor: colors.primary, shadowColor: colors.primary }]}>
+                          {height > 0 && (
+                            <>
+                              <View style={styles.chartBarGradient} />
+                              {height > 15 && (
+                                <Text style={styles.chartValueLabel}>
+                                  {value.toFixed(value >= 10 ? 0 : 1)}
+                                </Text>
+                              )}
+                            </>
+                          )}
+                        </View>
+                      </View>
+                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
+                        {period === 'week' 
+                          ? WEEKDAY_SHORT_RU[index]
+                          : item.month.toLocaleDateString('ru-RU', { month: 'short' })
+                        }
+                      </Text>
                     </View>
-                    <Text style={styles.chartLabel}>
-                      {period === 'week' 
-                        ? WEEKDAY_SHORT_RU[index]
-                        : item.month.toLocaleDateString('ru-RU', { month: 'short' })
-                      }
-                    </Text>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
           </View>
         )}
 
         {/* Дополнительная информация для общей статистики */}
         {period === 'overall' && overallStats.firstDate && overallStats.lastDate && (
-          <View style={styles.infoCard}>
-            <Text style={styles.infoText}>
+          <View style={[styles.infoCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Период: {new Date(overallStats.firstDate).toLocaleDateString('ru-RU')} - {new Date(overallStats.lastDate).toLocaleDateString('ru-RU')}
+              {!isPremium && allDrinks.length > filteredDrinks.length && (
+                <Text style={[styles.infoTextSub, { color: colors.textTertiary }]}> (ограничено до 3 месяцев)</Text>
+              )}
             </Text>
           </View>
         )}
 
         {/* Статистика по типам напитков (только для общей статистики) */}
         {period === 'overall' && beverageTypeStats.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>По типам напитков</Text>
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>По типам напитков</Text>
             {beverageTypeStats.map((item, index) => {
               const typeColors = colors[item.type] || colors.other;
               const getTypeLabel = (type: Drink['beverageType']) => {
@@ -252,13 +401,13 @@ export default function StatsScreen() {
                 <View key={item.type} style={styles.typeRow}>
                   <View style={styles.typeLabelRow}>
                     <View style={[styles.typeColorDot, { backgroundColor: typeColors.main }]} />
-                    <Text style={styles.typeLabel}>{getTypeLabel(item.type)}</Text>
+                    <Text style={[styles.typeLabel, { color: colors.text }]}>{getTypeLabel(item.type)}</Text>
                   </View>
                   <View style={styles.typeStatsRow}>
-                    <Text style={styles.typePercentage}>{item.percentage}%</Text>
+                    <Text style={[styles.typePercentage, { color: colors.primary }]}>{item.percentage}%</Text>
                     <View style={styles.typeUnitsContainer}>
-                      <Text style={styles.typeUnits}>{item.totalUnits.toFixed(1)} ед.</Text>
-                      <Text style={styles.typeUnitsSub}>{Math.round(item.totalUnits * 10)} г</Text>
+                      <Text style={[styles.typeUnits, { color: colors.textSecondary }]}>{item.totalUnits.toFixed(1)} ед.</Text>
+                      <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>{Math.round(item.totalUnits * 10)} г</Text>
                     </View>
                   </View>
                 </View>
@@ -269,50 +418,72 @@ export default function StatsScreen() {
 
         {/* График по дням недели (только для общей статистики) */}
         {period === 'overall' && weekdayStats.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>По дням недели (среднее)</Text>
-            <View style={styles.chartContainer}>
-              {weekdayStats.map((item) => {
-                const height = maxWeekdayValue > 0 ? (item.averageUnits / maxWeekdayValue) * 100 : 0;
-                return (
-                  <View key={item.weekday} style={styles.chartBarContainer}>
-                    <View style={styles.chartBarWrapper}>
-                      <View style={[styles.chartBar, { height: `${height}%` }]} />
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>По дням недели (среднее)</Text>
+            <View style={styles.chartWithAxis}>
+              {/* Шкала Y */}
+              <View style={styles.yAxis}>
+                {weekdayYAxisValues.map((value, index) => (
+                  <Text key={index} style={[styles.yAxisLabel, { color: colors.textSecondary }]}>
+                    {value === 0 ? '0' : value.toFixed(value >= 10 ? 0 : 1)}
+                  </Text>
+                ))}
+              </View>
+              {/* График */}
+              <View style={styles.chartContainer}>
+                {weekdayStats.map((item) => {
+                  const height = maxWeekdayValue > 0 ? (item.averageUnits / maxWeekdayValue) * 100 : 0;
+                  return (
+                    <View key={item.weekday} style={styles.chartBarContainer}>
+                      <View style={styles.chartBarWrapper}>
+                        <View style={[styles.chartBar, { height: `${height}%`, backgroundColor: colors.primary, shadowColor: colors.primary }]}>
+                          {height > 0 && (
+                            <>
+                              <View style={styles.chartBarGradient} />
+                              {height > 15 && (
+                                <Text style={styles.chartValueLabel}>
+                                  {item.averageUnits.toFixed(item.averageUnits >= 10 ? 0 : 1)}
+                                </Text>
+                              )}
+                            </>
+                          )}
+                        </View>
+                      </View>
+                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>{WEEKDAY_SHORT_RU[item.weekday]}</Text>
                     </View>
-                    <Text style={styles.chartLabel}>{WEEKDAY_SHORT_RU[item.weekday]}</Text>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
           </View>
         )}
 
         {/* Рекорды (только для общей статистики) */}
         {period === 'overall' && records.heaviestDay && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Рекорды</Text>
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>Рекорды</Text>
             <View style={styles.recordsRow}>
-              <View style={styles.recordItem}>
-                <Text style={styles.recordLabel}>Самый тяжелый день</Text>
-                <Text style={styles.recordValue}>{records.heaviestDay.units.toFixed(2)} ед.</Text>
-                <Text style={styles.recordSubValue}>{(records.heaviestDay.units * 10).toFixed(1)} г спирта</Text>
-                <Text style={styles.recordDate}>
+              <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
+                <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Самый тяжелый день</Text>
+                <Text style={[styles.recordValue, { color: colors.primary }]}>{records.heaviestDay.units.toFixed(2)} ед.</Text>
+                <Text style={[styles.recordSubValue, { color: colors.textSecondary }]}>{(records.heaviestDay.units * 10).toFixed(1)} г спирта</Text>
+                <Text style={[styles.recordDate, { color: colors.textTertiary }]}>
                   {new Date(records.heaviestDay.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                 </Text>
               </View>
               {records.currentStreak > 0 && (
-                <View style={styles.recordItem}>
-                  <Text style={styles.recordLabel}>Дней без алкоголя</Text>
-                  <Text style={styles.recordValue}>{records.currentStreak}</Text>
-                  <Text style={styles.recordDate}>Текущая серия</Text>
+                <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
+                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Дней без алкоголя</Text>
+                  <Text style={[styles.recordValue, { color: colors.primary }]}>{records.currentStreak}</Text>
+                  <Text style={[styles.recordDate, { color: colors.textTertiary }]}>Текущая серия</Text>
                 </View>
               )}
             </View>
             {records.longestStreak > 0 && (
               <View style={styles.recordsRow}>
-                <View style={styles.recordItem}>
-                  <Text style={styles.recordLabel}>Рекордная серия</Text>
-                  <Text style={styles.recordValue}>{records.longestStreak} дней</Text>
+                <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
+                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Рекордная серия</Text>
+                  <Text style={[styles.recordValue, { color: colors.primary }]}>{records.longestStreak} дней</Text>
                 </View>
               </View>
             )}
@@ -321,18 +492,18 @@ export default function StatsScreen() {
 
         {/* Топ напитков (только для общей статистики) */}
         {period === 'overall' && topDrinks.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Топ-5 напитков</Text>
+          <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>Топ-5 напитков</Text>
             {topDrinks.map((drink, index) => {
               const typeColors = colors[drink.beverageType] || colors.other;
               return (
-                <View key={`${drink.name}_${index}`} style={styles.topDrinkRow}>
-                  <View style={styles.topDrinkRank}>
-                    <Text style={styles.topDrinkRankText}>{index + 1}</Text>
+                <View key={`${drink.name}_${index}`} style={[styles.topDrinkRow, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.topDrinkRank, { backgroundColor: colors.backgroundSecondary }]}>
+                    <Text style={[styles.topDrinkRankText, { color: colors.primary }]}>{index + 1}</Text>
                   </View>
                   <View style={styles.topDrinkInfo}>
-                    <Text style={styles.topDrinkName}>{drink.name}</Text>
-                    <Text style={styles.topDrinkDetails}>
+                    <Text style={[styles.topDrinkName, { color: colors.text }]}>{drink.name}</Text>
+                    <Text style={[styles.topDrinkDetails, { color: colors.textSecondary }]}>
                       {drink.count} раз · {formatTotalVolume(drink.totalVolumeMl, 1)} · {drink.totalUnits.toFixed(1)} ед. ({Math.round(drink.totalUnits * 10)} г)
                     </Text>
                   </View>
@@ -342,7 +513,8 @@ export default function StatsScreen() {
             })}
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -350,7 +522,105 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: defaultColors.background,
+  },
+  parentTabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: defaultColors.border,
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  parentTabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  parentTabButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  parentTabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: defaultColors.textSecondary,
+  },
+  parentTabTextActive: {
+    color: defaultColors.primary,
+  },
+  parentTabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: defaultColors.primary,
+  },
+  lockedContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  lockedTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: defaultColors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  lockedText: {
+    fontSize: 16,
+    color: defaultColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  premiumButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: defaultColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  premiumButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  limitWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: defaultColors.backgroundSecondary,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: defaultColors.warning,
+  },
+  limitWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: defaultColors.textSecondary,
+  },
+  limitWarningButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: defaultColors.backgroundCard,
+  },
+  limitWarningButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: defaultColors.primary,
   },
   scrollView: {
     flex: 1,
@@ -365,38 +635,50 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
     marginHorizontal: 16,
-    color: colors.text,
+    color: defaultColors.text,
     letterSpacing: -0.5,
+  },
+  subTabContainer: {
+    backgroundColor: defaultColors.backgroundSecondary,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 4,
   },
   periodSelector: {
     flexDirection: 'row',
-    marginBottom: 24,
-    gap: 8,
+    backgroundColor: defaultColors.backgroundSecondary,
+    borderRadius: 8,
+    padding: 3,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 20,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    flexBasis: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 32,
+    width: '33.333%',
   },
   periodButtonActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primary,
+    backgroundColor: defaultColors.primary,
   },
   periodButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
+    textAlign: 'center',
   },
   periodButtonTextActive: {
-    color: colors.text,
+    color: '#fff',
   },
   statsCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -425,7 +707,7 @@ const styles = StyleSheet.create({
   periodLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     textTransform: 'capitalize',
   },
   statsRow: {
@@ -440,22 +722,22 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.primary,
+    color: defaultColors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'center',
   },
   statSubLabel: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     textAlign: 'center',
     marginTop: 2,
   },
   chartCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -472,50 +754,115 @@ const styles = StyleSheet.create({
     }),
   },
   chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
+    fontSize: 17,
+    fontWeight: '700',
+    color: defaultColors.text,
+    marginBottom: 24,
+    letterSpacing: -0.3,
+  },
+  chartWithAxis: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  yAxis: {
+    width: 40,
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingRight: 8,
+    paddingBottom: 8,
+    height: 140,
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    color: defaultColors.textSecondary,
+    textAlign: 'right',
   },
   chartContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    height: 120,
-    paddingHorizontal: 4,
+    height: 140,
+    paddingHorizontal: 2,
+    paddingTop: 0,
+    gap: 2,
   },
   chartBarContainer: {
     flex: 1,
     alignItems: 'center',
     height: '100%',
+    justifyContent: 'flex-end',
   },
   chartBarWrapper: {
     flex: 1,
-    width: '80%',
+    width: '100%',
     justifyContent: 'flex-end',
-    marginBottom: 20,
+    marginBottom: 8,
+    alignItems: 'center',
+    height: '100%',
   },
   chartBar: {
     width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
+    backgroundColor: defaultColors.primary,
+    borderRadius: 6,
     minHeight: 2,
+    overflow: 'visible',
+    position: 'relative',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: defaultColors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  chartBarGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 6,
   },
   chartLabel: {
     fontSize: 10,
-    color: colors.textTertiary,
+    color: defaultColors.textSecondary,
     marginTop: 4,
+    fontWeight: '500',
+  },
+  chartValueLabel: {
+    fontSize: 9,
+    color: '#fff',
+    fontWeight: '700',
+    position: 'absolute',
+    top: 4,
+    zIndex: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   infoCard: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
   infoText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'center',
+  },
+  infoTextSub: {
+    fontSize: 12,
+    color: defaultColors.textTertiary,
+    fontStyle: 'italic',
   },
   typeRow: {
     flexDirection: 'row',
@@ -523,7 +870,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   typeLabelRow: {
     flexDirection: 'row',
@@ -539,7 +886,7 @@ const styles = StyleSheet.create({
   typeLabel: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
+    color: defaultColors.text,
   },
   typeStatsRow: {
     flexDirection: 'row',
@@ -549,7 +896,7 @@ const styles = StyleSheet.create({
   typePercentage: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.primary,
+    color: defaultColors.primary,
     minWidth: 50,
     textAlign: 'right',
   },
@@ -559,12 +906,12 @@ const styles = StyleSheet.create({
   },
   typeUnits: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     textAlign: 'right',
   },
   typeUnitsSub: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     textAlign: 'right',
     marginTop: 2,
   },
@@ -579,29 +926,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
   },
   recordLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 4,
     textAlign: 'center',
   },
   recordValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.primary,
+    color: defaultColors.primary,
     marginBottom: 2,
   },
   recordSubValue: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 4,
   },
   recordDate: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
     textAlign: 'center',
   },
   topDrinkRow: {
@@ -609,13 +956,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: defaultColors.border,
   },
   topDrinkRank: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -623,7 +970,7 @@ const styles = StyleSheet.create({
   topDrinkRankText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
+    color: defaultColors.primary,
   },
   topDrinkInfo: {
     flex: 1,
@@ -631,12 +978,12 @@ const styles = StyleSheet.create({
   topDrinkName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 4,
   },
   topDrinkDetails: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   topDrinkTypeDot: {
     width: 10,

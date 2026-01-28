@@ -11,11 +11,12 @@ import { addDrink, addOrMergeDrink, getDrinksByDate, removeDrink, updateDrink } 
 import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/units';
 import { Drink } from '../types/drink';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { colors as defaultColors } from '../theme/colors';
 import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
 
-const getBeverageColor = (type: PresetDrink['beverageType']) => {
-  return colors[type] || colors.other;
+const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
+  return themeColors[type] || themeColors.other;
 };
 
 const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
@@ -30,7 +31,7 @@ const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
 };
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void }) {
+function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true); // Отслеживаем, первый ли это жест
@@ -174,12 +175,19 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange }: 
         </Animated.View>
         
         {/* Карточка записи */}
-        <Animated.View style={[styles.listItem, animatedStyle]}>
+        <Animated.View style={[
+          styles.listItem, 
+          animatedStyle, 
+          { 
+            backgroundColor: beverageColor.light,
+            shadowColor: colors.primary,
+          }
+        ]}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{item.name}</Text>
-                <Text style={styles.itemSub}>
+                <Text style={[styles.itemTitle, { color: beverageColor.text }]}>{item.name}</Text>
+                <Text style={[styles.itemSub, { color: beverageColor.text, opacity: 0.8 }]}>
                   {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
                   {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
                 </Text>
@@ -187,18 +195,18 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange }: 
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
                 <TouchableOpacity
                   onPress={() => onQuantityChange(item.id, -1)}
-                  style={[styles.qtyButton, { marginRight: 4 }]}
+                  style={[styles.qtyButton, { marginRight: 4, backgroundColor: 'transparent', borderWidth: 0 }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.qtyButtonText}>−</Text>
+                  <Entypo name="circle-with-minus" size={28} color={beverageColor.text} />
                 </TouchableOpacity>
-                <Text style={[styles.qtyValue, { minWidth: 24, textAlign: 'center' }]}>{item.quantity ?? 1}</Text>
+                <Text style={[styles.qtyValue, { minWidth: 24, textAlign: 'center', color: beverageColor.text }]}>{item.quantity ?? 1}</Text>
                 <TouchableOpacity
                   onPress={() => onQuantityChange(item.id, 1)}
-                  style={[styles.qtyButton, { marginLeft: 4 }]}
+                  style={[styles.qtyButton, { marginLeft: 4, backgroundColor: 'transparent', borderWidth: 0 }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.qtyButtonText}>+</Text>
+                  <Entypo name="circle-with-plus" size={28} color={beverageColor.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -210,6 +218,7 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange }: 
 }
 
 export default function TodayScreen() {
+  const { colors } = useTheme();
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
@@ -597,13 +606,13 @@ export default function TodayScreen() {
   }));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <TouchableOpacity
         style={styles.collapsibleHeader}
         onPress={() => setPresetsCollapsed(!presetsCollapsed)}
         activeOpacity={0.7}
       >
-        <Text style={styles.title}>Избранное</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Избранное</Text>
         <Ionicons 
           name={presetsCollapsed ? "chevron-down" : "chevron-up"} 
           size={20} 
@@ -623,7 +632,7 @@ export default function TodayScreen() {
             }}
           >
             {userPresets.map((p) => {
-              const beverageColor = getBeverageColor(p.beverageType);
+              const beverageColor = getBeverageColor(p.beverageType, colors);
               const isEditing = editingPresetId === p.id;
               const isDeleting = deletingPresetId === p.id;
               return (
@@ -677,7 +686,7 @@ export default function TodayScreen() {
               );
             })}
             <TouchableOpacity
-              style={styles.addFavButtonRect}
+              style={[styles.addFavButtonRect, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
               onPress={() => {
                 setDeletingPresetId(null);
                 setEditingPresetId(null);
@@ -685,7 +694,7 @@ export default function TodayScreen() {
               }}
               accessibilityLabel="Добавить напиток"
             >
-              <Entypo name="circle-with-plus" size={22} color={colors.primaryLight} />
+              <Entypo name="circle-with-plus" size={22} color={colors.primary} />
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -696,7 +705,7 @@ export default function TodayScreen() {
         activeOpacity={1}
         onPress={() => deletingPresetId && setDeletingPresetId(null)}
       >
-        <View style={styles.sectionHeaderRow}>
+        <View style={[styles.sectionHeaderRow, { borderBottomColor: colors.borderLight }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
             <TouchableOpacity
               style={styles.dateNavButton}
@@ -710,11 +719,11 @@ export default function TodayScreen() {
               <FontAwesome name="chevron-left" size={20} color={colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.dateButton}
+              style={[styles.dateButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
               onPress={() => setDatePickerVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.dateButtonText}>
+              <Text style={[styles.dateButtonText, { color: colors.text }]}>
                 {selectedDateForAdd.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
               </Text>
             </TouchableOpacity>
@@ -735,20 +744,20 @@ export default function TodayScreen() {
         </View>
       </TouchableOpacity>
       {/* Бар со статистикой */}
-      <View style={styles.statsBar}>
+      <View style={[styles.statsBar, { backgroundColor: colors.backgroundCard }]}>
         <View style={styles.statsBarItem}>
-          <Text style={styles.statsBarLabel}>Объем</Text>
-          <Text style={styles.statsBarValue}>{formatTotalVolume(totalVolumeMl, 1)}</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Объем</Text>
+          <Text style={[styles.statsBarValue, { color: colors.text }]}>{formatTotalVolume(totalVolumeMl, 1)}</Text>
         </View>
-        <View style={styles.statsBarDivider} />
+        <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statsBarItem}>
-          <Text style={styles.statsBarLabel}>Единицы</Text>
-          <Text style={styles.statsBarValue}>{totalUnits.toFixed(2)}</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Единицы</Text>
+          <Text style={[styles.statsBarValue, { color: colors.text }]}>{totalUnits.toFixed(2)}</Text>
         </View>
-        <View style={styles.statsBarDivider} />
+        <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statsBarItem}>
-          <Text style={styles.statsBarLabel}>Спирт</Text>
-          <Text style={styles.statsBarValue}>{Math.round(totalAlcoholGrams)} г</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Спирт</Text>
+          <Text style={[styles.statsBarValue, { color: colors.text }]}>{Math.round(totalAlcoholGrams)} г</Text>
         </View>
       </View>
       <FlatList
@@ -757,13 +766,14 @@ export default function TodayScreen() {
         scrollEnabled={true}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const beverageColor = getBeverageColor(item.beverageType);
+          const beverageColor = getBeverageColor(item.beverageType, colors);
           return (
             <SwipeableListItem
               item={item}
               beverageColor={beverageColor}
               onRemove={onRemoveDrink}
               onQuantityChange={changeQuantity}
+              colors={colors}
             />
           );
         }}
@@ -775,38 +785,39 @@ export default function TodayScreen() {
       <Modal visible={qtyModal.visible} animationType="fade" transparent>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.centerBackdrop}>
-            <View style={styles.centerCard}>
-              <Text style={styles.modalTitle}>Сколько единиц?</Text>
+            <View style={[styles.centerCard, { backgroundColor: colors.backgroundCard }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Сколько единиц?</Text>
               {qtyModal.preset && (
                 <Text style={{ marginBottom: 8, color: colors.textSecondary }}>{qtyModal.preset.name}</Text>
               )}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                 <TouchableOpacity
                   onPress={() => setQtyModal((s) => ({ ...s, qty: String(Math.max(1, (parseInt(s.qty || '1', 10) || 1) - 1)) }))}
-                  style={[styles.cancelBtn, { marginRight: 8 }]}
+                  style={[styles.cancelBtn, { marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                 >
-                  <Text>-</Text>
+                  <Text style={{ color: colors.text }}>-</Text>
                 </TouchableOpacity>
                 <TextInput
                   value={qtyModal.qty}
                   onChangeText={(t) => setQtyModal((s) => ({ ...s, qty: t.replace(/[^0-9]/g, '') }))}
                   keyboardType="number-pad"
-                  style={[styles.input, { width: 100, textAlign: 'center' }]}
+                  style={[styles.input, { width: 100, textAlign: 'center', backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   returnKeyType="done"
                   onSubmitEditing={confirmAddWithQty}
+                  placeholderTextColor={colors.textTertiary}
                 />
                 <TouchableOpacity
                   onPress={() => setQtyModal((s) => ({ ...s, qty: String((parseInt(s.qty || '1', 10) || 1) + 1) }))}
-                  style={[styles.saveBtn, { marginLeft: 8, backgroundColor: '#eee' }]}
+                  style={[styles.saveBtn, { marginLeft: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                 >
-                  <Text>+</Text>
+                  <Text style={{ color: colors.text }}>+</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={closeQtyModal}>
-                  <Text style={styles.cancelBtnText}>Отмена</Text>
+                <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeQtyModal}>
+                  <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={confirmAddWithQty}>
+                <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={confirmAddWithQty}>
                   <Text style={styles.saveBtnText}>Добавить</Text>
                 </TouchableOpacity>
               </View>
@@ -822,45 +833,45 @@ export default function TodayScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.kav}
         >
-          <TouchableWithoutFeedback onPress={() => {}}>
+          <TouchableWithoutFeedback onPress={closeAddModal}>
             <View style={styles.modalBackdrop}>
               <TouchableWithoutFeedback onPress={() => {}}>
-                <Animated.View style={[
-                  styles.modalCard,
-                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
-                  addModalAnimatedStyle
-                ]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        addModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      // Свайп вниз закрывает модальное окно
-                      if (e.translationY > 50) {
-                        addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
-                          runOnJS(closeAddModal)();
-                          addModalTranslateY.value = 0;
-                        });
-                      } else {
-                        addModalTranslateY.value = withTiming(0, { duration: 200 });
-                      }
-                    })
-                  }>
+                <GestureDetector gesture={Gesture.Pan()
+                  .minDistance(5)
+                  .activeOffsetY([5, 100])
+                  .failOffsetX([-30, 30])
+                  .onUpdate((e) => {
+                    if (e.translationY > 0) {
+                      addModalTranslateY.value = e.translationY;
+                    }
+                  })
+                  .onEnd((e) => {
+                    // Свайп вниз закрывает модальное окно
+                    if (e.translationY > 50) {
+                      addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        runOnJS(closeAddModal)();
+                        addModalTranslateY.value = 0;
+                      });
+                    } else {
+                      addModalTranslateY.value = withTiming(0, { duration: 200 });
+                    }
+                  })
+                }>
+                  <Animated.View style={[
+                    styles.modalCard,
+                    { backgroundColor: colors.backgroundCard },
+                    searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
+                    addModalAnimatedStyle
+                  ]}>
                     <TouchableOpacity 
                       style={styles.modalDragHandle}
                       onPress={closeAddModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
-                  </GestureDetector>
-                  <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
-                    <Text style={styles.modalTitle}>Добавить напиток</Text>
+                    <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из предложенных или добавьте свой</Text>
                   
                     {/* Строка поиска для предложенных пресетов */}
@@ -870,7 +881,7 @@ export default function TodayScreen() {
                         placeholderTextColor={colors.textTertiary}
                         value={searchQuery}
                         onChangeText={handleSearchChange}
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="search"
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -887,23 +898,24 @@ export default function TodayScreen() {
                       {availableSuggestedPresets.map((preset) => (
                         <TouchableOpacity
                           key={preset.id}
-                          style={styles.suggestedItem}
+                          style={[styles.suggestedItem, { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border }]}
                           onPress={() => addSuggestedPreset(preset)}
                         >
-                          <Text style={styles.suggestedText}>{preset.name}</Text>
+                          <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                         </TouchableOpacity>
                       ))}
                       
                       <TouchableOpacity
-                        style={styles.addCustomButton}
+                        style={[styles.addCustomButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
                         onPress={openCustomModal}
                       >
-                        <Text style={styles.addCustomButtonText}>+ Добавить свой напиток</Text>
+                        <Text style={[styles.addCustomButtonText, { color: colors.primaryLight }]}>+ Добавить свой напиток</Text>
                       </TouchableOpacity>
                     </ScrollView>
 
-                  </View>
-                </Animated.View>
+                    </View>
+                  </Animated.View>
+                </GestureDetector>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
@@ -920,7 +932,7 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <Animated.View style={[styles.modalCard, customModalAnimatedStyle]}>
+                <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, customModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .minDistance(5)
                     .activeOffsetY([5, 100])
@@ -947,11 +959,11 @@ export default function TodayScreen() {
                       onPress={closeCustomModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                    <Text style={styles.modalTitle}>Новый напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
                   <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                     Объём и крепость будут автоматически добавлены в название
                   </Text>
@@ -960,21 +972,21 @@ export default function TodayScreen() {
                     placeholderTextColor={colors.textTertiary}
                     value={newName}
                     onChangeText={setNewName}
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                     returnKeyType="done"
                     blurOnSubmit
                     onSubmitEditing={Keyboard.dismiss}
                   />
                   <View style={styles.row}>
-                    <Text style={styles.label}>Тип:</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                     <View style={styles.typeRow}>
                       {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                         <TouchableOpacity
                           key={t}
-                          style={[styles.typeChip, newType === t && styles.typeChipActive]}
+                          style={[styles.typeChip, newType === t && styles.typeChipActive, newType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary }]}
                           onPress={() => setNewType(t)}
                         >
-                          <Text style={styles.typeChipText}>{getBeverageTypeLabel(t)}</Text>
+                          <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -990,7 +1002,7 @@ export default function TodayScreen() {
                         const normalized = text.replace(',', '.');
                         setNewVolume(normalized);
                       }}
-                      style={[styles.input, { flex: 1, marginRight: 8 }]}
+                      style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       returnKeyType="done"
                       blurOnSubmit
                       onSubmitEditing={Keyboard.dismiss}
@@ -1005,17 +1017,17 @@ export default function TodayScreen() {
                         const normalized = text.replace(',', '.');
                         setNewAbv(normalized);
                       }}
-                      style={[styles.input, { flex: 1 }]}
+                      style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       returnKeyType="done"
                       blurOnSubmit
                       onSubmitEditing={Keyboard.dismiss}
                     />
                   </View>
                   <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
-                    <TouchableOpacity style={styles.cancelBtn} onPress={closeCustomModal}>
-                      <Text style={styles.cancelBtnText}>Отмена</Text>
+                    <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeCustomModal}>
+                      <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.saveBtn} onPress={saveCustomPreset}>
+                    <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveCustomPreset}>
                       <Text style={styles.saveBtnText}>Сохранить</Text>
                     </TouchableOpacity>
                   </View>
@@ -1037,7 +1049,7 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <Animated.View style={[styles.modalCard, editModalAnimatedStyle]}>
+                <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, editModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .minDistance(5)
                     .activeOffsetY([5, 100])
@@ -1063,17 +1075,17 @@ export default function TodayScreen() {
                       onPress={closeEditModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                    <Text style={styles.modalTitle}>Изменить количество</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Изменить количество</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       {editingDrink?.name} · {formatTotalVolume(editingDrink?.volumeMl || 0, 1)} · {editingDrink?.abvPercent}%
                     </Text>
                     <View style={styles.quantityRow}>
                       <TouchableOpacity
-                        style={styles.quantityButton}
+                        style={[styles.quantityButton, { backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.primary, borderRadius: 24 }]}
                         onPress={() => {
                           const current = parseInt(newQuantity) || 1;
                           if (current > 1) {
@@ -1093,13 +1105,13 @@ export default function TodayScreen() {
                           const normalized = text.replace(',', '.').replace(/[^0-9]/g, '');
                           setNewQuantity(normalized);
                         }}
-                        style={[styles.input, styles.quantityInput]}
+                        style={[styles.input, styles.quantityInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="done"
                         blurOnSubmit
                         onSubmitEditing={Keyboard.dismiss}
                       />
                       <TouchableOpacity
-                        style={styles.quantityButton}
+                        style={[styles.quantityButton, { backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.primary, borderRadius: 24 }]}
                         onPress={() => {
                           const current = parseInt(newQuantity) || 1;
                           setNewQuantity((current + 1).toString());
@@ -1110,10 +1122,10 @@ export default function TodayScreen() {
                       </TouchableOpacity>
                     </View>
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
-                      <TouchableOpacity style={styles.cancelBtn} onPress={closeEditModal}>
-                        <Text style={styles.cancelBtnText}>Отмена</Text>
+                      <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditModal}>
+                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.saveBtn} onPress={saveEditedDrink}>
+                      <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveEditedDrink}>
                         <Text style={styles.saveBtnText}>Сохранить</Text>
                       </TouchableOpacity>
                     </View>
@@ -1135,7 +1147,7 @@ export default function TodayScreen() {
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
-                <Animated.View style={[styles.modalCard, editPresetModalAnimatedStyle]}>
+                <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, editPresetModalAnimatedStyle]}>
                   <GestureDetector gesture={Gesture.Pan()
                     .minDistance(5)
                     .activeOffsetY([5, 100])
@@ -1161,11 +1173,11 @@ export default function TodayScreen() {
                       onPress={closeEditPresetModal}
                       activeOpacity={1}
                     >
-                      <View style={styles.modalDragBar} />
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                    <Text style={styles.modalTitle}>Редактировать напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Редактировать напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Измените данные напитка
                     </Text>
@@ -1174,21 +1186,21 @@ export default function TodayScreen() {
                       placeholderTextColor={colors.textTertiary}
                       value={presetName}
                       onChangeText={setPresetName}
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       returnKeyType="done"
                       blurOnSubmit
                       onSubmitEditing={Keyboard.dismiss}
                     />
                     <View style={styles.row}>
-                      <Text style={styles.label}>Тип:</Text>
+                      <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                       <View style={styles.typeRow}>
                         {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                           <TouchableOpacity
                             key={t}
-                            style={[styles.typeChip, presetType === t && styles.typeChipActive]}
+                            style={[styles.typeChip, presetType === t && styles.typeChipActive, presetType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary }]}
                             onPress={() => setPresetType(t)}
                           >
-                            <Text style={styles.typeChipText}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1203,7 +1215,7 @@ export default function TodayScreen() {
                           const normalized = text.replace(',', '.');
                           setPresetVolume(normalized);
                         }}
-                        style={[styles.input, { flex: 1, marginRight: 8 }]}
+                        style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="done"
                         blurOnSubmit
                         onSubmitEditing={Keyboard.dismiss}
@@ -1217,17 +1229,17 @@ export default function TodayScreen() {
                           const normalized = text.replace(',', '.');
                           setPresetAbv(normalized);
                         }}
-                        style={[styles.input, { flex: 1 }]}
+                        style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         returnKeyType="done"
                         blurOnSubmit
                         onSubmitEditing={Keyboard.dismiss}
                       />
                     </View>
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
-                      <TouchableOpacity style={styles.cancelBtn} onPress={closeEditPresetModal}>
-                        <Text style={styles.cancelBtnText}>Отмена</Text>
+                      <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditPresetModal}>
+                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.saveBtn} onPress={saveEditedPreset}>
+                      <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveEditedPreset}>
                         <Text style={styles.saveBtnText}>Сохранить</Text>
                       </TouchableOpacity>
                     </View>
@@ -1244,7 +1256,7 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={() => setDatePickerVisible(false)}>
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <Animated.View style={[styles.datePickerCard, datePickerModalAnimatedStyle]}>
+              <Animated.View style={[styles.datePickerCard, { backgroundColor: colors.backgroundCard }, datePickerModalAnimatedStyle]}>
                 <GestureDetector gesture={Gesture.Pan()
                   .minDistance(5)
                   .activeOffsetY([5, 100])
@@ -1270,13 +1282,13 @@ export default function TodayScreen() {
                     onPress={() => setDatePickerVisible(false)}
                     activeOpacity={1}
                   >
-                    <View style={styles.modalDragBar} />
+                    <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                   </TouchableOpacity>
                 </GestureDetector>
-                <Text style={styles.modalTitle}>Выберите дату</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Выберите дату</Text>
                 <View style={styles.datePickerWeekRow}>
                   {WEEKDAY_SHORT_RU.map((day) => (
-                    <Text key={day} style={styles.datePickerWeekLabel}>{day}</Text>
+                    <Text key={day} style={[styles.datePickerWeekLabel, { color: colors.textSecondary }]}>{day}</Text>
                   ))}
                 </View>
                 <View style={styles.datePickerGrid}>
@@ -1294,9 +1306,10 @@ export default function TodayScreen() {
                           key={`${dateISO}_${idx}`}
                           style={[
                             styles.datePickerCell,
-                            !isCurrentMonth && styles.datePickerCellAdjacent,
-                            isSelected && styles.datePickerCellSelected,
-                            isToday && styles.datePickerCellToday,
+                            { backgroundColor: colors.backgroundSecondary },
+                            !isCurrentMonth && [styles.datePickerCellAdjacent, { backgroundColor: colors.backgroundSecondary }],
+                            isSelected && [styles.datePickerCellSelected, { backgroundColor: colors.primary }],
+                            isToday && [styles.datePickerCellToday, { borderColor: colors.primary }],
                           ]}
                           onPress={() => {
                             setSelectedDateForAdd(date);
@@ -1305,8 +1318,9 @@ export default function TodayScreen() {
                         >
                           <Text style={[
                             styles.datePickerCellText,
-                            !isCurrentMonth && styles.datePickerCellTextMuted,
-                            isSelected && styles.datePickerCellTextSelected,
+                            { color: colors.text },
+                            !isCurrentMonth && [styles.datePickerCellTextMuted, { color: colors.textTertiary }],
+                            isSelected && [styles.datePickerCellTextSelected, { color: '#fff' }],
                           ]}>
                             {date.getDate()}
                           </Text>
@@ -1317,7 +1331,7 @@ export default function TodayScreen() {
                 </View>
                 <View style={styles.datePickerMonthNav}>
                   <TouchableOpacity
-                    style={styles.datePickerNavButton}
+                    style={[styles.datePickerNavButton, { backgroundColor: colors.backgroundSecondary }]}
                     onPress={() => {
                       const newDate = new Date(selectedDateForAdd);
                       newDate.setMonth(newDate.getMonth() - 1);
@@ -1326,11 +1340,11 @@ export default function TodayScreen() {
                   >
                     <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
                   </TouchableOpacity>
-                  <Text style={styles.datePickerMonthLabel}>
+                  <Text style={[styles.datePickerMonthLabel, { color: colors.text }]}>
                     {selectedDateForAdd.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
                   </Text>
                   <TouchableOpacity
-                    style={styles.datePickerNavButton}
+                    style={[styles.datePickerNavButton, { backgroundColor: colors.backgroundSecondary }]}
                     onPress={() => {
                       const newDate = new Date(selectedDateForAdd);
                       newDate.setMonth(newDate.getMonth() + 1);
@@ -1366,20 +1380,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: colors.background,
+    backgroundColor: defaultColors.background,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
-    color: colors.text,
+    color: defaultColors.text,
     letterSpacing: -0.5,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
-    color: colors.text,
+    color: defaultColors.text,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -1389,12 +1403,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: defaultColors.borderLight,
   },
   total: {
     fontWeight: '600',
     fontSize: 14,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
   },
   presetList: {
     flexDirection: 'row',
@@ -1423,7 +1437,7 @@ const styles = StyleSheet.create({
   },
   presetButtonDeleting: {
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: defaultColors.primary,
     borderStyle: 'dashed',
   },
   deleteIconContainer: {
@@ -1457,7 +1471,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -1490,18 +1504,18 @@ const styles = StyleSheet.create({
   addFavButtonRect: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginRight: 8,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: defaultColors.primary,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: colors.primary,
+        shadowColor: defaultColors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 3,
@@ -1512,7 +1526,7 @@ const styles = StyleSheet.create({
     }),
   },
   addFavRectText: {
-    color: colors.primaryLight,
+    color: defaultColors.primaryLight,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1532,7 +1546,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     minHeight: '33%',
     maxHeight: '90%',
     paddingHorizontal: 20,
@@ -1579,36 +1593,35 @@ shadowOpacity: 0.5,
     width: 40,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: colors.textTertiary,
+    backgroundColor: defaultColors.textTertiary,
     alignSelf: 'center',
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 12,
-    color: colors.text,
+    color: defaultColors.text,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 10,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     fontSize: 16,
-    color: colors.text,
-    placeholderTextColor: colors.textTertiary,
+    color: defaultColors.text,
   },
   searchInput: {
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.backgroundSecondary,
+    color: defaultColors.text,
+    backgroundColor: defaultColors.backgroundSecondary,
     marginBottom: 12,
   },
   row: {
@@ -1619,7 +1632,7 @@ shadowOpacity: 0.5,
     marginBottom: 8,
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   typeRow: {
     flexDirection: 'row',
@@ -1630,19 +1643,19 @@ shadowOpacity: 0.5,
     paddingHorizontal: 14,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
     marginRight: 8,
     marginBottom: 8,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
   },
   typeChipActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primary,
+    backgroundColor: defaultColors.primaryDark,
+    borderColor: defaultColors.primary,
   },
   typeChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
+    color: defaultColors.text,
   },
   quantityRow: {
     flexDirection: 'row',
@@ -1674,13 +1687,13 @@ shadowOpacity: 0.5,
     flex: 1,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundSecondary,
+    borderColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
-    color: colors.text,
+    color: defaultColors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1689,12 +1702,12 @@ shadowOpacity: 0.5,
     paddingHorizontal: 20,
     flex: 1,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: colors.primary,
+        shadowColor: defaultColors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -1746,7 +1759,7 @@ shadowOpacity: 0.5,
   },
   deleteIcon: {
     fontSize: 28,
-    color: colors.error, // Красная иконка
+    color: defaultColors.error, // Красная иконка
     fontWeight: '200',
     lineHeight: 28,
   },
@@ -1755,7 +1768,7 @@ shadowOpacity: 0.5,
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     ...Platform.select({
       ios: {
@@ -1772,11 +1785,11 @@ shadowOpacity: 0.5,
   itemTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginBottom: 4,
   },
   itemSub: {
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     fontSize: 14,
     marginTop: 2,
   },
@@ -1789,7 +1802,7 @@ shadowOpacity: 0.5,
     padding: 24,
   },
   centerCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     minWidth: 280,
@@ -1809,13 +1822,13 @@ shadowOpacity: 0.5,
   deleteBtn: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: colors.errorLight,
+    backgroundColor: defaultColors.errorLight,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.error,
+    borderColor: defaultColors.error,
   },
   deleteText: {
-    color: colors.error,
+    color: defaultColors.error,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -1823,28 +1836,28 @@ shadowOpacity: 0.5,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundCard,
+    borderBottomColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundCard,
   },
   suggestedText: {
     fontSize: 16,
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '500',
   },
   addCustomButton: {
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: defaultColors.primary,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: colors.primary,
+        shadowColor: defaultColors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 3,
@@ -1855,7 +1868,7 @@ shadowOpacity: 0.5,
     }),
   },
   addCustomButtonText: {
-    color: colors.primaryLight,
+    color: defaultColors.primaryLight,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1865,7 +1878,7 @@ shadowOpacity: 0.5,
     justifyContent: 'space-around',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     marginBottom: 12,
     ...Platform.select({
@@ -1886,18 +1899,18 @@ shadowOpacity: 0.5,
   },
   statsBarLabel: {
     fontSize: 11,
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     marginBottom: 4,
   },
   statsBarValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
+    color: defaultColors.text,
   },
   statsBarDivider: {
     width: 1,
     height: 32,
-    backgroundColor: colors.border,
+    backgroundColor: defaultColors.border,
     marginHorizontal: 8,
   },
   dateButton: {
@@ -1905,21 +1918,21 @@ shadowOpacity: 0.5,
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: defaultColors.border,
   },
   dateButtonText: {
     fontSize: 16,
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '600',
   },
   dateNavButton: {
     padding: 4,
   },
   datePickerCard: {
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: defaultColors.backgroundCard,
     minHeight: '50%',
     maxHeight: '80%',
     paddingHorizontal: 20,
@@ -1948,7 +1961,7 @@ shadowOpacity: 0.5,
   datePickerWeekLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: defaultColors.textSecondary,
     width: 40,
     textAlign: 'center',
   },
@@ -1970,22 +1983,22 @@ shadowOpacity: 0.5,
     opacity: 0.3,
   },
   datePickerCellSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
   },
   datePickerCellToday: {
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: defaultColors.primary,
   },
   datePickerCellText: {
     fontSize: 16,
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '500',
   },
   datePickerCellTextMuted: {
-    color: colors.textTertiary,
+    color: defaultColors.textTertiary,
   },
   datePickerCellTextSelected: {
-    color: colors.text,
+    color: defaultColors.text,
     fontWeight: '700',
   },
   datePickerMonthNav: {
@@ -2002,42 +2015,42 @@ shadowOpacity: 0.5,
   datePickerMonthLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     textTransform: 'capitalize',
   },
   todayButton: {
     alignSelf: 'center',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: defaultColors.primary,
     borderRadius: 12,
     marginTop: 8,
   },
   todayButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
   },
   qtyButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: defaultColors.primary,
   },
   qtyButtonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     lineHeight: 20,
   },
   qtyValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: defaultColors.text,
     marginHorizontal: 8,
   },
 });
