@@ -39,9 +39,9 @@ function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
       border: '#c08850',
     },
     silver: {
-      colors: ['#707070', '#a8a8a8', '#d3d3d3', '#ffffff'] as const,
+      colors: ['#505050', '#808080', '#b0b0b0', '#e0e0e0'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#d3d3d3',
+      border: '#b0b0b0',
     },
     gold: {
       colors: ['#a07d1a', '#c9a029', '#f4c430', '#ffe680'] as const,
@@ -344,11 +344,13 @@ const YearCalendarView = React.memo(function YearCalendarView({
     monthHeight,
   } = useMemo(() => {
     // Небольшие горизонтальные отступы слева/справа
-    const horizontalPadding = 6;
-    const gapBetweenMonths = 4; // расстояние между колонками месяцев
+    const horizontalPadding = 8;
+    const gapBetweenMonths = 3; // расстояние между колонками месяцев
 
-    // 3 колонки: суммарная ширина месяцев + два промежутка = ширина экрана
-    const monthWidth = (screenWidth - gapBetweenMonths * 2 - horizontalPadding * 2) / 3;
+    // 3 колонки: суммарная ширина месяцев + два промежутка между колонками + боковые отступы = ширина экрана
+    // Формула: screenWidth = horizontalPadding + monthWidth + gapBetweenMonths + monthWidth + gapBetweenMonths + monthWidth + horizontalPadding
+    // Упрощаем: screenWidth = horizontalPadding * 2 + monthWidth * 3 + gapBetweenMonths * 2
+    const monthWidth = Math.floor((screenWidth - horizontalPadding * 2 - gapBetweenMonths * 2) / 3);
 
     // Высоты строки дней недели больше нет — убираем из расчёта
     const weekDaysHeight = 0;
@@ -456,23 +458,32 @@ const YearCalendarView = React.memo(function YearCalendarView({
     
     return (
       <View key={monthIndex} style={{ 
-        width: monthWidth, 
+        width: monthWidth,
+        maxWidth: monthWidth,
         height: monthHeight,
-        marginBottom: monthMarginBottom, 
-        marginRight: gapBetweenMonths,
-        // Каждый 3-й месяц (индексы 2, 5, 8, 11) не должен иметь marginRight
-        ...(monthIndex % 3 === 2 ? { marginRight: 0 } : {})
+        marginBottom: monthMarginBottom,
+        alignSelf: 'flex-start',
+        flexShrink: 0,
+        // marginRight только для месяцев, которые не последние в строке (не 2, 5, 8, 11)
+        ...(monthIndex % 3 !== 2 ? { marginRight: gapBetweenMonths } : {})
       }}>
         <Text style={{ 
           fontSize: 18, 
           fontWeight: '700', 
           color: colors.text, 
           marginBottom: 8,
-          textAlign: 'center'
+          textAlign: 'center',
+          height: 26,
         }}>
           {monthNames[monthIndex]}
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <View style={{ 
+          flexDirection: 'row', 
+          flexWrap: 'wrap',
+          height: monthHeight - 34, // Фиксированная высота для дней (общая высота минус заголовок)
+          alignContent: 'flex-start',
+          justifyContent: 'flex-start',
+        }}>
           {monthDays.map((date, idx) => {
             if (date === null) {
               // Пустая ячейка для выравнивания
@@ -536,9 +547,9 @@ const YearCalendarView = React.memo(function YearCalendarView({
                 cellStyle.borderWidth = 1.5;
                 cellStyle.borderColor = '#ffe680';
               } else if (streakType === 'silver') {
-                cellStyle.backgroundColor = '#d3d3d3'; // Серебро
-                cellStyle.borderWidth = 1.5;
-                cellStyle.borderColor = '#ffffff';
+                cellStyle.backgroundColor = '#a0a0a0'; // Серебро (темнее для лучшей видимости)
+                cellStyle.borderWidth = 2;
+                cellStyle.borderColor = '#d0d0d0';
               } else if (streakType === 'bronze') {
                 cellStyle.backgroundColor = '#c08850'; // Бронза
                 cellStyle.borderWidth = 1.5;
@@ -624,6 +635,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
           paddingHorizontal: horizontalPadding,
           paddingTop: 0,
           paddingBottom,
+          alignItems: 'flex-start',
         }}
       >
         {months.map((index) => renderMonth(index))}
@@ -1567,23 +1579,46 @@ export default function CalendarScreen() {
       
       if (!isInCurrentStreak && !isInBestStreak) {
         if (dailyGoal !== null && dailyGoal > 0 && total > 0) {
-          if (total <= dailyGoal * 0.5) {
+          if (total <= dailyGoal * 0.3) {
+            cellColorStyle = styles.cellVeryLowAmount; // Очень светло-зеленый
+          } else if (total <= dailyGoal * 0.5) {
             cellColorStyle = styles.cellLowAmount; // Светло-зеленый
+          } else if (total <= dailyGoal * 0.7) {
+            cellColorStyle = styles.cellLowModerateAmount; // Зелено-желтый
           } else if (total <= dailyGoal) {
-            cellColorStyle = styles.cellModerateAmount; // Желто-зеленый
+            cellColorStyle = styles.cellModerateAmount; // Желтый
+          } else if (total <= dailyGoal * 1.2) {
+            cellColorStyle = styles.cellModerateHighAmount; // Желто-оранжевый
           } else if (total <= dailyGoal * 1.5) {
             cellColorStyle = styles.cellHighAmount; // Оранжевый
+          } else if (total <= dailyGoal * 2) {
+            cellColorStyle = styles.cellHighVeryHighAmount; // Оранжево-красный
           } else if (total < lethalDose) {
             cellColorStyle = styles.cellVeryHighAmount; // Красный
           } else {
             cellColorStyle = styles.cellCriticalAmount; // Темно-красный
           }
         } else if (total > 0) {
-          // Если цель не установлена, показываем только факт употребления
+          // Если цель не установлена, используем градацию по абсолютным значениям
+          // Используем стандартные единицы для градации
           if (total >= lethalDose) {
-            cellColorStyle = styles.cellCriticalAmount;
+            cellColorStyle = styles.cellCriticalAmount; // Темно-красный - критическое
+          } else if (total >= 15) {
+            cellColorStyle = styles.cellVeryHighAmount; // Красный - очень высокое (15+ ед.)
+          } else if (total >= 10) {
+            cellColorStyle = styles.cellHighVeryHighAmount; // Оранжево-красный (10-15 ед.)
+          } else if (total >= 7) {
+            cellColorStyle = styles.cellHighAmount; // Оранжевый - высокое (7-10 ед.)
+          } else if (total >= 5) {
+            cellColorStyle = styles.cellModerateHighAmount; // Желто-оранжевый (5-7 ед.)
+          } else if (total >= 3) {
+            cellColorStyle = styles.cellModerateAmount; // Желтый - умеренное (3-5 ед.)
+          } else if (total >= 1.5) {
+            cellColorStyle = styles.cellLowModerateAmount; // Зелено-желтый (1.5-3 ед.)
+          } else if (total >= 0.5) {
+            cellColorStyle = styles.cellLowAmount; // Светло-зеленый (0.5-1.5 ед.)
           } else {
-            cellColorStyle = styles.cellModerateAmount;
+            cellColorStyle = styles.cellVeryLowAmount; // Очень светло-зеленый (до 0.5 ед.)
           }
         }
       }
@@ -2467,17 +2502,32 @@ const styles = StyleSheet.create({
     borderColor: '#10b981',
   },
   awardEmoji: {
-    fontSize: 24,
+    fontSize: 30,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  // Тепловая карта: от зеленого к красному
+  // Тепловая карта: от зеленого к красному (больше оттенков)
+  cellVeryLowAmount: {
+    backgroundColor: '#10b98125', // Очень светло-зеленый - минимальное количество
+  },
   cellLowAmount: {
     backgroundColor: '#10b98140', // Светло-зеленый - небольшое количество
+  },
+  cellLowModerateAmount: {
+    backgroundColor: '#84cc1640', // Зелено-желтый - низко-умеренное
   },
   cellModerateAmount: {
     backgroundColor: '#fbbf2440', // Желтый - умеренное количество (в пределах нормы)
   },
+  cellModerateHighAmount: {
+    backgroundColor: '#f59e0b45', // Желто-оранжевый - умеренно-высокое
+  },
   cellHighAmount: {
     backgroundColor: '#f59e0b50', // Оранжевый - превышение нормы
+  },
+  cellHighVeryHighAmount: {
+    backgroundColor: '#ef444455', // Оранжево-красный - высоко-очень высокое
   },
   cellVeryHighAmount: {
     backgroundColor: '#ef444460', // Красный - значительное превышение
