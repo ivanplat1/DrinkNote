@@ -33,8 +33,15 @@ export function buildMonthMatrix(anchor: Date): Date[] {
   return result;
 }
 
+/** YYYY-MM-DD по локальной дате (для календаря и меток — без сдвига по поясу). */
 export function formatISO(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return (
+    date.getFullYear() +
+    '-' +
+    String(date.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(date.getDate()).padStart(2, '0')
+  );
 }
 
 export const WEEKDAY_SHORT_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];

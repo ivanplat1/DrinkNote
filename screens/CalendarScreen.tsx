@@ -10,7 +10,14 @@ import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrin
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
 import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from '../storage/presets';
+import { getCalendarLabels, setCalendarLabel, setCalendarLabelRange, getCalendarLabelRanges, deleteCalendarLabelRange, updateCalendarLabelRange, DEFAULT_LABEL_COLOR, type LabelRange } from '../storage/calendarLabels';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
+
+function addDaysISO(iso: string, delta: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
@@ -19,6 +26,21 @@ import { CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
 import { isPremiumUser } from '../storage/premium';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+const LABEL_COLOR_PRESETS = [
+  '#6B9BD1', '#E07C7C', '#7EC87E', '#E8B84A', '#9B7EDE',
+  '#5BB5C4', '#E88B6B', '#6BC4A0', '#C97BA5', '#8B9DC3',
+];
+
+/** На светлой теме добавляем тёмную обводку под контуром (цвет метки не меняется). */
+const LIGHT_THEME_CONTOUR_STROKE = 'rgba(0,0,0,0.28)';
+
+/** Цвет зелёной серии без алкоголя на светлой теме (хороший контраст на белом фоне). */
+const STREAK_GREEN_LIGHT = '#059669';
+
+/** Фон ячеек дней на светлой теме (не чисто белый). */
+const CALENDAR_CELL_BG_LIGHT = '#f1f5f9';
 
 // Сколько недель одновременно видно на экране
 const VISIBLE_WEEKS = 5;
@@ -119,27 +141,31 @@ function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
 }
 
 // Компонент заголовка месяца - вынесен отдельно для независимого обновления
-function MonthHeader({ 
-  label, 
-  headerStyle, 
-  monthStyle, 
+function MonthHeader({
+  label,
+  headerStyle,
+  monthStyle,
   sobrietyStats,
   animatedStyle,
   colors,
-}: { 
+  rightAction,
+  streakColor = '#10b981',
+}: {
   label: string;
-  headerStyle: any; 
+  headerStyle: any;
   monthStyle: any;
   sobrietyStats?: { currentStreak: number; bestStreak: number };
   animatedStyle?: any;
   colors: any;
+  rightAction?: React.ReactNode;
+  streakColor?: string;
 }) {
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
       <View style={{ flex: 1 }}>
         <Text style={monthStyle}>{label}</Text>
         {sobrietyStats && sobrietyStats.currentStreak > 0 && (
-          <Text style={{ color: '#10b981', fontSize: 13, fontWeight: '600', marginTop: 2 }}>
+          <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
             🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
           </Text>
         )}
@@ -151,6 +177,7 @@ function MonthHeader({
           </Text>
         </View>
       )}
+      {rightAction != null ? <View style={{ marginLeft: 8 }}>{rightAction}</View> : null}
     </Animated.View>
   );
 }
@@ -321,6 +348,9 @@ const YearCalendarView = React.memo(function YearCalendarView({
   screenHeight,
   insets,
   colors,
+  themeName,
+  labelsMap = {},
+  labelRanges = [],
 }: {
   year: number;
   totalsByDate: Record<string, number>;
@@ -332,7 +362,11 @@ const YearCalendarView = React.memo(function YearCalendarView({
   screenHeight: number;
   insets: { top: number; bottom: number };
   colors: any;
+  themeName?: string;
+  labelsMap?: Record<string, { text: string; color: string }[]>;
+  labelRanges?: LabelRange[];
 }) {
+  const isLightTheme = themeName === 'light' || themeName === 'highContrast';
   const todayISO = useMemo(() => formatISO(new Date()), []);
   const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
   
@@ -537,13 +571,14 @@ const YearCalendarView = React.memo(function YearCalendarView({
               streakType = 'bronze';
             }
             
+            const cellBg = isLightTheme ? (themeName === 'highContrast' ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
             let cellStyle: any = {
               width: daySize,
               height: daySize,
               borderRadius: daySize / 2,
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: colors.backgroundCard,
+              backgroundColor: cellBg,
               borderWidth: 1,
               borderColor: colors.border,
               opacity: 1,
@@ -567,10 +602,12 @@ const YearCalendarView = React.memo(function YearCalendarView({
                 cellStyle.borderWidth = 1.5;
                 cellStyle.borderColor = '#e8c4a0';
               } else {
-                // Для коротких серий (менее 7 дней) используем зеленый с обводкой
-                cellStyle.backgroundColor = '#10b981';
+                // Для коротких серий (менее 7 дней): на светлой теме — изумрудный, на тёмной — зелёный
+                const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
+                const streakBorder = isLightTheme ? STREAK_GREEN_LIGHT : '#34d399';
+                cellStyle.backgroundColor = streakGreen;
                 cellStyle.borderWidth = 1.5;
-                cellStyle.borderColor = '#34d399';
+                cellStyle.borderColor = streakBorder;
               }
               cellStyle.opacity = 1;
             } else if (total > 0) {
@@ -604,13 +641,71 @@ const YearCalendarView = React.memo(function YearCalendarView({
               cellStyle.borderWidth = 2;
               cellStyle.borderColor = colors.primary;
             }
-            
+            const rangesOnDay = !isInCurrentStreak && !isInBestStreak
+              ? labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso)
+              : [];
+
             return (
               <TouchableOpacity
                 key={`${iso}_${idx}`}
                 style={cellStyle}
                 onPress={() => onDayPress(iso)}
               >
+                {rangesOnDay.map((range) => {
+                  const inRange = (i: string) => range.fromISO <= i && i <= range.toISO;
+                  const col = idx % 7;
+                  const topEdge = !inRange(addDaysISO(iso, -7));
+                  const leftEdge = !inRange(addDaysISO(iso, -1)) || col === 0;
+                  const rightEdge = !inRange(addDaysISO(iso, 1)) || col === 6;
+                  const bottomEdge = !inRange(addDaysISO(iso, 7));
+                  if (!topEdge && !leftEdge && !rightEdge && !bottomEdge) return null;
+                  const strokeW = 2;
+                  const outlineW = isLightTheme ? 3 : 0;
+                  return (
+                    <React.Fragment key={range.id}>
+                      {outlineW > 0 && (
+                        <View
+                          pointerEvents="none"
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            borderRadius: daySize / 2,
+                            borderTopWidth: topEdge ? outlineW : 0,
+                            borderLeftWidth: leftEdge ? outlineW : 0,
+                            borderRightWidth: rightEdge ? outlineW : 0,
+                            borderBottomWidth: bottomEdge ? outlineW : 0,
+                            borderTopColor: LIGHT_THEME_CONTOUR_STROKE,
+                            borderLeftColor: LIGHT_THEME_CONTOUR_STROKE,
+                            borderRightColor: LIGHT_THEME_CONTOUR_STROKE,
+                            borderBottomColor: LIGHT_THEME_CONTOUR_STROKE,
+                          }}
+                        />
+                      )}
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          borderRadius: daySize / 2,
+                          borderTopWidth: topEdge ? strokeW : 0,
+                          borderLeftWidth: leftEdge ? strokeW : 0,
+                          borderRightWidth: rightEdge ? strokeW : 0,
+                          borderBottomWidth: bottomEdge ? strokeW : 0,
+                          borderTopColor: range.color,
+                          borderLeftColor: range.color,
+                          borderRightColor: range.color,
+                          borderBottomColor: range.color,
+                        }}
+                      />
+                    </React.Fragment>
+                  );
+                })}
                 <Text style={{ 
                   fontSize: 8,
                   color: (isInCurrentStreak || isInBestStreak) 
@@ -630,7 +725,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
         </View>
       </View>
     );
-  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors]);
+  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors, labelsMap, isLightTheme, themeName]);
   
   const months = useMemo(() => {
     return monthNames.map((_, index) => index);
@@ -682,7 +777,19 @@ export default function CalendarScreen() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isPremium, setIsPremium] = useState(false);
-  
+  const [dayLabelText, setDayLabelText] = useState('');
+  const [dayLabelColor, setDayLabelColor] = useState(DEFAULT_LABEL_COLOR);
+  const [dayLabels, setDayLabels] = useState<Array<{ text: string; color: string }>>([]);
+  const [labelsModalVisible, setLabelsModalVisible] = useState(false);
+  const [labelFromDate, setLabelFromDate] = useState<Date>(() => new Date());
+  const [labelToDate, setLabelToDate] = useState<Date>(() => new Date());
+  const [labelText, setLabelText] = useState('');
+  const [labelColor, setLabelColor] = useState(DEFAULT_LABEL_COLOR);
+  const [labelDatePickerMode, setLabelDatePickerMode] = useState<'from' | 'to' | null>(null);
+  const [labelRanges, setLabelRanges] = useState<LabelRange[]>([]);
+  const [editingRange, setEditingRange] = useState<LabelRange | null>(null);
+  const [labelsMap, setLabelsMap] = useState<Record<string, { text: string; color: string }[]>>({});
+
   // Автоматически выбираем текущий год при переключении на годовой режим
   useEffect(() => {
     if (calendarViewMode === 'year' && selectedYear !== currentYear) {
@@ -743,11 +850,17 @@ export default function CalendarScreen() {
       // Загружаем данные при фокусе на экран
       loadAll();
       loadDailyGoal();
-      return () => {
-        // Cleanup при размонтировании
-      };
+      getCalendarLabels().then(setLabelsMap);
+      getCalendarLabelRanges().then(setLabelRanges);
+      return () => {};
     }, [loadAll, loadDailyGoal])
   );
+
+  useEffect(() => {
+    if (labelsModalVisible) {
+      getCalendarLabelRanges().then(setLabelRanges);
+    }
+  }, [labelsModalVisible]);
 
   const totalsByDate = useMemo(() => {
     const startTime = performance.now();
@@ -1162,6 +1275,32 @@ export default function CalendarScreen() {
     }
   }, [selectedDate]);
 
+  // Загружаем все метки дня при открытии модалки
+  useEffect(() => {
+    if (!selectedDate) {
+      setDayLabelText('');
+      setDayLabelColor(DEFAULT_LABEL_COLOR);
+      setDayLabels([]);
+      return;
+    }
+    getCalendarLabels().then((labels) => {
+      const entries = labels[selectedDate] ?? [];
+      setDayLabels(entries);
+      setDayLabelText('');
+      setDayLabelColor(DEFAULT_LABEL_COLOR);
+    });
+  }, [selectedDate]);
+
+  const saveDayLabel = useCallback(async () => {
+    if (!selectedDate || !dayLabelText.trim()) return;
+    await setCalendarLabel(selectedDate, dayLabelText.trim(), dayLabelColor);
+    getCalendarLabels().then((labels) => {
+      setLabelsMap(labels);
+      setDayLabels(labels[selectedDate] ?? []);
+      setDayLabelText('');
+    });
+  }, [selectedDate, dayLabelText, dayLabelColor]);
+
   const deleteEntry = async (id: string) => {
     // Оптимистичное обновление UI - удаляем из dayList сразу
     if (selectedDate) {
@@ -1520,10 +1659,11 @@ export default function CalendarScreen() {
   const cellHeight = listHeight ? Math.floor(listHeight / VISIBLE_WEEKS) : 0;
   const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
-  // Мемоизируем вычисления размеров и дат для оптимизации
-  // Используем точную ширину экрана, чтобы избежать проблем с выравниванием
-  const cellWidth = useMemo(() => screenWidth / 7, [screenWidth]);
-  const weekWidth = useMemo(() => screenWidth, [screenWidth]);
+  // Горизонтальные отступы календаря (как у заголовка и строки дней недели)
+  const CALENDAR_PADDING_H = 12;
+  const calendarContentWidth = screenWidth - 2 * CALENDAR_PADDING_H;
+  const cellWidth = useMemo(() => calendarContentWidth / 7, [calendarContentWidth]);
+  const weekWidth = useMemo(() => calendarContentWidth, [calendarContentWidth]);
   const todayISO = useMemo(() => formatISO(new Date()), []);
   
   // Рендер одной НЕДЕЛИ (7 дней). FlatList ниже работает поверх массива weeks.
@@ -1660,7 +1800,11 @@ export default function CalendarScreen() {
       
       const isLightTheme = themeName === 'light' || themeName === 'highContrast';
       const hasData = total > 0 || total >= lethalDose;
-      
+      const cellBg = isLightTheme ? (themeName === 'highContrast' ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
+
+      // Все периоды, покрывающие этот день — для каждого рисуем свой контур (пересечения видны)
+      const rangesOnDay = !glowStyle ? labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso) : [];
+
       return (
         <TouchableOpacity
           key={`${iso}_${idx}`}
@@ -1682,14 +1826,70 @@ export default function CalendarScreen() {
             // Для дней в серии не применяем cellCurrent/cellAdjacent, чтобы зеленый фон был виден
             // Для дней с данными на светлых темах тоже не применяем cellCurrent/cellAdjacent, чтобы цветной фон был виден
             !glowStyle && !(cellColorStyle && isLightTheme) && (isCurrentMonth 
-              ? [styles.cellCurrent, { backgroundColor: colors.backgroundCard }] 
-              : [styles.cellAdjacent, { backgroundColor: colors.backgroundCard }]),
+              ? [styles.cellCurrent, { backgroundColor: cellBg }] 
+              : [styles.cellAdjacent, { backgroundColor: cellBg }]),
             glowStyle, // glowStyle применяется после, чтобы перекрыть фон
+            isLightTheme && glowStyle && isInCurrentStreak && {
+              backgroundColor: STREAK_GREEN_LIGHT,
+              borderColor: STREAK_GREEN_LIGHT,
+              shadowColor: STREAK_GREEN_LIGHT,
+            },
             cellColorStyle,
             isToday && styles.cellToday,
           ]}
           onPress={() => openDay(d)}
         >
+          {/* Слои контуров: каждый период рисует свою рамку (при пересечении видны оба цвета) */}
+          {rangesOnDay.map((range) => {
+            const inRange = (i: string) => range.fromISO <= i && i <= range.toISO;
+            const topEdge = !inRange(addDaysISO(iso, -7));
+            const leftEdge = !inRange(addDaysISO(iso, -1)) || idx === 0;
+            const rightEdge = !inRange(addDaysISO(iso, 1)) || idx === 6;
+            const bottomEdge = !inRange(addDaysISO(iso, 7));
+            if (!topEdge && !leftEdge && !rightEdge && !bottomEdge) return null;
+            const strokeW = 2;
+            const outlineW = isLightTheme ? 3 : 0;
+            return (
+              <React.Fragment key={range.id}>
+                {outlineW > 0 && (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      StyleSheet.absoluteFill,
+                      {
+                        borderRadius: 10,
+                        borderTopWidth: topEdge ? outlineW : 0,
+                        borderLeftWidth: leftEdge ? outlineW : 0,
+                        borderRightWidth: rightEdge ? outlineW : 0,
+                        borderBottomWidth: bottomEdge ? outlineW : 0,
+                        borderTopColor: LIGHT_THEME_CONTOUR_STROKE,
+                        borderLeftColor: LIGHT_THEME_CONTOUR_STROKE,
+                        borderRightColor: LIGHT_THEME_CONTOUR_STROKE,
+                        borderBottomColor: LIGHT_THEME_CONTOUR_STROKE,
+                      },
+                    ]}
+                  />
+                )}
+                <View
+                  pointerEvents="none"
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      borderRadius: 10,
+                      borderTopWidth: topEdge ? strokeW : 0,
+                      borderLeftWidth: leftEdge ? strokeW : 0,
+                      borderRightWidth: rightEdge ? strokeW : 0,
+                      borderBottomWidth: bottomEdge ? strokeW : 0,
+                      borderTopColor: range.color,
+                      borderLeftColor: range.color,
+                      borderRightColor: range.color,
+                      borderBottomColor: range.color,
+                    },
+                  ]}
+                />
+              </React.Fragment>
+            );
+          })}
           <View style={styles.cellContent}>
             {/* Градиент слитка + анимированная рамка */}
             {isInBestStreak && bestCompletedStreak && (
@@ -1760,15 +1960,15 @@ export default function CalendarScreen() {
     });
     
     return (
-      <View 
-        style={{ height: dynamicWeekHeight, width: weekWidth, alignSelf: 'center', overflow: 'hidden' }}
+      <View
+        style={{ height: dynamicWeekHeight, width: screenWidth, overflow: 'visible' }}
       >
-        <View style={styles.grid}>
+        <View style={[styles.grid, { marginHorizontal: CALENDAR_PADDING_H, width: weekWidth }]}>
           {cells}
         </View>
       </View>
     );
-  }, [cellHeight, listHeight, cellWidth, weekWidth, todayISO, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps]);
+  }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelsMap, labelRanges, themeName, CALENDAR_PADDING_H]);
 
 
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
@@ -1884,13 +2084,32 @@ export default function CalendarScreen() {
               }
               }}
             >
-            <MonthHeader 
+            <MonthHeader
               label={monthLabel}
-              headerStyle={styles.headerRow} 
+              headerStyle={styles.headerRow}
               monthStyle={[styles.month, { color: colors.text }]}
               sobrietyStats={sobrietyStats}
               animatedStyle={monthHeaderAnimatedStyle}
               colors={colors}
+              streakColor={themeName === 'light' || themeName === 'highContrast' ? STREAK_GREEN_LIGHT : '#10b981'}
+              rightAction={isPremium ? (
+                <TouchableOpacity
+                  style={[styles.labelsHeaderBtn, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={() => {
+                    const base = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
+                    setLabelFromDate(new Date(base));
+                    setLabelToDate(new Date(base));
+                    setLabelText('');
+                    setLabelColor(DEFAULT_LABEL_COLOR);
+                    setEditingRange(null);
+                    setLabelsModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="label-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>Метки</Text>
+                </TouchableOpacity>
+              ) : undefined}
             />
           </View>
 
@@ -1946,6 +2165,24 @@ export default function CalendarScreen() {
                 <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
             )}
+            {isPremium && (
+              <TouchableOpacity
+                style={[styles.labelsHeaderBtn, { backgroundColor: colors.backgroundSecondary, marginLeft: 8 }]}
+                onPress={() => {
+                  const base = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
+                  setLabelFromDate(new Date(base));
+                  setLabelToDate(new Date(base));
+                  setLabelText('');
+                  setLabelColor(DEFAULT_LABEL_COLOR);
+                  setEditingRange(null);
+                  setLabelsModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="label-outline" size={18} color={colors.primary} />
+                <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>Метки</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.yearCalendarContainer}>
             <YearCalendarView
@@ -1959,6 +2196,9 @@ export default function CalendarScreen() {
               screenHeight={screenHeight}
               insets={insets}
               colors={colors}
+              themeName={themeName}
+              labelsMap={labelsMap}
+              labelRanges={labelRanges}
             />
           </View>
         </>
@@ -2058,6 +2298,23 @@ export default function CalendarScreen() {
                     )}
                   </View>
                 </View>
+                {isPremium && (
+                  <View style={[styles.dayLabelSection, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.dayLabelSectionTitle, { color: colors.textSecondary }]}>Метки дня</Text>
+                    {dayLabels.length > 0 ? (
+                      <View style={styles.dayLabelsList}>
+                        {dayLabels.map((entry, i) => (
+                          <View key={`${entry.text}-${entry.color}-${i}`} style={[styles.dayLabelChip, { borderColor: colors.border }]}>
+                            <View style={[styles.dayLabelColorDot, { backgroundColor: entry.color }]} />
+                            <Text style={[styles.dayLabelChipText, { color: colors.text }]} numberOfLines={1}>{entry.text || '—'}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={[styles.dayLabelSectionTitle, { color: colors.textTertiary, marginBottom: 0 }]}>Нет меток</Text>
+                    )}
+                  </View>
+                )}
                 <View style={{ marginTop: 20 }}>
                   <FlatList
                     data={dayList}
@@ -2362,6 +2619,174 @@ export default function CalendarScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Модалка меток на период (премиум) */}
+      <Modal visible={labelsModalVisible} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setLabelsModalVisible(false)} />
+          <ScrollView style={styles.labelsModalScroll} contentContainerStyle={styles.labelsModalScrollContent} keyboardShouldPersistTaps="handled">
+            <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
+              <Text style={[styles.labelsModalTitle, { color: colors.text }]}>{editingRange ? 'Редактировать метку' : 'Метка на период'}</Text>
+              <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>Период от и до включительно. Один день — выберите одинаковые даты.</Text>
+
+              {/* Список всех меток */}
+              {labelRanges.length > 0 && (
+                <View style={[styles.labelsModalSection, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.labelsModalSectionTitle, { color: colors.textSecondary }]}>Все метки</Text>
+                  {labelRanges.map((r) => (
+                    <View key={r.id} style={[styles.labelsModalListItem, { borderBottomColor: colors.border }]}>
+                      <View style={[styles.labelsModalListColor, { backgroundColor: r.color }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.labelsModalListText, { color: colors.text }]} numberOfLines={1}>{r.text || '—'}</Text>
+                        <Text style={[styles.labelsModalListDates, { color: colors.textTertiary }]}>
+                          {r.fromISO === r.toISO ? r.fromISO : `${r.fromISO} — ${r.toISO}`}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        hitSlop={8}
+                        onPress={() => {
+                          setLabelFromDate(new Date(r.fromISO + 'T00:00:00'));
+                          setLabelToDate(new Date(r.toISO + 'T00:00:00'));
+                          setLabelText(r.text);
+                          setLabelColor(r.color);
+                          setEditingRange(r);
+                        }}
+                        style={[styles.labelsModalListBtn, { backgroundColor: colors.backgroundSecondary }]}
+                      >
+                        <MaterialIcons name="edit" size={18} color={colors.text} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        hitSlop={8}
+                        onPress={() => {
+                          Alert.alert('Удалить метку?', `«${r.text || '—'}» за период ${r.fromISO === r.toISO ? r.fromISO : `${r.fromISO} — ${r.toISO}`}`, [
+                            { text: 'Отмена', style: 'cancel' },
+                            {
+                              text: 'Удалить',
+                              style: 'destructive',
+                              onPress: async () => {
+                                const next = await deleteCalendarLabelRange(r.id);
+                                setLabelRanges(next);
+                                getCalendarLabels().then(setLabelsMap);
+                                if (editingRange?.id === r.id) {
+                                  setEditingRange(null);
+                                  setLabelText('');
+                                  setLabelFromDate(new Date());
+                                  setLabelToDate(new Date());
+                                  setLabelColor(DEFAULT_LABEL_COLOR);
+                                }
+                              },
+                            },
+                          ]);
+                        }}
+                        style={[styles.labelsModalListBtn, { backgroundColor: colors.backgroundSecondary }]}
+                      >
+                        <MaterialIcons name="delete-outline" size={18} color="#b91c1c" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>От</Text>
+                <TouchableOpacity
+                  style={[styles.labelsModalDateBtn, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={() => setLabelDatePickerMode('from')}
+                >
+                  <Text style={{ color: colors.text }}>{labelFromDate.toLocaleDateString('ru-RU')}</Text>
+                  <MaterialIcons name="edit-calendar" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>До</Text>
+                <TouchableOpacity
+                  style={[styles.labelsModalDateBtn, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={() => setLabelDatePickerMode('to')}
+                >
+                  <Text style={{ color: colors.text }}>{labelToDate.toLocaleDateString('ru-RU')}</Text>
+                  <MaterialIcons name="edit-calendar" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>Метка</Text>
+                <TextInput
+                  style={[styles.labelsModalInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
+                  placeholder="Отпуск, праздник…"
+                  placeholderTextColor={colors.textTertiary}
+                  value={labelText}
+                  onChangeText={setLabelText}
+                  maxLength={80}
+                />
+              </View>
+              <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>Цвет</Text>
+                <View style={styles.labelsModalColorRow}>
+                  {LABEL_COLOR_PRESETS.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      onPress={() => setLabelColor(c)}
+                      style={[
+                        styles.labelsModalColorDot,
+                        { backgroundColor: c },
+                        labelColor === c && styles.labelsModalColorDotSelected,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.labelsModalActions}>
+                <TouchableOpacity
+                  style={[styles.labelsModalButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    if (!labelText.trim()) {
+                      Alert.alert('Введите название', 'Укажите название метки перед сохранением.');
+                      return;
+                    }
+                    const fromISO = labelFromDate.getFullYear() + '-' + String(labelFromDate.getMonth() + 1).padStart(2, '0') + '-' + String(labelFromDate.getDate()).padStart(2, '0');
+                    const toISO = labelToDate.getFullYear() + '-' + String(labelToDate.getMonth() + 1).padStart(2, '0') + '-' + String(labelToDate.getDate()).padStart(2, '0');
+                    const [a, b] = fromISO <= toISO ? [fromISO, toISO] : [toISO, fromISO];
+                    if (editingRange) {
+                      await updateCalendarLabelRange(editingRange.id, a, b, labelText.trim(), labelColor);
+                    } else {
+                      await setCalendarLabelRange(a, b, labelText.trim(), labelColor);
+                    }
+                    const nextRanges = await getCalendarLabelRanges();
+                    setLabelRanges(nextRanges);
+                    const next = await getCalendarLabels();
+                    setLabelsMap(next);
+                    setLabelsModalVisible(false);
+                    setEditingRange(null);
+                    setLabelText('');
+                    setLabelColor(DEFAULT_LABEL_COLOR);
+                    if (selectedDate) {
+                      setDayLabels(next[selectedDate] ?? []);
+                    }
+                  }}
+                >
+                  <Text style={[styles.labelsModalButtonText, { color: '#fff' }]}>{editingRange ? 'Сохранить' : 'Установить'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.labelsModalButton, { borderWidth: 1, borderColor: colors.border }]} onPress={() => setLabelsModalVisible(false)}>
+                  <Text style={[styles.labelsModalButtonText, { color: colors.textSecondary }]}>Закрыть</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+        {labelDatePickerMode !== null && (
+          <DateTimePicker
+            value={labelDatePickerMode === 'from' ? labelFromDate : labelToDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, date) => {
+              if (date) {
+                if (labelDatePickerMode === 'from') setLabelFromDate(date);
+                else setLabelToDate(date);
+              }
+              setLabelDatePickerMode(null);
+            }}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2432,6 +2857,15 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingTop: 2,
     paddingBottom: 2,
+    position: 'relative',
+  },
+  cellLabelDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   badgeContainer: {
     justifyContent: 'center',
@@ -2731,6 +3165,191 @@ const styles = StyleSheet.create({
     color: defaultColors.textSecondary,
     fontWeight: '600',
     fontSize: 12,
+  },
+  dayLabelSection: {
+    marginTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  dayLabelSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  dayLabelsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  dayLabelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: defaultColors.backgroundSecondary,
+  },
+  dayLabelChipText: {
+    fontSize: 14,
+    maxWidth: 180,
+  },
+  dayLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  dayLabelColorDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  dayLabelInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  labelsModalCard: {
+    backgroundColor: defaultColors.backgroundCard,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  labelsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: defaultColors.text,
+    marginBottom: 8,
+  },
+  labelsModalHint: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  labelsModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  labelsModalLabel: {
+    fontSize: 15,
+    minWidth: 32,
+  },
+  labelsModalDateBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  labelsModalInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  labelsModalActions: {
+    flexDirection: 'column',
+    gap: 10,
+    marginTop: 16,
+  },
+  labelsModalButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  labelsModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  labelsModalScroll: {
+    flex: 1,
+  },
+  labelsModalScrollContent: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  labelsModalSection: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  labelsModalSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  labelsModalListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  labelsModalListColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  labelsModalListText: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+  },
+  labelsModalListDates: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  labelsModalListBtn: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  labelsModalColorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    flex: 1,
+    paddingRight: 16,
+  },
+  labelsModalColorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  labelsModalColorDotSelected: {
+    borderColor: defaultColors.text,
+  },
+  labelsHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 4,
+  },
+  labelsHeaderBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   swipeContainer: {
     marginBottom: 8,

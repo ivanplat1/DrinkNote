@@ -111,7 +111,6 @@ export async function addPreset(preset: Omit<PresetDrink, 'id'>): Promise<Preset
   const withId: PresetDrink = { ...preset, name: cleanName, id: `preset_${Date.now()}` };
   const next = [...current, withId];
   await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next));
-  // Эмитим событие об изменении списка
   presetsEventEmitter.emit(next);
   return next;
 }

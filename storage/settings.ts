@@ -363,6 +363,12 @@ export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem(ACHIEVEMENTS_KEY);
   await AsyncStorage.removeItem(APP_START_DATE_KEY);
   await AsyncStorage.removeItem(CURRENCY_KEY);
+  await AsyncStorage.removeItem('notif_milestones_sent_v1');
+  await AsyncStorage.removeItem('notif_trend_week_cooldown_v1');
+  await AsyncStorage.removeItem('notif_trend_month_cooldown_v1');
+  await AsyncStorage.removeItem('calendar_labels_v1');
+  await AsyncStorage.removeItem('calendar_labels_v2');
+  await AsyncStorage.removeItem('calendar_labels_v3');
 }
 
 // Достижения

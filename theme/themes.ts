@@ -228,7 +228,7 @@ export const sepiaTheme: ThemeColors = {
   },
 };
 
-// Серо-синяя профессиональная тема (Professional Blue-Gray)
+// Серо-синяя профессиональная тема (Professional Blue-Gray) — больше серого
 export const highContrastTheme: ThemeColors = {
   // Основные цвета - профессиональные серо-синие оттенки
   primary: '#475569', // Серо-синий (slate-600)
@@ -236,10 +236,10 @@ export const highContrastTheme: ThemeColors = {
   primaryDark: '#334155', // Темный серо-синий (slate-700)
   secondary: '#3b82f6', // Профессиональный синий (blue-500)
   
-  // Фон - светлые серо-синие тона
-  background: '#f1f5f9', // Светло-серо-синий (slate-100)
-  backgroundSecondary: '#e2e8f0', // Очень светло-серо-синий (slate-200)
-  backgroundTertiary: '#cbd5e1', // Светло-серо-синий (slate-300)
+  // Фон — более выраженные серые тона
+  background: '#e2e8f0', // Серо-синий (slate-200)
+  backgroundSecondary: '#cbd5e1', // Серо-синий (slate-300)
+  backgroundTertiary: '#94a3b8', // Серо-синий (slate-400)
   backgroundCard: '#ffffff', // Белые карточки
   
   // Текст - темный на светлом
@@ -247,9 +247,9 @@ export const highContrastTheme: ThemeColors = {
   textSecondary: '#475569', // Средне-серо-синий (slate-600)
   textTertiary: '#64748b', // Светло-серо-синий (slate-500)
   
-  // Границы - профессиональные
-  border: '#cbd5e1', // Светло-серо-синяя граница (slate-300)
-  borderLight: '#e2e8f0', // Еще светлее (slate-200)
+  // Границы - более серые
+  border: '#94a3b8', // Серо-синяя граница (slate-400)
+  borderLight: '#cbd5e1', // Светлее (slate-300)
   
   // Состояния - профессиональные
   success: '#059669', // Профессиональный зеленый (emerald-600)
@@ -280,7 +280,7 @@ export const highContrastTheme: ThemeColors = {
   },
   other: {
     main: '#64748b', // Серо-синий (slate-500)
-    light: '#f1f5f9', // Светло-серо-синий фон (slate-100)
+    light: '#e2e8f0', // Серо-синий фон (slate-200)
     text: '#475569', // Средне-серо-синий текст (slate-600)
   },
 };
