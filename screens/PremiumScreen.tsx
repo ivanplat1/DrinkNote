@@ -94,6 +94,11 @@ export default function PremiumScreen() {
       description: 'Темная, светлая и цветовые темы для персонализации',
     },
     {
+      icon: 'cash',
+      title: 'Цена напитка',
+      description: 'Учёт стоимости каждой записи, сумма за день и период',
+    },
+    {
       icon: 'widgets',
       title: 'Виджеты',
       description: 'Виджеты для главного экрана с текущей серией и статистикой',

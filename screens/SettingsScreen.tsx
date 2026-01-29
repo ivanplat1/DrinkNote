@@ -7,15 +7,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
-import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit } from '../storage/settings';
+import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useCurrency } from '../theme/CurrencyContext';
 import { ThemeName } from '../theme/themes';
+import { CURRENCY_LIST } from '../utils/currency';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { themeName, setTheme, colors } = useTheme();
+  const { currency, setCurrency } = useCurrency();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -31,6 +34,7 @@ export default function SettingsScreen() {
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
   const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [importText, setImportText] = useState('');
   const [isPremium, setIsPremium] = useState(false);
   const importModalTranslateY = useSharedValue(0);
@@ -561,6 +565,21 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Валюта */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Валюта</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+            onPress={() => setShowCurrencyPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
+              {CURRENCY_LIST.find((c) => c.code === currency)?.label ?? currency}
+            </Text>
+            <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Экспорт и импорт данных */}
         <View style={styles.section}>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
@@ -821,6 +840,59 @@ export default function SettingsScreen() {
             />
           </View>
     </View>
+      </Modal>
+
+      {/* Выпадающий список валют */}
+      <Modal
+        visible={showCurrencyPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCurrencyPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowCurrencyPicker(false)}
+          />
+          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard }]}>
+            <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>Выберите валюту</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} style={styles.currencyPickerClose}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.currencyPickerScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
+              {CURRENCY_LIST.map(({ code, label }, index) => (
+                <TouchableOpacity
+                  key={code}
+                  style={[
+                    styles.currencyPickerItem,
+                    { borderBottomColor: colors.border },
+                    index === CURRENCY_LIST.length - 1 && { borderBottomWidth: 0 },
+                    currency === code && { backgroundColor: colors.backgroundSecondary },
+                  ]}
+                  onPress={() => {
+                    setCurrency(code);
+                    setShowCurrencyPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
+                    {label}
+                  </Text>
+                  {currency === code && (
+                    <MaterialIcons name="check" size={22} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1199,6 +1271,44 @@ const styles = StyleSheet.create({
     color: defaultColors.primary,
     textAlign: 'right',
   },
+  currencyPickerModal: {
+    maxHeight: '70%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.select({ ios: 34, android: 20 }),
+  },
+  currencyPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  currencyPickerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  currencyPickerClose: {
+    padding: 4,
+  },
+  currencyPickerScroll: {
+    maxHeight: 400,
+  },
+  currencyPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  currencyPickerItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 12,
+  },
   importModalContainer: {
     position: 'absolute',
     bottom: 0,
@@ -1376,6 +1486,31 @@ const styles = StyleSheet.create({
   themeButtonTextActive: {
     color: defaultColors.primary,
     fontWeight: '600',
+  },
+  currencyListCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  currencyListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  currencyListLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 12,
+  },
+  currencyListRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
   },
 });
 

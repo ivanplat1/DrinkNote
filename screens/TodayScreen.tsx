@@ -8,10 +8,13 @@ import PresetButton from '../components/PresetButton';
 import { suggestedPresets, getUserPresets, addPreset, removePreset, updatePreset, presetsEventEmitter } from '../storage/presets';
 import { PresetDrink } from '../types/preset';
 import { addDrink, addOrMergeDrink, getDrinksByDate, removeDrink, updateDrink } from '../storage/drinks';
+import { isPremiumUser } from '../storage/premium';
 import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/units';
 import { Drink } from '../types/drink';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { useCurrency } from '../theme/CurrencyContext';
+import { formatPrice, formatPriceShort } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
 
@@ -31,7 +34,7 @@ const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
 };
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any }) {
+function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors, currency }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: import('../storage/settings').CurrencyCode }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true); // Отслеживаем, первый ли это жест
@@ -190,6 +193,7 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, co
                 <Text style={[styles.itemSub, { color: beverageColor.text, opacity: 0.8 }]}>
                   {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
                   {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
+                  {item.price != null && item.price > 0 ? ` · ${formatPriceShort(item.price, currency)}` : ''}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
@@ -219,27 +223,32 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, co
 
 export default function TodayScreen() {
   const { colors } = useTheme();
+  const { currency } = useCurrency();
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingDrink, setEditingDrink] = useState<Drink | null>(null);
   const [newQuantity, setNewQuantity] = useState('1');
+  const [editPriceVal, setEditPriceVal] = useState('');
   const [editPresetModalVisible, setEditPresetModalVisible] = useState(false);
   const [editingPreset, setEditingPreset] = useState<PresetDrink | null>(null);
   const [presetName, setPresetName] = useState('');
   const [presetType, setPresetType] = useState<PresetDrink['beverageType']>('beer');
   const [presetVolume, setPresetVolume] = useState('500');
   const [presetAbv, setPresetAbv] = useState('5');
+  const [presetPrice, setPresetPrice] = useState('');
   // Переменные для модалки добавления кастомного пресета
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
   const [newVolume, setNewVolume] = useState('500');
   const [newAbv, setNewAbv] = useState('5');
+  const [newPriceVal, setNewPriceVal] = useState('');
 
   // Выбранная дата для добавления напитка
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date());
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   // Анимация модалок - движение за пальцем
   const addModalTranslateY = useSharedValue(0);
@@ -253,6 +262,9 @@ export default function TodayScreen() {
       const presets = await getUserPresets();
       setUserPresets(presets);
     })();
+  }, []);
+  useEffect(() => {
+    isPremiumUser().then(setIsPremium);
   }, []);
 
   // Сбрасываем позиции модалок при открытии
@@ -280,40 +292,9 @@ export default function TodayScreen() {
     return unsubscribe;
   }, []);
 
-  // Код выбора количества (пока не используется, но оставлен для будущего использования)
-  const [qtyModal, setQtyModal] = useState<{ visible: boolean; preset: PresetDrink | null; qty: string }>({ visible: false, preset: null, qty: '1' });
-
-  const openQtyModal = (preset: PresetDrink) => {
-    // setQtyModal({ visible: true, preset, qty: '1' });
-    // Пока добавляем сразу по одному напитку
-    handleQuickAdd(preset);
-  };
-
-  const closeQtyModal = () => setQtyModal({ visible: false, preset: null, qty: '1' });
-
-  const confirmAddWithQty = async () => {
-    if (!qtyModal.preset) return;
-    const qtyNum = Math.max(1, Math.floor(Number(qtyModal.qty) || 1));
-    const baseUnits = calculateStandardUnits(qtyModal.preset.volumeMl, qtyModal.preset.abvPercent);
-    const totalUnits = Math.round(baseUnits * qtyNum * 100) / 100;
-      const entry: Drink = {
-        id: `drink_${Date.now()}`,
-        dateISO: formatISO(selectedDateForAdd),
-        name: qtyModal.preset.name,
-        beverageType: qtyModal.preset.beverageType,
-        volumeMl: qtyModal.preset.volumeMl,
-        abvPercent: qtyModal.preset.abvPercent,
-        standardUnits: totalUnits,
-        quantity: qtyNum,
-      };
-    await addOrMergeDrink(entry);
-    closeQtyModal();
-    // Alert.alert('Добавлено', `${qtyModal.preset.name}: ${qtyNum} ед. (~${totalUnits} std)`);
-    await reloadToday();
-  };
-
   const handleQuickAdd = async (preset: PresetDrink) => {
     const units = calculateStandardUnits(preset.volumeMl, preset.abvPercent);
+    const price = isPremium && preset.defaultPrice != null && preset.defaultPrice > 0 ? preset.defaultPrice : undefined;
     const entry: Drink = {
       id: `drink_${Date.now()}`,
       dateISO: formatISO(selectedDateForAdd),
@@ -323,6 +304,7 @@ export default function TodayScreen() {
       abvPercent: preset.abvPercent,
       standardUnits: units,
       quantity: 1,
+      ...(price != null && { price }),
     };
     await addOrMergeDrink(entry);
     await reloadToday();
@@ -344,6 +326,7 @@ export default function TodayScreen() {
     setNewType('beer');
     setNewVolume('500');
     setNewAbv('5');
+    setNewPriceVal('');
   };
 
   const addSuggestedPreset = async (preset: PresetDrink) => {
@@ -389,7 +372,6 @@ export default function TodayScreen() {
 
 
   const saveCustomPreset = async () => {
-    // Нормализуем запятую на точку перед парсингом
     const normalizedVolume = newVolume.replace(',', '.');
     const normalizedAbv = newAbv.replace(',', '.');
     const volume = parseFloat(normalizedVolume);
@@ -398,11 +380,14 @@ export default function TodayScreen() {
       Alert.alert('Ошибка', 'Заполните название, объём и крепость');
       return;
     }
+    const priceNum = newPriceVal.trim() ? parseFloat(newPriceVal.replace(',', '.')) : undefined;
+    const defaultPrice = isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0 ? Math.round(priceNum * 100) / 100 : undefined;
     const updated = await addPreset({
       name: newName,
       beverageType: newType,
       volumeMl: volume,
       abvPercent: abv,
+      ...(defaultPrice != null && { defaultPrice }),
     });
     setUserPresets(updated);
     closeCustomModal();
@@ -411,6 +396,7 @@ export default function TodayScreen() {
   const [todayList, setTodayList] = useState<Drink[]>([]);
   const totalUnits = useMemo(() => todayList.reduce((s, d) => s + d.standardUnits, 0), [todayList]);
   const totalVolumeMl = useMemo(() => todayList.reduce((s, d) => s + d.volumeMl * (d.quantity ?? 1), 0), [todayList]);
+  const totalPrice = useMemo(() => todayList.reduce((s, d) => s + (d.price ?? 0), 0), [todayList]);
   const totalAlcoholGrams = useMemo(() => {
     return todayList.reduce((s, d) => {
       const ethanolDensity = 0.789; // g/mL
@@ -467,6 +453,7 @@ export default function TodayScreen() {
   const openEditModal = (drink: Drink) => {
     setEditingDrink(drink);
     setNewQuantity((drink.quantity || 1).toString());
+    setEditPriceVal(drink.price != null ? String(drink.price) : '');
     setEditModalVisible(true);
   };
 
@@ -474,6 +461,7 @@ export default function TodayScreen() {
     setEditModalVisible(false);
     setEditingDrink(null);
     setNewQuantity('1');
+    setEditPriceVal('');
   };
 
   const saveEditedDrink = async () => {
@@ -486,14 +474,15 @@ export default function TodayScreen() {
       return;
     }
 
-    // Пересчитываем стандартные единицы с новым количеством
     const baseUnits = calculateStandardUnits(editingDrink.volumeMl, editingDrink.abvPercent);
     const totalUnits = Math.round(baseUnits * quantity * 100) / 100;
+    const priceNum = editPriceVal.trim() ? parseFloat(editPriceVal.replace(',', '.')) : undefined;
+    const price = priceNum != null && !isNaN(priceNum) && priceNum >= 0 ? Math.round(priceNum * 100) / 100 : undefined;
 
     await updateDrink(editingDrink.id, {
-      ...editingDrink,
-      quantity: quantity,
+      quantity,
       standardUnits: totalUnits,
+      ...(isPremium && { price }), // при премиуме передаём цену (число или undefined для сброса)
     });
     
     await reloadToday();
@@ -502,12 +491,12 @@ export default function TodayScreen() {
 
   const openEditPresetModal = (preset: PresetDrink) => {
     setEditingPreset(preset);
-    // Извлекаем название без объема и процентов
     const nameMatch = preset.name.match(/^(.+?)\s+\d+\s*(мл|л)\s*\(\d+%\)$/);
     setPresetName(nameMatch ? nameMatch[1].trim() : preset.name);
     setPresetType(preset.beverageType);
     setPresetVolume(preset.volumeMl.toString());
     setPresetAbv(preset.abvPercent.toString());
+    setPresetPrice(preset.defaultPrice != null ? String(preset.defaultPrice) : '');
     setEditPresetModalVisible(true);
     setDeletingPresetId(null);
   };
@@ -519,6 +508,7 @@ export default function TodayScreen() {
     setPresetType('beer');
     setPresetVolume('500');
     setPresetAbv('5');
+    setPresetPrice('');
   };
 
   const saveEditedPreset = async () => {
@@ -534,11 +524,14 @@ export default function TodayScreen() {
       return;
     }
 
+    const priceNum = presetPrice.trim() ? parseFloat(presetPrice.replace(',', '.')) : undefined;
+    const defaultPrice = isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0 ? Math.round(priceNum * 100) / 100 : undefined;
     await updatePreset(editingPreset.id, {
       name: presetName,
       beverageType: presetType,
       volumeMl: volume,
       abvPercent: abv,
+      ...(isPremium && { defaultPrice }),
     });
     
     const updated = await getUserPresets();
@@ -571,11 +564,10 @@ export default function TodayScreen() {
   const insets = useSafeAreaInsets();
 
   const handleLongPress = (presetId: string) => {
-    if (deletingPresetId === presetId) {
-      // Если уже в режиме удаления - удаляем
-      onRemovePreset(presetId);
+    if (editingPresetId === presetId) {
+      setEditingPresetId(null);
+      setDeletingPresetId(null);
     } else {
-      // Показываем режим редактирования/удаления
       setDeletingPresetId(presetId);
       setEditingPresetId(presetId);
     }
@@ -625,16 +617,19 @@ export default function TodayScreen() {
             contentContainerStyle={styles.presetList} 
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
-            onStartShouldSetResponder={() => {
-              setDeletingPresetId(null);
-              setEditingPresetId(null);
-              return false;
-            }}
           >
+            <TouchableWithoutFeedback
+              onPress={() => {
+                if (editingPresetId || deletingPresetId) {
+                  setEditingPresetId(null);
+                  setDeletingPresetId(null);
+                }
+              }}
+            >
+              <View style={styles.presetList}>
             {userPresets.map((p) => {
               const beverageColor = getBeverageColor(p.beverageType, colors);
               const isEditing = editingPresetId === p.id;
-              const isDeleting = deletingPresetId === p.id;
               return (
                 <View key={p.id} style={{ position: 'relative' }}>
                   <TouchableOpacity
@@ -645,10 +640,10 @@ export default function TodayScreen() {
                     ]}
                     onPress={() => {
                       if (isEditing) {
-                        // Ничего не делаем при нажатии в режиме редактирования
-                      } else {
-                        openQtyModal(p);
+                        setEditingPresetId(null);
+                        return;
                       }
+                      handleQuickAdd(p);
                     }}
                     onLongPress={() => handleLongPress(p.id)}
                     delayLongPress={500}
@@ -665,9 +660,7 @@ export default function TodayScreen() {
                             style={styles.editActionButtonNoBg}
                             onPress={() => {
                               const preset = userPresets.find(pr => pr.id === p.id);
-                              if (preset) {
-                                openEditPresetModal(preset);
-                              }
+                              if (preset) openEditPresetModal(preset);
                             }}
                           >
                             <Entypo name="pencil" size={18} color={colors.primary} />
@@ -696,6 +689,8 @@ export default function TodayScreen() {
             >
               <Entypo name="circle-with-plus" size={22} color={colors.primary} />
             </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </ScrollView>
         </View>
       )}
@@ -703,7 +698,7 @@ export default function TodayScreen() {
 
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => deletingPresetId && setDeletingPresetId(null)}
+        onPress={() => { deletingPresetId && setDeletingPresetId(null); editingPresetId && setEditingPresetId(null); }}
       >
         <View style={[styles.sectionHeaderRow, { borderBottomColor: colors.borderLight }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
@@ -759,6 +754,15 @@ export default function TodayScreen() {
           <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Спирт</Text>
           <Text style={[styles.statsBarValue, { color: colors.text }]}>{Math.round(totalAlcoholGrams)} г</Text>
         </View>
+        {isPremium && totalPrice > 0 && (
+          <>
+            <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statsBarItem}>
+              <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Сумма</Text>
+              <Text style={[styles.statsBarValue, { color: colors.text }]}>{formatPrice(totalPrice, currency)}</Text>
+            </View>
+          </>
+        )}
       </View>
       <FlatList
         data={todayList}
@@ -773,6 +777,7 @@ export default function TodayScreen() {
               beverageColor={beverageColor}
               onRemove={onRemoveDrink}
               onQuantityChange={changeQuantity}
+              currency={currency}
               colors={colors}
             />
           );
@@ -780,51 +785,6 @@ export default function TodayScreen() {
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
         contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
       />
-
-      {/* Модалка количества единиц перед добавлением */}
-      <Modal visible={qtyModal.visible} animationType="fade" transparent>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.centerBackdrop}>
-            <View style={[styles.centerCard, { backgroundColor: colors.backgroundCard }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Сколько единиц?</Text>
-              {qtyModal.preset && (
-                <Text style={{ marginBottom: 8, color: colors.textSecondary }}>{qtyModal.preset.name}</Text>
-              )}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setQtyModal((s) => ({ ...s, qty: String(Math.max(1, (parseInt(s.qty || '1', 10) || 1) - 1)) }))}
-                  style={[styles.cancelBtn, { marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                >
-                  <Text style={{ color: colors.text }}>-</Text>
-                </TouchableOpacity>
-                <TextInput
-                  value={qtyModal.qty}
-                  onChangeText={(t) => setQtyModal((s) => ({ ...s, qty: t.replace(/[^0-9]/g, '') }))}
-                  keyboardType="number-pad"
-                  style={[styles.input, { width: 100, textAlign: 'center', backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                  returnKeyType="done"
-                  onSubmitEditing={confirmAddWithQty}
-                  placeholderTextColor={colors.textTertiary}
-                />
-                <TouchableOpacity
-                  onPress={() => setQtyModal((s) => ({ ...s, qty: String((parseInt(s.qty || '1', 10) || 1) + 1) }))}
-                  style={[styles.saveBtn, { marginLeft: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                >
-                  <Text style={{ color: colors.text }}>+</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeQtyModal}>
-                  <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={confirmAddWithQty}>
-                  <Text style={styles.saveBtnText}>Добавить</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
 
       {/* Модалка выбора напитка для добавления */}
       <Modal visible={addModalVisible} animationType="slide" transparent>
@@ -992,37 +952,54 @@ export default function TodayScreen() {
                     </View>
                   </View>
                   <View style={styles.row}>
-                    <TextInput
-                      placeholder="Объём, мл"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                      value={newVolume}
-                      onChangeText={(text) => {
-                        // Заменяем запятую на точку для корректного парсинга
-                        const normalized = text.replace(',', '.');
-                        setNewVolume(normalized);
-                      }}
-                      style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      returnKeyType="done"
-                      blurOnSubmit
-                      onSubmitEditing={Keyboard.dismiss}
-                    />
-                    <TextInput
-                      placeholder="Крепость, %"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                      value={newAbv}
-                      onChangeText={(text) => {
-                        // Заменяем запятую на точку для корректного парсинга
-                        const normalized = text.replace(',', '.');
-                        setNewAbv(normalized);
-                      }}
-                      style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      returnKeyType="done"
-                      blurOnSubmit
-                      onSubmitEditing={Keyboard.dismiss}
-                    />
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
+                      <TextInput
+                        placeholder="мл"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={newVolume}
+                        onChangeText={(text) => {
+                          const normalized = text.replace(',', '.');
+                          setNewVolume(normalized);
+                        }}
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
+                      <TextInput
+                        placeholder="%"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={newAbv}
+                        onChangeText={(text) => {
+                          const normalized = text.replace(',', '.');
+                          setNewAbv(normalized);
+                        }}
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        returnKeyType="done"
+                        blurOnSubmit
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
+                    </View>
                   </View>
+                  {isPremium && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                      <TextInput
+                        placeholder="Не указана"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={newPriceVal}
+                        onChangeText={(t) => setNewPriceVal(t.replace(',', '.'))}
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      />
+                    </View>
+                  )}
                   <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                     <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeCustomModal}>
                       <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
@@ -1121,6 +1098,19 @@ export default function TodayScreen() {
                         <Entypo name="circle-with-plus" size={28} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
+                    {isPremium && (
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>Цена</Text>
+                        <TextInput
+                          value={editPriceVal}
+                          onChangeText={setEditPriceVal}
+                          keyboardType="decimal-pad"
+                          placeholder="Не указана"
+                          placeholderTextColor={colors.textTertiary}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        />
+                      </View>
+                    )}
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditModal}>
                         <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
@@ -1206,35 +1196,54 @@ export default function TodayScreen() {
                       </View>
                     </View>
                     <View style={styles.row}>
-                      <TextInput
-                        placeholder="Объём, мл"
-                        placeholderTextColor={colors.textTertiary}
-                        keyboardType="decimal-pad"
-                        value={presetVolume}
-                        onChangeText={(text) => {
-                          const normalized = text.replace(',', '.');
-                          setPresetVolume(normalized);
-                        }}
-                        style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={Keyboard.dismiss}
-                      />
-                      <TextInput
-                        placeholder="Крепость, %"
-                        placeholderTextColor={colors.textTertiary}
-                        keyboardType="decimal-pad"
-                        value={presetAbv}
-                        onChangeText={(text) => {
-                          const normalized = text.replace(',', '.');
-                          setPresetAbv(normalized);
-                        }}
-                        style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={Keyboard.dismiss}
-                      />
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
+                        <TextInput
+                          placeholder="мл"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="decimal-pad"
+                          value={presetVolume}
+                          onChangeText={(text) => {
+                            const normalized = text.replace(',', '.');
+                            setPresetVolume(normalized);
+                          }}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          returnKeyType="done"
+                          blurOnSubmit
+                          onSubmitEditing={Keyboard.dismiss}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
+                        <TextInput
+                          placeholder="%"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="decimal-pad"
+                          value={presetAbv}
+                          onChangeText={(text) => {
+                            const normalized = text.replace(',', '.');
+                            setPresetAbv(normalized);
+                          }}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          returnKeyType="done"
+                          blurOnSubmit
+                          onSubmitEditing={Keyboard.dismiss}
+                        />
+                      </View>
                     </View>
+                    {isPremium && (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Цена</Text>
+                        <TextInput
+                          placeholder="Не указана"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="decimal-pad"
+                          value={presetPrice}
+                          onChangeText={(t) => setPresetPrice(t.replace(',', '.'))}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        />
+                      </View>
+                    )}
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditPresetModal}>
                         <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
@@ -1420,6 +1429,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 8,
     marginBottom: 8,
+    minHeight: 56,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1428,7 +1438,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
       },
       android: {
-        elevation: 2,
+        elevation: 0,
       },
     }),
   },
@@ -1464,13 +1474,13 @@ const styles = StyleSheet.create({
   },
   editButtonsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     alignItems: 'center',
   },
   editActionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: defaultColors.backgroundCard,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1487,8 +1497,8 @@ const styles = StyleSheet.create({
     }),
   },
   editActionButtonNoBg: {
-    width: 48,
-    height: 48,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1521,7 +1531,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
       },
       android: {
-        elevation: 2,
+        elevation: 0,
       },
     }),
   },

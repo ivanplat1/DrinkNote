@@ -8,6 +8,8 @@ export type Drink = {
   standardUnits: number; // Рассчитанное значение (10 г этанола за единицу)
   quantity?: number; // Количество порций/единиц (по умолчанию 1)
   note?: string;
+  /** Цена (премиум, абстрактная валюта) */
+  price?: number;
 };
 
 

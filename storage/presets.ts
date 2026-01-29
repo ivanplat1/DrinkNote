@@ -96,20 +96,18 @@ function extractCleanName(name: string): string {
 
 export async function addPreset(preset: Omit<PresetDrink, 'id'>): Promise<PresetDrink[]> {
   const current = await getUserPresets();
-  // Проверяем, нет ли уже такого пресета (по объему, крепости и типу)
-  const isDuplicate = current.some((p) => 
+  // Извлекаем чистое название без объема и крепости
+  const cleanName = extractCleanName(preset.name);
+  // Дубликат только если совпадают название, объём, крепость и тип (разные названия — разные пресеты)
+  const isDuplicate = current.some((p) =>
+    extractCleanName(p.name) === cleanName &&
     p.volumeMl === preset.volumeMl &&
     p.abvPercent === preset.abvPercent &&
     p.beverageType === preset.beverageType
   );
-  
-  // Если дубликат найден, возвращаем текущий список без изменений
   if (isDuplicate) {
     return current;
   }
-  
-  // Извлекаем чистое название без объема и крепости
-  const cleanName = extractCleanName(preset.name);
   const withId: PresetDrink = { ...preset, name: cleanName, id: `preset_${Date.now()}` };
   const next = [...current, withId];
   await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next));

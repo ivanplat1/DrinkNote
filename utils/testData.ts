@@ -41,6 +41,16 @@ export function generateTestDrinks(): Drink[] {
   
   console.log('🔄 Начинаю генерацию тестовых данных...');
   
+  // Примерные цены для части напитков (для теста статистики трат)
+  const variantPrices: Partial<Record<string, number>> = {
+    'Пиво': 150,
+    'Вино красное': 400,
+    'Джин-тоник': 350,
+    'Маргарита': 450,
+    'Виски': 250,
+    'IPA': 250,
+  };
+
   // Варианты напитков
   const drinkVariants = [
     // Пиво
@@ -119,6 +129,7 @@ export function generateTestDrinks(): Drink[] {
           abvPercent: abv,
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
+          ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
         });
         previousYearCount++;
       }
@@ -148,6 +159,7 @@ export function generateTestDrinks(): Drink[] {
           abvPercent: abv,
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
+          ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
         });
         previousYearCount++;
       }
@@ -181,6 +193,7 @@ export function generateTestDrinks(): Drink[] {
         abvPercent: abv,
         quantity,
         standardUnits: calculateUnits(volume, abv, quantity),
+        ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
       });
       previousYearCount++;
     }
@@ -236,6 +249,7 @@ export function generateTestDrinks(): Drink[] {
           abvPercent: abv,
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
+          ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
         });
         currentYearCount++;
       }
@@ -272,6 +286,7 @@ export function generateTestDrinks(): Drink[] {
           abvPercent: abv,
           quantity,
           standardUnits: calculateUnits(volume, abv, quantity),
+          ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
         });
         currentYearCount++;
       }
@@ -307,6 +322,7 @@ export function generateTestDrinks(): Drink[] {
         abvPercent: abv,
         quantity,
         standardUnits: calculateUnits(volume, abv, quantity),
+        ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
       });
       currentYearCount++;
     }
@@ -335,6 +351,7 @@ export function generateTestDrinks(): Drink[] {
       abvPercent: abv,
       quantity,
       standardUnits: calculateUnits(volume, abv, quantity),
+      ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
     });
     currentYearCount++;
   });
@@ -396,6 +413,7 @@ export function generateTestDrinks(): Drink[] {
       abvPercent: abv,
       quantity: randomInt(1, 2),
       standardUnits: calculateUnits(volume, abv, randomInt(1, 2)),
+      ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
     });
   }
   
@@ -418,6 +436,7 @@ export function generateTestDrinks(): Drink[] {
       abvPercent: abv,
       quantity: randomInt(1, 2),
       standardUnits: calculateUnits(volume, abv, randomInt(1, 2)),
+      ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
     });
   }
   
@@ -474,6 +493,7 @@ export function generateTestDrinks(): Drink[] {
       abvPercent: abv,
       quantity: randomInt(1, 2),
       standardUnits: calculateUnits(volume, abv, randomInt(1, 2)),
+      ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
     });
   }
   
@@ -496,6 +516,7 @@ export function generateTestDrinks(): Drink[] {
       abvPercent: abv,
       quantity: randomInt(1, 2),
       standardUnits: calculateUnits(volume, abv, randomInt(1, 2)),
+      ...(variantPrices[variant.name] != null && { price: variantPrices[variant.name] }),
     });
   }
   
@@ -531,11 +552,11 @@ export function generateTestDrinks(): Drink[] {
 
 export function generateTestPresets(): PresetDrink[] {
   return [
-    { id: 'test_preset_1', name: 'Любимое пиво', beverageType: 'beer', volumeMl: 500, abvPercent: 5 },
-    { id: 'test_preset_2', name: 'Виски односолодовый', beverageType: 'spirit', volumeMl: 50, abvPercent: 43 },
-    { id: 'test_preset_3', name: 'Джин-тоник', beverageType: 'cocktail', volumeMl: 250, abvPercent: 10 },
-    { id: 'test_preset_4', name: 'Красное вино', beverageType: 'wine', volumeMl: 200, abvPercent: 13 },
-    { id: 'test_preset_5', name: 'IPA крафт', beverageType: 'beer', volumeMl: 330, abvPercent: 7 },
-    { id: 'test_preset_6', name: 'Маргарита', beverageType: 'cocktail', volumeMl: 200, abvPercent: 18 },
+    { id: 'test_preset_1', name: 'Любимое пиво', beverageType: 'beer', volumeMl: 500, abvPercent: 5, defaultPrice: 150 },
+    { id: 'test_preset_2', name: 'Виски односолодовый', beverageType: 'spirit', volumeMl: 50, abvPercent: 43, defaultPrice: 250 },
+    { id: 'test_preset_3', name: 'Джин-тоник', beverageType: 'cocktail', volumeMl: 250, abvPercent: 10, defaultPrice: 350 },
+    { id: 'test_preset_4', name: 'Красное вино', beverageType: 'wine', volumeMl: 200, abvPercent: 13, defaultPrice: 400 },
+    { id: 'test_preset_5', name: 'IPA крафт', beverageType: 'beer', volumeMl: 330, abvPercent: 7, defaultPrice: 250 },
+    { id: 'test_preset_6', name: 'Маргарита', beverageType: 'cocktail', volumeMl: 200, abvPercent: 18, defaultPrice: 450 },
   ];
 }

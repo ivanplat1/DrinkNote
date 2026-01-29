@@ -15,6 +15,7 @@ import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PremiumScreen from './screens/PremiumScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
+import { CurrencyProvider } from './theme/CurrencyContext';
 import { generateTestDrinks, generateTestPresets } from './utils/testData';
 import { getAllDrinks, setAllDrinks } from './storage/drinks';
 import { getUserPresets, setUserPresets } from './storage/presets';
@@ -181,9 +182,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AppContent />
-        </GestureHandlerRootView>
+        <CurrencyProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AppContent />
+          </GestureHandlerRootView>
+        </CurrencyProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

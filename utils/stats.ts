@@ -37,6 +37,7 @@ export function getWeekNumber(date: Date): number {
 export function getWeekStats(drinks: Drink[], date: Date): {
   totalUnits: number;
   totalVolumeMl: number;
+  totalSpent: number;
   daysWithDrinks: number;
   averagePerDay: number;
 } {
@@ -51,6 +52,7 @@ export function getWeekStats(drinks: Drink[], date: Date): {
   
   const totalUnits = weekDrinks.reduce((sum, d) => sum + d.standardUnits, 0);
   const totalVolumeMl = weekDrinks.reduce((sum, d) => sum + d.volumeMl * (d.quantity ?? 1), 0);
+  const totalSpent = weekDrinks.reduce((sum, d) => sum + (d.price ?? 0), 0);
   
   const uniqueDates = new Set(weekDrinks.map(d => d.dateISO));
   const daysWithDrinks = uniqueDates.size;
@@ -59,6 +61,7 @@ export function getWeekStats(drinks: Drink[], date: Date): {
   return {
     totalUnits,
     totalVolumeMl,
+    totalSpent: Math.round(totalSpent * 100) / 100,
     daysWithDrinks,
     averagePerDay: Math.round(averagePerDay * 100) / 100,
   };
@@ -68,6 +71,7 @@ export function getWeekStats(drinks: Drink[], date: Date): {
 export function getMonthStats(drinks: Drink[], date: Date): {
   totalUnits: number;
   totalVolumeMl: number;
+  totalSpent: number;
   daysWithDrinks: number;
   averagePerDay: number;
 } {
@@ -82,6 +86,7 @@ export function getMonthStats(drinks: Drink[], date: Date): {
   
   const totalUnits = monthDrinks.reduce((sum, d) => sum + d.standardUnits, 0);
   const totalVolumeMl = monthDrinks.reduce((sum, d) => sum + d.volumeMl * (d.quantity ?? 1), 0);
+  const totalSpent = monthDrinks.reduce((sum, d) => sum + (d.price ?? 0), 0);
   
   const uniqueDates = new Set(monthDrinks.map(d => d.dateISO));
   const daysWithDrinks = uniqueDates.size;
@@ -90,6 +95,7 @@ export function getMonthStats(drinks: Drink[], date: Date): {
   return {
     totalUnits,
     totalVolumeMl,
+    totalSpent: Math.round(totalSpent * 100) / 100,
     daysWithDrinks,
     averagePerDay: Math.round(averagePerDay * 100) / 100,
   };
@@ -99,6 +105,7 @@ export function getMonthStats(drinks: Drink[], date: Date): {
 export function getOverallStats(drinks: Drink[]): {
   totalUnits: number;
   totalVolumeMl: number;
+  totalSpent: number;
   totalDays: number;
   averagePerDay: number;
   firstDate: string | null;
@@ -108,6 +115,7 @@ export function getOverallStats(drinks: Drink[]): {
     return {
       totalUnits: 0,
       totalVolumeMl: 0,
+      totalSpent: 0,
       totalDays: 0,
       averagePerDay: 0,
       firstDate: null,
@@ -117,6 +125,7 @@ export function getOverallStats(drinks: Drink[]): {
   
   const totalUnits = drinks.reduce((sum, d) => sum + d.standardUnits, 0);
   const totalVolumeMl = drinks.reduce((sum, d) => sum + d.volumeMl * (d.quantity ?? 1), 0);
+  const totalSpent = drinks.reduce((sum, d) => sum + (d.price ?? 0), 0);
   
   const dates = drinks.map(d => d.dateISO).sort();
   const uniqueDates = new Set(dates);
@@ -126,6 +135,7 @@ export function getOverallStats(drinks: Drink[]): {
   return {
     totalUnits,
     totalVolumeMl,
+    totalSpent: Math.round(totalSpent * 100) / 100,
     totalDays,
     averagePerDay: Math.round(averagePerDay * 100) / 100,
     firstDate: dates[0] || null,
@@ -194,16 +204,18 @@ export function getBeverageTypeStats(drinks: Drink[]): Array<{
   type: Drink['beverageType'];
   totalUnits: number;
   totalVolumeMl: number;
+  totalSpent: number;
   percentage: number;
   count: number;
 }> {
-  const typeMap = new Map<Drink['beverageType'], { units: number; volume: number; count: number }>();
+  const typeMap = new Map<Drink['beverageType'], { units: number; volume: number; spent: number; count: number }>();
   
   drinks.forEach(drink => {
-    const existing = typeMap.get(drink.beverageType) || { units: 0, volume: 0, count: 0 };
+    const existing = typeMap.get(drink.beverageType) || { units: 0, volume: 0, spent: 0, count: 0 };
     typeMap.set(drink.beverageType, {
       units: existing.units + drink.standardUnits,
       volume: existing.volume + drink.volumeMl * (drink.quantity ?? 1),
+      spent: existing.spent + (drink.price ?? 0),
       count: existing.count + 1,
     });
   });
@@ -215,6 +227,7 @@ export function getBeverageTypeStats(drinks: Drink[]): Array<{
       type,
       totalUnits: Math.round(data.units * 100) / 100,
       totalVolumeMl: data.volume,
+      totalSpent: Math.round(data.spent * 100) / 100,
       percentage: totalUnits > 0 ? Math.round((data.units / totalUnits) * 1000) / 10 : 0,
       count: data.count,
     }))
@@ -385,9 +398,9 @@ export function comparePeriods(
   period2Start: Date,
   period2End: Date
 ): {
-  period1: { totalUnits: number; daysWithDrinks: number; averagePerDay: number };
-  period2: { totalUnits: number; daysWithDrinks: number; averagePerDay: number };
-  change: { units: number; unitsPercent: number; days: number; daysPercent: number };
+  period1: { totalUnits: number; totalSpent: number; daysWithDrinks: number; averagePerDay: number };
+  period2: { totalUnits: number; totalSpent: number; daysWithDrinks: number; averagePerDay: number };
+  change: { units: number; unitsPercent: number; spent: number; spentPercent: number; days: number; daysPercent: number };
 } {
   const period1ISOStart = formatISO(period1Start);
   const period1ISOEnd = formatISO(period1End);
@@ -399,6 +412,8 @@ export function comparePeriods(
   
   const period1Units = period1Drinks.reduce((sum, d) => sum + d.standardUnits, 0);
   const period2Units = period2Drinks.reduce((sum, d) => sum + d.standardUnits, 0);
+  const period1Spent = period1Drinks.reduce((sum, d) => sum + (d.price ?? 0), 0);
+  const period2Spent = period2Drinks.reduce((sum, d) => sum + (d.price ?? 0), 0);
   
   const period1Dates = new Set(period1Drinks.map(d => d.dateISO));
   const period2Dates = new Set(period2Drinks.map(d => d.dateISO));
@@ -411,6 +426,8 @@ export function comparePeriods(
   
   const unitsChange = period2Units - period1Units;
   const unitsPercent = period1Units > 0 ? ((unitsChange / period1Units) * 100) : 0;
+  const spentChange = period2Spent - period1Spent;
+  const spentPercent = period1Spent > 0 ? ((spentChange / period1Spent) * 100) : 0;
   
   const daysChange = period2Days - period1Days;
   const daysPercent = period1Days > 0 ? ((daysChange / period1Days) * 100) : 0;
@@ -418,17 +435,21 @@ export function comparePeriods(
   return {
     period1: {
       totalUnits: Math.round(period1Units * 100) / 100,
+      totalSpent: Math.round(period1Spent * 100) / 100,
       daysWithDrinks: period1Days,
       averagePerDay: Math.round(period1Avg * 100) / 100,
     },
     period2: {
       totalUnits: Math.round(period2Units * 100) / 100,
+      totalSpent: Math.round(period2Spent * 100) / 100,
       daysWithDrinks: period2Days,
       averagePerDay: Math.round(period2Avg * 100) / 100,
     },
     change: {
       units: Math.round(unitsChange * 100) / 100,
       unitsPercent: Math.round(unitsPercent * 10) / 10,
+      spent: Math.round(spentChange * 100) / 100,
+      spentPercent: Math.round(spentPercent * 10) / 10,
       days: daysChange,
       daysPercent: Math.round(daysPercent * 10) / 10,
     },
@@ -439,10 +460,11 @@ export function comparePeriods(
 export function getMonthlyTrend(drinks: Drink[], months: number = 12): Array<{
   month: Date;
   totalUnits: number;
+  totalSpent: number;
   daysWithDrinks: number;
   averagePerDay: number;
 }> {
-  const result: Array<{ month: Date; totalUnits: number; daysWithDrinks: number; averagePerDay: number }> = [];
+  const result: Array<{ month: Date; totalUnits: number; totalSpent: number; daysWithDrinks: number; averagePerDay: number }> = [];
   const today = new Date();
   
   for (let i = months - 1; i >= 0; i--) {
@@ -451,6 +473,7 @@ export function getMonthlyTrend(drinks: Drink[], months: number = 12): Array<{
     result.push({
       month: monthDate,
       totalUnits: stats.totalUnits,
+      totalSpent: stats.totalSpent,
       daysWithDrinks: stats.daysWithDrinks,
       averagePerDay: stats.averagePerDay,
     });
@@ -463,10 +486,11 @@ export function getMonthlyTrend(drinks: Drink[], months: number = 12): Array<{
 export function getWeeklyTrend(drinks: Drink[], weeks: number = 12): Array<{
   weekStart: Date;
   totalUnits: number;
+  totalSpent: number;
   daysWithDrinks: number;
   averagePerDay: number;
 }> {
-  const result: Array<{ weekStart: Date; totalUnits: number; daysWithDrinks: number; averagePerDay: number }> = [];
+  const result: Array<{ weekStart: Date; totalUnits: number; totalSpent: number; daysWithDrinks: number; averagePerDay: number }> = [];
   const today = new Date();
   
   for (let i = weeks - 1; i >= 0; i--) {
@@ -477,6 +501,7 @@ export function getWeeklyTrend(drinks: Drink[], weeks: number = 12): Array<{
     result.push({
       weekStart,
       totalUnits: stats.totalUnits,
+      totalSpent: stats.totalSpent,
       daysWithDrinks: stats.daysWithDrinks,
       averagePerDay: stats.averagePerDay,
     });

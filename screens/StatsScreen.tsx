@@ -6,6 +6,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getAllDrinks } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { useTheme } from '../theme/ThemeContext';
+import { useCurrency } from '../theme/CurrencyContext';
+import { formatPrice } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatTotalVolume } from '../utils/units';
 import { WEEKDAY_SHORT_RU } from '../utils/date';
@@ -32,6 +34,7 @@ type StatsTabType = 'basic' | 'advanced';
 export default function StatsScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const { currency } = useCurrency();
   const [allDrinks, setAllDrinks] = useState<Drink[]>([]);
   const [period, setPeriod] = useState<PeriodType>('overall');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -298,7 +301,7 @@ export default function StatsScreen() {
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.daysWithDrinks || currentStats.totalDays}</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{period === 'overall' ? (currentStats as typeof overallStats).totalDays : currentStats.daysWithDrinks}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Дней с записями</Text>
               {period !== 'overall' && (
                 <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>
@@ -317,6 +320,19 @@ export default function StatsScreen() {
               <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{(currentStats.averagePerDay * 10).toFixed(1)} г спирта</Text>
             </View>
           </View>
+          {isPremium && (
+            <View style={[styles.statsRow, styles.statsRowSpent]}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {currentStats.totalSpent > 0 ? formatPrice(currentStats.totalSpent, currency) : '—'}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Сумма</Text>
+                {currentStats.totalSpent === 0 && (
+                  <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>нет цен в записях</Text>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* График тренда */}
@@ -408,6 +424,9 @@ export default function StatsScreen() {
                     <View style={styles.typeUnitsContainer}>
                       <Text style={[styles.typeUnits, { color: colors.textSecondary }]}>{item.totalUnits.toFixed(1)} ед.</Text>
                       <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>{Math.round(item.totalUnits * 10)} г</Text>
+                      {isPremium && item.totalSpent > 0 && (
+                        <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>· {formatPrice(item.totalSpent, currency)}</Text>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -714,6 +733,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  statsRowSpent: {
+    marginBottom: 0,
+    marginTop: 4,
   },
   statItem: {
     flex: 1,

@@ -10,6 +10,26 @@ const USER_GENDER_KEY = 'user_gender';
 const USER_BIRTH_YEAR_KEY = 'user_birth_year';
 const USER_BIRTH_DATE_KEY = 'user_birth_date';
 const APP_START_DATE_KEY = 'app_start_date';
+const CURRENCY_KEY = 'app_currency_v1';
+
+export type CurrencyCode =
+  | 'RUB'  // Россия
+  | 'BYN'  // Беларусь
+  | 'KZT'  // Казахстан
+  | 'UZS'  // Узбекистан
+  | 'UAH'  // Украина
+  | 'AMD'  // Армения
+  | 'AZN'  // Азербайджан
+  | 'GEL'  // Грузия
+  | 'KGS'  // Киргизия
+  | 'MDL'  // Молдова
+  | 'TJS'  // Таджикистан
+  | 'TMT'  // Туркменистан
+  | 'EUR'  // Евро
+  | 'USD'; // Доллар США
+
+// Порядок: рубль, доллар, евро, остальные (СНГ)
+export const VALID_CURRENCIES: CurrencyCode[] = ['RUB', 'USD', 'EUR', 'BYN', 'KZT', 'UZS', 'UAH', 'AMD', 'AZN', 'GEL', 'KGS', 'MDL', 'TJS', 'TMT'];
 
 export type Gender = 'male' | 'female' | 'genderless';
 
@@ -45,6 +65,7 @@ export async function exportData(): Promise<string> {
   const weight = await getUserWeight();
   const gender = await getUserGender();
   const birthYear = await getBirthYear();
+  const currency = await getCurrency();
   
   const exportData = {
     version: '1.0',
@@ -55,6 +76,7 @@ export async function exportData(): Promise<string> {
       weight: weight,
       gender: gender,
       birthYear: birthYear,
+      currency: currency,
     },
   };
   
@@ -70,6 +92,7 @@ export interface ImportData {
     weight?: number | null;
     gender?: Gender | null;
     birthYear?: number | null;
+    currency?: CurrencyCode | null;
   };
 }
 
@@ -112,6 +135,9 @@ export async function importData(jsonString: string, merge: boolean = false): Pr
       }
       if (parsed.settings.birthYear !== undefined) {
         await setBirthYear(parsed.settings.birthYear);
+      }
+      if (parsed.settings.currency !== undefined && VALID_CURRENCIES.includes(parsed.settings.currency as CurrencyCode)) {
+        await setCurrency(parsed.settings.currency as CurrencyCode);
       }
     }
     
@@ -241,6 +267,16 @@ export async function setAppStartDate(dateISO: string | null): Promise<void> {
   }
 }
 
+export async function getCurrency(): Promise<CurrencyCode> {
+  const raw = await AsyncStorage.getItem(CURRENCY_KEY);
+  if (raw && VALID_CURRENCIES.includes(raw as CurrencyCode)) return raw as CurrencyCode;
+  return 'RUB';
+}
+
+export async function setCurrency(currency: CurrencyCode): Promise<void> {
+  await AsyncStorage.setItem(CURRENCY_KEY, currency);
+}
+
 // Рассчитывает смертельную дозу в единицах на основе веса и пола
 export function calculateLethalDose(weight: number, gender: Gender): number {
   // Для женщин и genderless: примерно 0.3 единицы на кг веса
@@ -326,6 +362,7 @@ export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem(USER_BIRTH_DATE_KEY);
   await AsyncStorage.removeItem(ACHIEVEMENTS_KEY);
   await AsyncStorage.removeItem(APP_START_DATE_KEY);
+  await AsyncStorage.removeItem(CURRENCY_KEY);
 }
 
 // Достижения

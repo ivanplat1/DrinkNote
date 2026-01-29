@@ -35,11 +35,12 @@ export async function addOrMergeDrink(entry: Drink): Promise<Drink[]> {
   if (idx >= 0) {
     const existing = current[idx];
     const newQuantity = (existing.quantity ?? 1) + (entry.quantity ?? 1);
+    const sumPrice = (existing.price ?? 0) + (entry.price ?? 0);
     const merged: Drink = {
       ...existing,
       quantity: newQuantity,
-      // суммируем стандартные единицы
       standardUnits: Math.round((existing.standardUnits + entry.standardUnits) * 100) / 100,
+      price: sumPrice > 0 ? Math.round(sumPrice * 100) / 100 : undefined,
     };
     const next = [...current];
     next[idx] = merged;
@@ -85,7 +86,14 @@ export async function updateDrink(id: string, updated: Partial<Drink>): Promise<
     const baseUnits = (volumeMl * (abvPercent / 100) * 0.789) / 10;
     updatedDrink.standardUnits = Math.round(baseUnits * quantity * 100) / 100;
   }
-  
+
+  // Пересчитываем сумму (price) при изменении количества: price = цена_за_единицу * новое_количество
+  if (updated.quantity !== undefined && existing.price != null && existing.price > 0) {
+    const prevQty = existing.quantity ?? 1;
+    const pricePerUnit = existing.price / prevQty;
+    updatedDrink.price = Math.round(pricePerUnit * updated.quantity * 100) / 100;
+  }
+
   const next = [...current];
   next[idx] = updatedDrink;
   await AsyncStorage.setItem(DRINKS_KEY, JSON.stringify(next));

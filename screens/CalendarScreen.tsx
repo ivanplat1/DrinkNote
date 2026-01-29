@@ -13,8 +13,12 @@ import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 import { formatTotalVolume, calculateStandardUnits } from '../utils/units';
 import { useTheme } from '../theme/ThemeContext';
+import { useCurrency } from '../theme/CurrencyContext';
+import { formatPrice, formatPriceShort } from '../utils/currency';
+import { CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
+import { isPremiumUser } from '../storage/premium';
 
 // Сколько недель одновременно видно на экране
 const VISIBLE_WEEKS = 5;
@@ -152,7 +156,7 @@ function MonthHeader({
 }
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, onRemove, onQuantityChange, colors }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any }) {
+function SwipeableListItem({ item, onRemove, onQuantityChange, colors, currency }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: CurrencyCode }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true);
@@ -277,6 +281,7 @@ function SwipeableListItem({ item, onRemove, onQuantityChange, colors }: { item:
                 <Text style={[styles.itemSub, { color: colors.textSecondary }]}>
                   {formatTotalVolume(item.volumeMl, item.quantity ?? 1)} · {item.abvPercent}% · {item.standardUnits.toFixed(2)} ед.
                   {item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : ''}
+                  {item.price != null && item.price > 0 ? ` · ${formatPriceShort(item.price, currency)}` : ''}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
@@ -659,6 +664,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
 
 export default function CalendarScreen() {
   const { colors, themeName } = useTheme();
+  const { currency } = useCurrency();
   const [all, setAll] = useState<Drink[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
@@ -675,6 +681,7 @@ export default function CalendarScreen() {
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'year'>('month');
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [isPremium, setIsPremium] = useState(false);
   
   // Автоматически выбираем текущий год при переключении на годовой режим
   useEffect(() => {
@@ -725,6 +732,10 @@ export default function CalendarScreen() {
     appStartDateRef.current = startDate;
     setAppStartDate(startDate);
     console.log('[LOAD DATA] appStartDate loaded:', startDate, '(ref also set)');
+  }, []);
+
+  useEffect(() => {
+    isPremiumUser().then(setIsPremium);
   }, []);
 
   useFocusEffect(
@@ -1173,6 +1184,7 @@ export default function CalendarScreen() {
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
   const [newVolume, setNewVolume] = useState('500');
   const [newAbv, setNewAbv] = useState('5');
+  const [newPriceVal, setNewPriceVal] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Загружаем пресеты при монтировании
@@ -1246,6 +1258,7 @@ export default function CalendarScreen() {
     }
   };
   const closeCustomModal = () => {
+    setNewPriceVal('');
     setCustomModalVisible(false);
     setNewName('');
     setNewType('beer');
@@ -1265,6 +1278,7 @@ export default function CalendarScreen() {
     }
     try {
       const baseUnits = calculateStandardUnits(preset.volumeMl, preset.abvPercent);
+      const price = isPremium && preset.defaultPrice != null && preset.defaultPrice > 0 ? preset.defaultPrice : undefined;
       const entry: Drink = {
         id: `drink_${Date.now()}`,
         dateISO: selectedDate,
@@ -1274,6 +1288,7 @@ export default function CalendarScreen() {
         abvPercent: preset.abvPercent,
         standardUnits: baseUnits,
         quantity: 1,
+        ...(price != null && { price }),
       };
       // Закрываем модальное окно добавления сразу
       setAddModalVisible(false);
@@ -1315,17 +1330,19 @@ export default function CalendarScreen() {
     // Оптимистичное обновление UI - обновляем dayList сразу (как в TodayScreen)
     const updatedDayList = dayList.map(d => {
       if (d.id === id) {
-        // Пересчитываем standardUnits с новым количеством
         const baseUnits = calculateStandardUnits(d.volumeMl, d.abvPercent);
         const newStandardUnits = Math.round(baseUnits * newQty * 100) / 100;
-        return { ...d, quantity: newQty, standardUnits: newStandardUnits };
+        const prevQty = d.quantity ?? 1;
+        const newPrice = d.price != null && d.price > 0
+          ? Math.round((d.price / prevQty) * newQty * 100) / 100
+          : undefined;
+        return { ...d, quantity: newQty, standardUnits: newStandardUnits, ...(newPrice != null && { price: newPrice }) };
       }
       return d;
     });
     setDayList(updatedDayList);
-    
-    // Обновляем запись в хранилище асинхронно БЕЗ ожидания (как в TodayScreen)
-    // Не ждем завершения, чтобы UI оставался отзывчивым
+
+    // Обновляем запись в хранилище (price пересчитается в updateDrink при изменении quantity)
     updateDrink(id, { quantity: newQty }).catch(error => {
       console.error('[CalendarScreen] Error updating drink:', error);
       // В случае ошибки перезагружаем данные
@@ -1431,6 +1448,8 @@ export default function CalendarScreen() {
       return;
     }
     const units = calculateStandardUnits(volume, abv);
+    const priceNum = newPriceVal.trim() ? parseFloat(newPriceVal.replace(',', '.')) : undefined;
+    const price = isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0 ? Math.round(priceNum * 100) / 100 : undefined;
     const entry: Drink = {
       id: `drink_${Date.now()}`,
       dateISO: selectedDate,
@@ -1440,6 +1459,7 @@ export default function CalendarScreen() {
       abvPercent: abv,
       standardUnits: units,
       quantity: 1,
+      ...(price != null && { price }),
     };
     
     closeCustomModal();
@@ -1457,6 +1477,7 @@ export default function CalendarScreen() {
 
   const dayTotalUnits = useMemo(() => dayList.reduce((s, d) => s + d.standardUnits, 0), [dayList]);
   const dayTotalVolumeMl = useMemo(() => dayList.reduce((s, d) => s + d.volumeMl * (d.quantity ?? 1), 0), [dayList]);
+  const dayTotalPrice = useMemo(() => dayList.reduce((s, d) => s + (d.price ?? 0), 0), [dayList]);
 
   const scrollToToday = useCallback(() => {
     if (listRef.current && listHeight && listHeight > 0) {
@@ -1703,12 +1724,21 @@ export default function CalendarScreen() {
                     styles.badge, 
                     themeName === 'light' || themeName === 'highContrast' 
                       ? { 
-                          backgroundColor: 'transparent', 
-                          borderRadius: 0, 
-                          paddingHorizontal: 0, 
-                          paddingVertical: 0,
-                          minWidth: 0,
-                          minHeight: 0
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                          borderRadius: 8,
+                          paddingHorizontal: 4,
+                          paddingVertical: 3,
+                          minWidth: 40,
+                          minHeight: 44,
+                          ...Platform.select({
+                            ios: {
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.2,
+                              shadowRadius: 2,
+                            },
+                            android: { elevation: 2 },
+                          }),
                         } 
                       : { backgroundColor: colors.primaryLight }
                   ]}>
@@ -2020,6 +2050,12 @@ export default function CalendarScreen() {
                       <MaterialCommunityIcons name="calculator" size={14} color={colors.textSecondary} />
                       <Text style={[styles.modalTotal, { color: colors.textSecondary }]}>{dayTotalUnits.toFixed(1)}</Text>
                     </View>
+                    {isPremium && dayTotalPrice > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                        <MaterialCommunityIcons name="cash" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.modalTotal, { color: colors.textSecondary }]}>{formatPrice(dayTotalPrice, currency)}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
                 <View style={{ marginTop: 20 }}>
@@ -2031,6 +2067,7 @@ export default function CalendarScreen() {
                     renderItem={({ item }) => (
                       <SwipeableListItem
                         colors={colors}
+                        currency={currency}
                         item={item}
                         onRemove={deleteEntry}
                         onQuantityChange={changeQuantity}
@@ -2300,6 +2337,19 @@ export default function CalendarScreen() {
                         onSubmitEditing={Keyboard.dismiss}
                       />
                     </View>
+                    {isPremium && (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                        <TextInput
+                          placeholder="Не указана"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="decimal-pad"
+                          value={newPriceVal}
+                          onChangeText={(t) => setNewPriceVal(t.replace(',', '.'))}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        />
+                      </View>
+                    )}
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                       <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primaryLight || colors.primary, shadowColor: colors.primary }]} onPress={saveCustomPreset}>
                         <Text style={[styles.saveBtnText, { color: '#fff' }]}>Сохранить</Text>
