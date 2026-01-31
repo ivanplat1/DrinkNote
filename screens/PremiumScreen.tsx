@@ -99,14 +99,14 @@ export default function PremiumScreen() {
       description: 'Учёт стоимости каждой записи, сумма за день и период',
     },
     {
-      icon: 'widgets',
-      title: 'Виджеты',
-      description: 'Виджеты для главного экрана с текущей серией и статистикой',
+      icon: 'target',
+      title: 'Цель по серии',
+      description: 'Задайте цель (7, 30, 90 дней без алкоголя) и отслеживайте прогресс в статистике',
     },
     {
-      icon: 'fitness-center',
-      title: 'Интеграция с Google Fit',
-      description: 'Автоматический экспорт данных о воздержании в Google Fit',
+      icon: 'label',
+      title: 'Метки на календаре',
+      description: 'Свои заметки к дням: отпуск, праздник, поездка — для контекста в статистике',
     },
   ];
 
@@ -148,7 +148,7 @@ export default function PremiumScreen() {
             <MaterialCommunityIcons name="crown" size={80} color="#f4c430" />
             <Text style={[styles.heroTitle, { color: colors.text }]}>Разблокируйте все возможности</Text>
             <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-              Получите доступ к расширенной статистике, темам оформления, виджетам и интеграциям
+              Получите доступ к расширенной статистике, темам оформления и учёту цен
             </Text>
           </View>
 

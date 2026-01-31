@@ -1,11 +1,11 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, AppState, Linking } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,11 +14,13 @@ import CalendarScreen from './screens/CalendarScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PremiumScreen from './screens/PremiumScreen';
+import AddFromWidgetScreen from './screens/AddFromWidgetScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { CurrencyProvider } from './theme/CurrencyContext';
 import { generateTestDrinks, generateTestPresets } from './utils/testData';
 import { getAllDrinks, setAllDrinks } from './storage/drinks';
 import { getUserPresets, setUserPresets } from './storage/presets';
+import { updateAllWidgets } from './services/widget';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -40,9 +42,86 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
   <Ionicons name="settings" size={size} color={color} />
 );
 
+const ADD_DRINK_PATH = 'add-drink';
+
+function parsePresetIdFromUrl(url: string): string | null {
+  try {
+    if (!url || !url.startsWith('drinknote://')) return null;
+    const rest = url.replace('drinknote://', '').split('?')[0];
+    if (!rest.startsWith(ADD_DRINK_PATH)) return null;
+    const pathPart = rest.slice(ADD_DRINK_PATH.length).replace(/^\/+/, '');
+    if (!pathPart) return null;
+    return decodeURIComponent(pathPart);
+  } catch {
+    return null;
+  }
+}
+
 function AppContent() {
   const insets = useSafeAreaInsets();
   const { colors, themeName } = useTheme();
+  const navigationRef = useNavigationContainerRef();
+
+  // Deep link: drinknote://add-drink/PRESET_ID — открыть экран добавления из виджета (один раз за 3 с по одному presetId)
+  useEffect(() => {
+    const lastHandled: { key: string; at: number } = { key: '', at: 0 };
+    const DEBOUNCE_MS = 3000;
+
+    const handleUrl = (url: string) => {
+      const presetId = parsePresetIdFromUrl(url);
+      if (!presetId) return;
+      const key = `add-drink:${presetId}`;
+      const now = Date.now();
+      if (lastHandled.key === key && now - lastHandled.at < DEBOUNCE_MS) return;
+      lastHandled.key = key;
+      lastHandled.at = now;
+
+      const navigate = () => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('AddFromWidget', { presetId });
+        }
+      };
+      if (navigationRef.isReady()) {
+        navigate();
+      } else {
+        let attempts = 0;
+        const t = setInterval(() => {
+          attempts++;
+          if (navigationRef.isReady()) {
+            navigate();
+            clearInterval(t);
+          } else if (attempts > 100) clearInterval(t);
+        }, 100);
+        return () => clearInterval(t);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl(url);
+    });
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+
+    const appStateSub =
+      Platform.OS === 'android'
+        ? AppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+              const tryUrl = () => {
+                Linking.getInitialURL().then((url) => {
+                  if (url) handleUrl(url);
+                });
+              };
+              tryUrl();
+              setTimeout(tryUrl, 250);
+              setTimeout(tryUrl, 600);
+            }
+          })
+        : { remove: () => {} };
+
+    return () => {
+      sub.remove();
+      appStateSub.remove();
+    };
+  }, []);
   
   // Определяем iOS в веб-версии (PWA)
   const isIOS = Platform.OS === 'ios' || 
@@ -91,11 +170,20 @@ function AppContent() {
     
     loadTestData();
   }, []);
-  
+
+  // Update home screen widgets when app opens or returns to foreground (Android)
+  React.useEffect(() => {
+    updateAllWidgets();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') updateAllWidgets();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
         <StatusBar style={statusBarStyle} />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="MainTabs">
           <Stack.Screen name="MainTabs">
             {() => (
         <Tab.Navigator
@@ -173,6 +261,7 @@ function AppContent() {
               headerShown: false,
             }}
           />
+          <Stack.Screen name="AddFromWidget" component={AddFromWidgetScreen} />
         </Stack.Navigator>
       </NavigationContainer>
   );

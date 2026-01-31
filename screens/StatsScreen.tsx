@@ -12,6 +12,7 @@ import { colors as defaultColors } from '../theme/colors';
 import { formatTotalVolume } from '../utils/units';
 import { WEEKDAY_SHORT_RU } from '../utils/date';
 import { isPremiumUser } from '../storage/premium';
+import { getStreakGoal } from '../storage/streakGoal';
 import AdvancedStatsContent from './AdvancedStatsContent';
 import {
   getOverallStats,
@@ -40,6 +41,7 @@ export default function StatsScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<StatsTabType>('basic');
   const [isPremium, setIsPremium] = useState(false);
+  const [streakGoal, setStreakGoal] = useState<number | null>(null);
 
   const loadDrinks = useCallback(async () => {
     const drinks = await getAllDrinks();
@@ -64,11 +66,17 @@ export default function StatsScreen() {
     setIsPremium(premium);
   }, []);
 
+  const loadStreakGoal = useCallback(async () => {
+    const goal = await getStreakGoal();
+    setStreakGoal(goal);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadDrinks();
       checkPremium();
-    }, [loadDrinks, checkPremium])
+      loadStreakGoal();
+    }, [loadDrinks, checkPremium, loadStreakGoal])
   );
 
   const overallStats = useMemo(() => getOverallStats(filteredDrinks), [filteredDrinks]);
@@ -504,6 +512,29 @@ export default function StatsScreen() {
                   <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Рекордная серия</Text>
                   <Text style={[styles.recordValue, { color: colors.primary }]}>{records.longestStreak} дней</Text>
                 </View>
+              </View>
+            )}
+            {isPremium && streakGoal != null && streakGoal > 0 && (
+              <View style={[styles.recordItem, { marginTop: 12, backgroundColor: colors.backgroundSecondary, padding: 12 }]}>
+                <Text style={[styles.recordLabel, { color: colors.textSecondary, marginBottom: 6 }]}>Цель: {streakGoal} дней</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flex: 1, height: 8, backgroundColor: colors.backgroundTertiary, borderRadius: 4, overflow: 'hidden' }}>
+                    <View
+                      style={{
+                        width: `${Math.min(100, (records.currentStreak / streakGoal) * 100)}%`,
+                        height: '100%',
+                        backgroundColor: records.currentStreak >= streakGoal ? colors.success : colors.primary,
+                        borderRadius: 4,
+                      }}
+                    />
+                  </View>
+                  <Text style={[styles.recordValue, { color: colors.primary, fontSize: 14, marginLeft: 8 }]}>
+                    {records.currentStreak} / {streakGoal}
+                  </Text>
+                </View>
+                {records.currentStreak >= streakGoal && (
+                  <Text style={[styles.recordDate, { color: colors.success, marginTop: 4 }]}>Цель достигнута!</Text>
+                )}
               </View>
             )}
           </View>

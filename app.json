@@ -1,7 +1,8 @@
 {
-  "expo": {
+    "expo": {
     "name": "DrinkNote",
     "slug": "DrinkNote",
+    "scheme": "drinknote",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -40,7 +41,39 @@
       "baseUrl": "/DrinkNote"
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6366f1",
+          "sounds": [],
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Streak",
+              "label": "Серия без алкоголя",
+              "minHeight": "120dp",
+              "minWidth": "300dp",
+              "description": "Текущая серия дней без алкоголя",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "Favorites",
+              "label": "Напитки из избранного",
+              "minHeight": "200dp",
+              "minWidth": "360dp",
+              "description": "Быстрое добавление напитка из избранного",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

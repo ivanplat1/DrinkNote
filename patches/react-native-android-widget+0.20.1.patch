@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java b/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
+index 0000000..1111111 100644
+--- a/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
++++ b/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
+@@ -130,7 +130,7 @@
+     private void openUri(Context context, String uri) {
+         try {
+             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+             context.startActivity(intent);
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+     }

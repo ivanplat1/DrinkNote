@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { MaterialIcons, Ionicons, Entypo, FontAwesome } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import PresetButton from '../components/PresetButton';
 import { suggestedPresets, getUserPresets, addPreset, removePreset, updatePreset, presetsEventEmitter } from '../storage/presets';
 import { PresetDrink } from '../types/preset';
-import { addDrink, addOrMergeDrink, getDrinksByDate, removeDrink, updateDrink } from '../storage/drinks';
+import { addDrink, addOrMergeDrink, getDrinksByDate, getAllDrinks, removeDrink, updateDrink } from '../storage/drinks';
 import { isPremiumUser } from '../storage/premium';
 import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/units';
 import { Drink } from '../types/drink';
@@ -17,6 +17,7 @@ import { useCurrency } from '../theme/CurrencyContext';
 import { formatPrice, formatPriceShort } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
+import { runNotificationChecks } from '../services/notifications';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
   return themeColors[type] || themeColors.other;
@@ -421,8 +422,24 @@ export default function TodayScreen() {
   useFocusEffect(
     useCallback(() => {
       reloadToday();
+      // Ненавязчивые уведомления: вехи (неделя, месяц, …) и тренд (улучшение/ухудшение)
+      const t = setTimeout(async () => {
+        try {
+          const drinks = await getAllDrinks();
+          await runNotificationChecks(drinks);
+        } catch (_) {}
+      }, 1500);
+      return () => clearTimeout(t);
     }, [reloadToday])
   );
+
+  // Обновлять список при возврате в приложение (например, после добавления через виджет)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') reloadToday();
+    });
+    return () => sub.remove();
+  }, [reloadToday]);
 
   const onRemoveDrink = async (id: string) => {
     await removeDrink(id);

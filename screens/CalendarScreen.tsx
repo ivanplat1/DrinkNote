@@ -26,6 +26,7 @@ import { CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, getAppStartDate } from '../storage/settings';
 import { isPremiumUser } from '../storage/premium';
+import { getStreakGoal } from '../storage/streakGoal';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const LABEL_COLOR_PRESETS = [
@@ -146,6 +147,7 @@ function MonthHeader({
   headerStyle,
   monthStyle,
   sobrietyStats,
+  streakGoal,
   animatedStyle,
   colors,
   rightAction,
@@ -155,11 +157,16 @@ function MonthHeader({
   headerStyle: any;
   monthStyle: any;
   sobrietyStats?: { currentStreak: number; bestStreak: number };
+  streakGoal?: number | null;
   animatedStyle?: any;
   colors: any;
   rightAction?: React.ReactNode;
   streakColor?: string;
 }) {
+  const currentStreak = sobrietyStats?.currentStreak ?? 0;
+  const showGoalProgress = streakGoal != null && streakGoal > 0;
+  const goalReached = showGoalProgress && currentStreak >= streakGoal;
+
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
       <View style={{ flex: 1 }}>
@@ -168,6 +175,28 @@ function MonthHeader({
           <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
             🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
           </Text>
+        )}
+        {showGoalProgress && (
+          <View style={{ marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <View style={{ flex: 1, height: 6, backgroundColor: colors.backgroundTertiary, borderRadius: 3, overflow: 'hidden' }}>
+                <View
+                  style={{
+                    width: `${Math.min(100, (currentStreak / streakGoal) * 100)}%`,
+                    height: '100%',
+                    backgroundColor: goalReached ? colors.success : colors.primary,
+                    borderRadius: 3,
+                  }}
+                />
+              </View>
+              <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginLeft: 8 }}>
+                {currentStreak} / {streakGoal}
+              </Text>
+            </View>
+            {goalReached && (
+              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }}>Цель достигнута!</Text>
+            )}
+          </View>
         )}
       </View>
       {sobrietyStats && sobrietyStats.bestStreak > 0 && (
@@ -777,6 +806,7 @@ export default function CalendarScreen() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isPremium, setIsPremium] = useState(false);
+  const [streakGoal, setStreakGoal] = useState<number | null>(null);
   const [dayLabelText, setDayLabelText] = useState('');
   const [dayLabelColor, setDayLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [dayLabels, setDayLabels] = useState<Array<{ text: string; color: string }>>([]);
@@ -852,6 +882,7 @@ export default function CalendarScreen() {
       loadDailyGoal();
       getCalendarLabels().then(setLabelsMap);
       getCalendarLabelRanges().then(setLabelRanges);
+      getStreakGoal().then(setStreakGoal);
       return () => {};
     }, [loadAll, loadDailyGoal])
   );
@@ -2089,6 +2120,7 @@ export default function CalendarScreen() {
               headerStyle={styles.headerRow}
               monthStyle={[styles.month, { color: colors.text }]}
               sobrietyStats={sobrietyStats}
+              streakGoal={isPremium ? streakGoal : null}
               animatedStyle={monthHeaderAnimatedStyle}
               colors={colors}
               streakColor={themeName === 'light' || themeName === 'highContrast' ? STREAK_GREEN_LIGHT : '#10b981'}

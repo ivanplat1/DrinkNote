@@ -14,6 +14,7 @@ import { useCurrency } from '../theme/CurrencyContext';
 import { ThemeName } from '../theme/themes';
 import { CURRENCY_LIST } from '../utils/currency';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
+import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -37,7 +38,52 @@ export default function SettingsScreen() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [importText, setImportText] = useState('');
   const [isPremium, setIsPremium] = useState(false);
+  const [streakGoal, setStreakGoalValue] = useState<number | null>(null);
+  const [showStreakGoalModal, setShowStreakGoalModal] = useState(false);
+  const [customStreakGoalInput, setCustomStreakGoalInput] = useState('');
   const importModalTranslateY = useSharedValue(0);
+
+  const confirmStreakGoalChange = useCallback(
+    (newGoal: number | null) => {
+      if (newGoal === null) {
+        Alert.alert(
+          'Сбросить цель?',
+          `Текущая цель: ${streakGoal} дней. Сбросить?`,
+          [
+            { text: 'Нет', style: 'cancel' },
+            {
+              text: 'Сбросить',
+              style: 'destructive',
+              onPress: async () => {
+                await setStreakGoal(null);
+                await loadStreakGoal();
+              },
+            },
+          ]
+        );
+        return;
+      }
+      if (streakGoal != null) {
+        Alert.alert(
+          'Заменить цель?',
+          `Текущая цель: ${streakGoal} дней. Заменить на ${newGoal} дней?`,
+          [
+            { text: 'Нет', style: 'cancel' },
+            {
+              text: 'Заменить',
+              onPress: async () => {
+                await setStreakGoal(newGoal);
+                await loadStreakGoal();
+              },
+            },
+          ]
+        );
+        return;
+      }
+      setStreakGoal(newGoal).then(loadStreakGoal);
+    },
+    [streakGoal, loadStreakGoal]
+  );
 
   const updateRecommendation = useCallback(async () => {
     const recommended = await getRecommendedDailyLimit();
@@ -78,11 +124,17 @@ export default function SettingsScreen() {
     await updateRecommendation();
   }, [updateRecommendation]);
 
+  const loadStreakGoal = useCallback(async () => {
+    const goal = await getStreakGoal();
+    setStreakGoalValue(goal);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadSettings();
       checkPremiumStatus();
-    }, [loadSettings])
+      loadStreakGoal();
+    }, [loadSettings, loadStreakGoal])
   );
 
   const checkPremiumStatus = async () => {
@@ -524,6 +576,90 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Цель по серии (только для премиум) */}
+        {isPremium && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+              onPress={() => {
+                setCustomStreakGoalInput(streakGoal != null ? String(streakGoal) : '');
+                setShowStreakGoalModal(true);
+              }}
+            >
+              <MaterialCommunityIcons name="target" size={24} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  {streakGoal != null ? `${streakGoal} дней` : 'Не задана'}
+                </Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>
+                  Отслеживание прогресса в статистике и календаре
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Модалка: своя цель по серии */}
+        <Modal visible={showStreakGoalModal} transparent animationType="fade">
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalOverlay}
+            onPress={() => setShowStreakGoalModal(false)}
+          >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContentWrap}>
+              <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.modalContent, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Цель: дней без алкоголя</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.backgroundSecondary, color: colors.text, borderColor: colors.border }]}
+                  value={customStreakGoalInput}
+                  onChangeText={setCustomStreakGoalInput}
+                  placeholder="Введите число дней"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
+                  {streakGoal != null && (
+                    <TouchableOpacity
+                      style={[styles.modalButton, { flex: 1, backgroundColor: colors.error }]}
+                      onPress={() => {
+                        setShowStreakGoalModal(false);
+                        setCustomStreakGoalInput('');
+                        confirmStreakGoalChange(null);
+                      }}
+                    >
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Сброс</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.modalButton, { flex: 1, backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      const trimmed = customStreakGoalInput.trim();
+                      if (trimmed === '') {
+                        setShowStreakGoalModal(false);
+                        setCustomStreakGoalInput('');
+                        return;
+                      }
+                      const num = parseInt(trimmed, 10);
+                      if (isNaN(num) || num < 1 || num > 999) {
+                        Alert.alert('Ошибка', 'Введите число от 1 до 999');
+                        return;
+                      }
+                      setShowStreakGoalModal(false);
+                      setCustomStreakGoalInput('');
+                      confirmStreakGoalChange(num);
+                    }}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Сохранить</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Темы оформления (только для премиум) */}
         {isPremium && (
@@ -1231,6 +1367,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContentWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 320,
+    padding: 20,
+    borderRadius: 16,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalBackdrop: {
     flex: 1,
