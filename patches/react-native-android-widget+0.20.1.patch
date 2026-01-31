@@ -1,5 +1,4 @@
 diff --git a/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java b/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
-index 0000000..1111111 100644
 --- a/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
 +++ b/node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetProvider.java
 @@ -130,7 +130,7 @@
@@ -11,5 +10,3 @@ index 0000000..1111111 100644
              context.startActivity(intent);
          } catch (Exception e) {
              e.printStackTrace();
-         }
-     }
