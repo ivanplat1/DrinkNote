@@ -196,7 +196,7 @@ export default function AdvancedStatsScreen() {
             </View>
           </View>
 
-          {/* Текущий год vs предыдущий */}
+          {/* Текущий год vs предыдущий (за одинаковый период: 1 янв — сегодня) */}
           <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
             <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий год vs предыдущий</Text>
             <View style={styles.comparisonRow}>

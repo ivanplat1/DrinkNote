@@ -676,15 +676,18 @@ export function compareCurrentMonthWithPreviousAdjusted(drinks: Drink[]): Return
   return comparePeriods(drinks, previousMonthStart, previousMonthEnd, currentMonthStart, currentMonthEnd);
 }
 
-// Сравнение текущего года с предыдущим
+// Сравнение текущего года с предыдущим за одинаковый период (1 янв — сегодня vs 1 янв — тот же день в прошлом году)
 export function compareCurrentYearWithPrevious(drinks: Drink[]): ReturnType<typeof comparePeriods> {
   const today = new Date();
-  const currentYearStart = new Date(today.getFullYear(), 0, 1);
-  const currentYearEnd = new Date(today.getFullYear(), 11, 31);
-  
-  const previousYearStart = new Date(today.getFullYear() - 1, 0, 1);
-  const previousYearEnd = new Date(today.getFullYear() - 1, 11, 31);
-  
+  const currentYear = today.getFullYear();
+  const previousYear = currentYear - 1;
+
+  const currentYearStart = new Date(currentYear, 0, 1);
+  const currentYearEnd = new Date(today); // сегодня включительно
+
+  const previousYearStart = new Date(previousYear, 0, 1);
+  const previousYearEnd = new Date(previousYear, today.getMonth(), today.getDate()); // тот же день и месяц в прошлом году
+
   return comparePeriods(drinks, previousYearStart, previousYearEnd, currentYearStart, currentYearEnd);
 }
 
