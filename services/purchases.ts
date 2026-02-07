@@ -126,41 +126,24 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
   }
 }
 
-/**
- * Restore previous purchases
- */
+/** Restore: get history, if premium was bought — turn premium on. */
 export async function restorePurchases(): Promise<{ success: boolean; restored: boolean; error?: string }> {
   try {
     const module = await loadPurchasesModule();
-    if (!module) {
+    if (!module || !(isInitialized || (await initPurchases()))) {
       return { success: false, restored: false, error: 'In-app purchases not available' };
     }
-
-    if (!isInitialized) {
-      const initialized = await initPurchases();
-      if (!initialized) {
-        return { success: false, restored: false, error: 'Failed to initialize purchases' };
-      }
-    }
-
-    // Get purchase history
     const { responseCode, results } = await module.getPurchaseHistoryAsync();
-
-    if (responseCode === module.IAPResponseCode.OK && results) {
-      // Check if user has purchased premium
-      const hasPremium = results.some(
-        (purchase) => purchase.productId === PREMIUM_PRODUCT_ID && purchase.acknowledged
-      );
-
-      if (hasPremium) {
-        await setPremiumStatus(true);
-        return { success: true, restored: true };
-      } else {
-        return { success: true, restored: false };
-      }
-    } else {
+    if (responseCode !== module.IAPResponseCode.OK) {
       return { success: false, restored: false, error: 'Failed to restore purchases' };
     }
+    const premium = results?.find((p) => p.productId === PREMIUM_PRODUCT_ID);
+    if (premium) {
+      await setPremiumStatus(true);
+      if (!premium.acknowledged) await module.finishTransactionAsync(premium, true);
+      return { success: true, restored: true };
+    }
+    return { success: true, restored: false };
   } catch (error) {
     console.error('Error restoring purchases:', error);
     return { success: false, restored: false, error: error instanceof Error ? error.message : 'Unknown error' };

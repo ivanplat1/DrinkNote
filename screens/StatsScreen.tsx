@@ -97,13 +97,13 @@ export default function StatsScreen() {
     return Math.max(...weekdayStats.map(d => d.averageUnits), 1);
   }, [weekdayStats]);
 
-  // Данные для графика (дни выбранной недели или последние 8 месяцев)
+  // Данные для графика (дни выбранной недели или последние N месяцев)
   const chartData = useMemo(() => {
     if (period === 'week') {
       return getWeekDaysStats(filteredDrinks, selectedDate);
     } else if (period === 'month') {
       // Для базовой версии показываем только последние 3 месяца
-      const monthsToShow = isPremium ? 8 : 3;
+      const monthsToShow = isPremium ? 12 : 3;
       return getLastNMonths(filteredDrinks, monthsToShow);
     }
     return [];

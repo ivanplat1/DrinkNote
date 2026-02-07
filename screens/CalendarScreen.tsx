@@ -395,7 +395,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
   labelsMap?: Record<string, { text: string; color: string }[]>;
   labelRanges?: LabelRange[];
 }) {
-  const isLightTheme = themeName === 'light' || themeName === 'highContrast';
+  const isLightTheme = themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord') || themeName === 'violet' || themeName === 'sand';
   const todayISO = useMemo(() => formatISO(new Date()), []);
   const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
   
@@ -600,7 +600,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
               streakType = 'bronze';
             }
             
-            const cellBg = isLightTheme ? (themeName === 'highContrast' ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
+            const cellBg = isLightTheme ? ((themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord') ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
             let cellStyle: any = {
               width: daySize,
               height: daySize,
@@ -1829,9 +1829,10 @@ export default function CalendarScreen() {
         }
       }
       
-      const isLightTheme = themeName === 'light' || themeName === 'highContrast';
+      const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
       const hasData = total > 0 || total >= lethalDose;
-      const cellBg = isLightTheme ? (themeName === 'highContrast' ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
+      const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
+      const cellBg = isLightTheme ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
 
       // Все периоды, покрывающие этот день — для каждого рисуем свой контур (пересечения видны)
       const rangesOnDay = !glowStyle ? labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso) : [];
@@ -1953,7 +1954,7 @@ export default function CalendarScreen() {
                 ) : total > 0 ? (
                   <View style={[
                     styles.badge, 
-                    themeName === 'light' || themeName === 'highContrast' 
+                    (themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord'))
                       ? { 
                           backgroundColor: 'rgba(255, 255, 255, 0.9)', 
                           borderRadius: 8,
@@ -2123,7 +2124,7 @@ export default function CalendarScreen() {
               streakGoal={isPremium ? streakGoal : null}
               animatedStyle={monthHeaderAnimatedStyle}
               colors={colors}
-              streakColor={themeName === 'light' || themeName === 'highContrast' ? STREAK_GREEN_LIGHT : '#10b981'}
+              streakColor={(themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord') ? STREAK_GREEN_LIGHT : '#10b981'}
               rightAction={isPremium ? (
                 <TouchableOpacity
                   style={[styles.labelsHeaderBtn, { backgroundColor: colors.backgroundSecondary }]}

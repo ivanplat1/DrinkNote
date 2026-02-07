@@ -1,5 +1,5 @@
 // Цветовые темы приложения
-export type ThemeName = 'dark' | 'light' | 'sepia' | 'highContrast';
+export type ThemeName = 'dark' | 'light' | 'sepia' | 'highContrast' | 'violet' | 'sand' | 'nord' | 'darcula';
 
 export interface ThemeColors {
   // Основные цвета
@@ -114,28 +114,28 @@ export const darkTheme: ThemeColors = {
   },
 };
 
-// Светлая тема
+// Светлая тема (в духе Facebook / VK: серый фон, белые карточки, синий акцент)
 export const lightTheme: ThemeColors = {
-  // Основные цвета - синий вместо индиго
-  primary: '#3b82f6', // Синий (blue-500)
-  primaryLight: '#60a5fa', // Светлый синий (blue-400)
-  primaryDark: '#2563eb', // Темный синий (blue-600)
-  secondary: '#818cf8', // Светло-фиолетовый
+  // Основные цвета — синий как в Facebook (#1877f2) / VK (#2787f5)
+  primary: '#1877f2',
+  primaryLight: '#42a1f4',
+  primaryDark: '#166fe5',
+  secondary: '#2787f5',
   
-  // Фон - светлая тема
-  background: '#ffffff', // Белый
-  backgroundSecondary: '#f8fafc', // Светло-серый (slate-50)
-  backgroundTertiary: '#f1f5f9', // Светлее (slate-100)
-  backgroundCard: '#ffffff', // Белые карточки
+  // Фон — светло-серый экран, карточки с лёгким серым тоном (меньше белого)
+  background: '#e8eaed',
+  backgroundSecondary: '#dadce0',
+  backgroundTertiary: '#e8eaed',
+  backgroundCard: '#f5f6f8',
   
-  // Текст - темный на светлом
-  text: '#0f172a', // Темно-синий (slate-900)
-  textSecondary: '#475569', // Средне-серый (slate-600)
-  textTertiary: '#64748b', // Светло-серый (slate-500)
+  // Текст — контрастный тёмный
+  text: '#050505',
+  textSecondary: '#65676b',
+  textTertiary: '#8a8d91',
   
-  // Границы
-  border: '#e2e8f0', // Светло-серая граница (slate-200)
-  borderLight: '#cbd5e1', // Еще светлее (slate-300)
+  // Границы — мягкие
+  border: '#e4e6eb',
+  borderLight: '#ced0d4',
   
   // Состояния
   success: '#10b981', // Зеленый
@@ -228,61 +228,159 @@ export const sepiaTheme: ThemeColors = {
   },
 };
 
-// Серо-синяя профессиональная тема (Professional Blue-Gray) — больше серого
+// Нежная розово-бежевая тема
 export const highContrastTheme: ThemeColors = {
-  // Основные цвета - профессиональные серо-синие оттенки
-  primary: '#475569', // Серо-синий (slate-600)
-  primaryLight: '#64748b', // Светлый серо-синий (slate-500)
-  primaryDark: '#334155', // Темный серо-синий (slate-700)
-  secondary: '#3b82f6', // Профессиональный синий (blue-500)
+  primary: '#db2777', // Розовый (pink-600)
+  primaryLight: '#ec4899', // Светло-розовый (pink-500)
+  primaryDark: '#be185d', // Тёмно-розовый (pink-700)
+  secondary: '#e879f9', // Мягкий фуксия (fuchsia-400)
   
-  // Фон — более выраженные серые тона
-  background: '#e2e8f0', // Серо-синий (slate-200)
-  backgroundSecondary: '#cbd5e1', // Серо-синий (slate-300)
-  backgroundTertiary: '#94a3b8', // Серо-синий (slate-400)
-  backgroundCard: '#ffffff', // Белые карточки
+  background: '#fce7f3',   // pink-100
+  backgroundSecondary: '#fbcfe8', // pink-200
+  backgroundTertiary: '#f9a8d4',  // pink-300
+  backgroundCard: '#fdf2f8',       // pink-50, без чистого белого
   
-  // Текст - темный на светлом
-  text: '#0f172a', // Темно-серо-синий (slate-900)
-  textSecondary: '#475569', // Средне-серо-синий (slate-600)
-  textTertiary: '#64748b', // Светло-серо-синий (slate-500)
+  text: '#4c0519', // Тёмно-розово-коричневый (rose-950)
+  textSecondary: '#831843', // Розово-серый (rose-800)
+  textTertiary: '#9d174d', // Серый акцент (rose-700)
   
-  // Границы - более серые
-  border: '#94a3b8', // Серо-синяя граница (slate-400)
-  borderLight: '#cbd5e1', // Светлее (slate-300)
+  border: '#fbcfe8', // Розовая граница (pink-200)
+  borderLight: '#fce7f3', // Светлее (pink-100)
   
-  // Состояния - профессиональные
-  success: '#059669', // Профессиональный зеленый (emerald-600)
-  warning: '#d97706', // Профессиональный янтарный (amber-600)
-  error: '#dc2626', // Профессиональный красный (red-600)
-  errorLight: '#fee2e2', // Светло-красный фон (red-100)
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  errorLight: '#ffe4e6', // Светло-розовый фон (rose-100)
   
-  // Типы напитков — приглушённые оттенки в стиле календаря (зелёный, персиковый, мягкий красный)
   beer: {
-    main: '#b45309', // Приглушённый янтарный (как дни календаря)
-    light: '#fef3c7', // Светло-янтарный фон (amber-100)
-    text: '#78350f', // Тёмно-янтарный текст (amber-900)
+    main: '#b45309',
+    light: '#fef3c7',
+    text: '#78350f',
   },
   wine: {
-    main: '#7e22ce', // Приглушённый фиолетовый
-    light: '#f3e8ff', // Светло-фиолетовый фон (violet-100)
-    text: '#581c87', // Тёмно-фиолетовый текст (violet-900)
+    main: '#a855f7',
+    light: '#f5d0fe', // Светло-фуксия (fuchsia-100)
+    text: '#701a75',
   },
   spirit: {
-    main: '#b91c1c', // Приглушённый красный (как верх шкалы календаря)
-    light: '#fee2e2', // Светло-красный фон (red-100)
-    text: '#991b1b', // Тёмно-красный текст (red-800)
+    main: '#be123c',
+    light: '#ffe4e6', // Мягкий красный фон (rose-100)
+    text: '#9f1239',
   },
   cocktail: {
-    main: '#15803d', // Приглушённый зелёный (как низ шкалы календаря)
-    light: '#dcfce7', // Светло-зелёный фон (green-100)
-    text: '#166534', // Тёмно-зелёный текст (green-800)
+    main: '#0d9488',
+    light: '#ccfbf1',
+    text: '#115e59',
   },
   other: {
-    main: '#64748b', // Серо-синий (slate-500)
-    light: '#e2e8f0', // Серо-синий фон (slate-200)
-    text: '#475569', // Средне-серо-синий текст (slate-600)
+    main: '#9d174d', // Розово-серый (rose-700)
+    light: '#fce7f3',
+    text: '#831843',
   },
+};
+
+// Лавандовая — мягкий violet/mauve фон + приглушённый фиолетовый акцент
+export const violetTheme: ThemeColors = {
+  primary: '#6d28d9',
+  primaryLight: '#7c3aed',
+  primaryDark: '#5b21b6',
+  secondary: '#8b5cf6',
+  background: '#ede9fe',   // violet-100
+  backgroundSecondary: '#ddd6fe',   // violet-200
+  backgroundTertiary: '#c4b5fd',   // violet-300
+  backgroundCard: '#f5f3ff',       // violet-50, без чистого белого
+  text: '#0f172a',       // slate-900, нейтральный для читаемости
+  textSecondary: '#475569',
+  textTertiary: '#64748b',
+  border: '#ddd6fe',
+  borderLight: '#ede9fe',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  errorLight: '#f5f3ff',
+  beer: { main: '#b45309', light: '#fef3c7', text: '#78350f' },
+  wine: { main: '#6d28d9', light: '#ede9fe', text: '#5b21b6' },
+  spirit: { main: '#b91c1c', light: '#fee2e2', text: '#991b1b' },
+  cocktail: { main: '#0d9488', light: '#ccfbf1', text: '#115e59' },
+  other: { main: '#64748b', light: '#e2e8f0', text: '#475569' },
+};
+
+// Песочная — тёплый нейтрал (оставляем, но можно заменить на Северную в UI)
+export const sandTheme: ThemeColors = {
+  primary: '#b45309',
+  primaryLight: '#d97706',
+  primaryDark: '#92400e',
+  secondary: '#d97706',
+  background: '#f5f5f4',
+  backgroundSecondary: '#e7e5e4',
+  backgroundTertiary: '#d6d3d1',
+  backgroundCard: '#fafaf9',
+  text: '#171717',
+  textSecondary: '#525252',
+  textTertiary: '#737373',
+  border: '#e7e5e4',
+  borderLight: '#d6d3d1',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  errorLight: '#f5f5f4',
+  beer: { main: '#b45309', light: '#fef3c7', text: '#78350f' },
+  wine: { main: '#7e22ce', light: '#f3e8ff', text: '#581c87' },
+  spirit: { main: '#b91c1c', light: '#fee2e2', text: '#991b1b' },
+  cocktail: { main: '#0d9488', light: '#ccfbf1', text: '#115e59' },
+  other: { main: '#64748b', light: '#e7e5e4', text: '#525252' },
+};
+
+// Северная (Nord) — холодная арктическая палитра, Frost-акценты (как в Nord Theme / IDE)
+export const nordTheme: ThemeColors = {
+  primary: '#5e81ac',   // nord10
+  primaryLight: '#81a1c1', // nord9
+  primaryDark: '#4c566a',  // nord3
+  secondary: '#88c0d0',   // nord8
+  background: '#d8dee9',   // nord4
+  backgroundSecondary: '#e5e9f0',   // nord5
+  backgroundTertiary: '#eceff4',    // nord6
+  backgroundCard: '#e5e9f0',
+  text: '#2e3440',       // nord0
+  textSecondary: '#3b4252', // nord1
+  textTertiary: '#4c566a',  // nord3
+  border: '#d8dee9',
+  borderLight: '#e5e9f0',
+  success: '#a3be8c',    // nord14
+  warning: '#ebcb8b',    // nord13
+  error: '#bf616a',      // nord11
+  errorLight: '#eceff4',
+  beer: { main: '#d08770', light: '#eceff4', text: '#2e3440' },  // nord12
+  wine: { main: '#b48ead', light: '#e5e9f0', text: '#2e3440' }, // nord15
+  spirit: { main: '#bf616a', light: '#eceff4', text: '#2e3440' }, // nord11
+  cocktail: { main: '#8fbcbb', light: '#d8dee9', text: '#2e3440' }, // nord7
+  other: { main: '#4c566a', light: '#d8dee9', text: '#3b4252' },
+};
+
+// Зелёный — тёмная тема в духе IntelliJ IDEA: серые тона, зелёный акцент
+export const darculaTheme: ThemeColors = {
+  primary: '#6a9955',   // IDEA green
+  primaryLight: '#7cb342',
+  primaryDark: '#588238',
+  secondary: '#78909c',
+  background: '#2b2b2b',
+  backgroundSecondary: '#3c3f41',
+  backgroundTertiary: '#45494a',
+  backgroundCard: '#3c3f41',
+  text: '#bbbbbb',
+  textSecondary: '#999999',
+  textTertiary: '#808080',
+  border: '#45494a',
+  borderLight: '#555555',
+  success: '#6a9955',
+  warning: '#d7ba7d',
+  error: '#bc3f39',
+  errorLight: '#4a3728',
+  beer: { main: '#d7ba7d', light: '#3c3f41', text: '#d7ba7d' },
+  wine: { main: '#9876aa', light: '#3c3f41', text: '#c678dd' },
+  spirit: { main: '#bc3f39', light: '#3c3f41', text: '#e06c75' },
+  cocktail: { main: '#56b6c2', light: '#3c3f41', text: '#56b6c2' },
+  other: { main: '#808080', light: '#3c3f41', text: '#999999' },
 };
 
 // Экспорт всех тем
@@ -291,6 +389,10 @@ export const themes: Record<ThemeName, ThemeColors> = {
   light: lightTheme,
   sepia: sepiaTheme,
   highContrast: highContrastTheme,
+  violet: violetTheme,
+  sand: sandTheme,
+  nord: nordTheme,
+  darcula: darculaTheme,
 };
 
 // Получить тему по имени

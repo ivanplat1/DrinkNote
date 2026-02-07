@@ -37,7 +37,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const loadTheme = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      const name: ThemeName = (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'sepia' || savedTheme === 'highContrast')
+      const name: ThemeName = (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'sepia' || savedTheme === 'highContrast' || savedTheme === 'violet' || savedTheme === 'sand' || savedTheme === 'nord' || savedTheme === 'darcula')
         ? savedTheme
         : 'dark';
       setState({ themeName: name, isThemeLoaded: true });

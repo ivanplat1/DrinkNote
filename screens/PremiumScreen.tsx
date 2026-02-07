@@ -89,6 +89,11 @@ export default function PremiumScreen() {
       description: 'Графики трендов, сравнение периодов, детальная аналитика',
     },
     {
+      icon: 'target',
+      title: 'Цель по серии',
+      description: 'Задайте цель (7, 30, 90 дней без алкоголя) и отслеживайте прогресс в статистике',
+    },
+    {
       icon: 'palette',
       title: 'Темы оформления',
       description: 'Темная, светлая и цветовые темы для персонализации',
@@ -97,11 +102,6 @@ export default function PremiumScreen() {
       icon: 'cash',
       title: 'Цена напитка',
       description: 'Учёт стоимости каждой записи, сумма за день и период',
-    },
-    {
-      icon: 'target',
-      title: 'Цель по серии',
-      description: 'Задайте цель (7, 30, 90 дней без алкоголя) и отслеживайте прогресс в статистике',
     },
     {
       icon: 'label',

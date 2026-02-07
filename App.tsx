@@ -130,7 +130,8 @@ function AppContent() {
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)));
   
   // Определяем стиль статус-бара в зависимости от темы
-  const statusBarStyle = themeName === 'light' ? 'dark' : 'light';
+  const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
+  const statusBarStyle = isLightTheme ? 'dark' : 'light';
   
   // TODO: Удалить перед релизом - загрузка тестовых данных
   // Установите FORCE_LOAD_TEST_DATA = true для принудительной загрузки
@@ -212,7 +213,7 @@ function AppContent() {
               shadowRadius: 3.84,
             },
             tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: themeName === 'light' ? colors.textSecondary : colors.textTertiary,
+            tabBarInactiveTintColor: isLightTheme ? colors.textSecondary : colors.textTertiary,
             tabBarLabelStyle: {
               fontWeight: '600',
               fontSize: 10, // Уменьшаем размер шрифта подписей

@@ -666,33 +666,36 @@ export default function SettingsScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Тема оформления</Text>
             <View style={styles.themeContainer}>
-              {(['dark', 'light', 'sepia', 'highContrast'] as ThemeName[]).map((theme) => (
+              {(
+                [
+                  { id: 'dark' as ThemeName, label: 'Темная', bg: '#0f172a', accent: '#6366f1' },
+                  { id: 'light' as ThemeName, label: 'Светлая', bg: '#ffffff', accent: '#3b82f6' },
+                  { id: 'sepia' as ThemeName, label: 'Теплая', bg: '#1c1917', accent: '#f59e0b' },
+                  { id: 'nord' as ThemeName, label: 'Северная', bg: '#e5e9f0', accent: '#5e81ac' },
+                  { id: 'darcula' as ThemeName, label: 'Зелёный', bg: '#2b2b2b', accent: '#6a9955' },
+                  { id: 'highContrast' as ThemeName, label: 'Розовая', bg: '#fdf8f6', accent: '#db2777' },
+                ] as const
+              ).map(({ id, label, bg, accent }) => (
                 <TouchableOpacity
-                  key={theme}
+                  key={id}
                   style={[
                     styles.themeButton,
-                    themeName === theme && styles.themeButtonActive,
-                    { backgroundColor: themeName === theme ? colors.backgroundCard : colors.backgroundSecondary, borderColor: themeName === theme ? colors.primary : colors.border }
+                    themeName === id && styles.themeButtonActive,
+                    { backgroundColor: themeName === id ? colors.backgroundCard : colors.backgroundSecondary, borderColor: themeName === id ? colors.primary : colors.border }
                   ]}
-                  onPress={() => setTheme(theme)}
+                  onPress={() => setTheme(id)}
                 >
-                  <View style={[
-                    styles.themePreview,
-                    { backgroundColor: theme === 'dark' ? '#0f172a' : theme === 'light' ? '#ffffff' : theme === 'sepia' ? '#1c1917' : '#f1f5f9' }
-                  ]}>
-                    <View style={[
-                      styles.themePreviewAccent,
-                      { backgroundColor: theme === 'dark' ? '#6366f1' : theme === 'light' ? '#3b82f6' : theme === 'sepia' ? '#f59e0b' : '#475569' }
-                    ]} />
+                  <View style={[styles.themePreview, { backgroundColor: bg }]}>
+                    <View style={[styles.themePreviewAccent, { backgroundColor: accent }]} />
                   </View>
                   <Text style={[
                     styles.themeButtonText,
-                    themeName === theme && styles.themeButtonTextActive,
-                    { color: themeName === theme ? colors.primary : colors.text }
+                    themeName === id && styles.themeButtonTextActive,
+                    { color: themeName === id ? colors.primary : colors.text }
                   ]}>
-                    {theme === 'dark' ? 'Темная' : theme === 'light' ? 'Светлая' : theme === 'sepia' ? 'Теплая' : 'Строгая'}
+                    {label}
                   </Text>
-                  {themeName === theme && (
+                  {themeName === id && (
                     <MaterialIcons name="check" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
                   )}
                 </TouchableOpacity>
