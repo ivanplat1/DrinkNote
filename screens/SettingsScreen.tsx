@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
@@ -313,15 +313,15 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
-      <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}>
+      <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
           <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
-            {/* Левая часть - Моя цель */}
+            {/* Левая часть - Своё значение */}
             <View style={styles.goalColumn}>
-              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Моя цель</Text>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Своё значение</Text>
               {isEditingGoal ? (
                 <View style={styles.goalInputRow}>
                   <TextInput
@@ -750,7 +750,7 @@ export default function SettingsScreen() {
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
           </View>
     </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* DateTimePicker для даты рождения */}
       <Modal
@@ -876,12 +876,14 @@ export default function SettingsScreen() {
               </View>
               
               <View style={styles.importContentWrapper}>
-                <ScrollView
+                <Animated.ScrollView
                   style={styles.importScrollView}
                   contentContainerStyle={styles.importScrollContent}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={true}
                   nestedScrollEnabled={true}
+                  directionalLockEnabled
+                  scrollEventThrottle={32}
                 >
                   <Text style={[styles.importHint, { color: colors.textSecondary }]}>
                     Выберите файл или вставьте JSON данные из экспортированного файла
@@ -904,7 +906,7 @@ export default function SettingsScreen() {
                     multiline
                     textAlignVertical="top"
                   />
-                </ScrollView>
+                </Animated.ScrollView>
                 
                 <View style={[styles.importButtonsContainer, { backgroundColor: colors.backgroundCard, borderTopColor: colors.border }]}>
                   <TouchableOpacity
@@ -1001,10 +1003,12 @@ export default function SettingsScreen() {
                 <MaterialIcons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView
+            <Animated.ScrollView
               style={styles.currencyPickerScroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={true}
+              directionalLockEnabled
+              scrollEventThrottle={32}
             >
               {CURRENCY_LIST.map(({ code, label }, index) => (
                 <TouchableOpacity
@@ -1029,7 +1033,7 @@ export default function SettingsScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </Animated.ScrollView>
           </View>
         </View>
       </Modal>

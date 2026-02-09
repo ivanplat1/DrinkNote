@@ -35,7 +35,7 @@ const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
 };
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors, currency }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: import('../storage/settings').CurrencyCode }) {
+const SwipeableListItem = React.memo(function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors, currency }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: import('../storage/settings').CurrencyCode }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true); // Отслеживаем, первый ли это жест
@@ -220,7 +220,7 @@ function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, co
       </View>
     </GestureDetector>
   );
-}
+});
 
 export default function TodayScreen() {
   const { colors } = useTheme();
@@ -572,12 +572,9 @@ export default function TodayScreen() {
 
   const handleSearchChange = (text: string) => {
     console.log('[SEARCH] onChangeText called, new text:', text, 'old text:', searchQuery);
-    console.log('[SEARCH] addModalVisible:', addModalVisible);
     setSearchQuery(text);
   };
 
-  // Логирование ре-рендеров
-  console.log('[RENDER] TodayScreen render, searchQuery:', searchQuery, 'addModalVisible:', addModalVisible, 'trimmed:', searchQuery && searchQuery.trim());
   const insets = useSafeAreaInsets();
 
   const handleLongPress = (presetId: string) => {
@@ -786,6 +783,11 @@ export default function TodayScreen() {
         keyExtractor={(item) => item.id}
         scrollEnabled={true}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={Platform.OS === 'android'}
+        overScrollMode="never"
+        windowSize={6}
+        initialNumToRender={8}
+        maxToRenderPerBatch={4}
         renderItem={({ item }) => {
           const beverageColor = getBeverageColor(item.beverageType, colors);
           return (

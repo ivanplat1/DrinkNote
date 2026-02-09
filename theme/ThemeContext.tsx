@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { View, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, StyleSheet, LayoutAnimation } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeName, getTheme, ThemeColors } from './themes';
@@ -54,9 +54,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = async (theme: ThemeName) => {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, theme);
-      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-      }
+      // setLayoutAnimationEnabledExperimental — no-op в New Architecture, не вызываем чтобы не плодить WARN
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setState((prev) => ({ ...prev, themeName: theme }));
     } catch (error) {

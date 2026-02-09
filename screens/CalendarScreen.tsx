@@ -1156,9 +1156,9 @@ export default function CalendarScreen() {
   }, []);
 
   const weeks: Date[] = useMemo(() => {
-    // Верхняя граница: конец текущего месяца
-    const endOfCurrentMonth = endOfMonth(baseToday);
-    endOfCurrentMonth.setHours(0, 0, 0, 0);
+    // Верхняя граница: конец месяца через 2 месяца от сегодня
+    const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 3, 0);
+    endMonth.setHours(0, 0, 0, 0);
 
     // Нижняя граница: начало месяца 2 года назад
     const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 24, 1);
@@ -1171,7 +1171,7 @@ export default function CalendarScreen() {
 
     const result: Date[] = [];
     const cursor = new Date(start);
-    while (cursor <= endOfCurrentMonth) {
+    while (cursor <= endMonth) {
       result.push(new Date(cursor));
       cursor.setDate(cursor.getDate() + 7);
     }
@@ -1198,15 +1198,15 @@ export default function CalendarScreen() {
   const monthHeaderFade = useSharedValue(1);
   const backToTodayFade = useSharedValue(0);
   
-  // Throttle для обновления visibleIndex чтобы избежать частых перерендеров
+  // Throttle для обновления visibleIndex (короткий, чтобы кнопка «Сегодня» реагировала без задержки)
   const updateVisibleIndexThrottled = useCallback((idx: number) => {
     if (throttleTimerRef.current) {
-      return; // Пропускаем если уже есть запланированное обновление
+      return;
     }
     throttleTimerRef.current = setTimeout(() => {
       setVisibleIndex(idx);
       throttleTimerRef.current = null;
-    }, 250); // Обновляем не чаще чем раз в 250ms для плавности
+    }, 50);
   }, []);
   
   // Анимация модалок - движение за пальцем
@@ -1668,12 +1668,10 @@ export default function CalendarScreen() {
     }
   }, [listHeight, initialIndex]);
 
-  // Мемоизируем условие показа кнопки "вниз к сегодня"
+  // Показываем кнопку «Сегодня», когда уехали в прошлое или в будущее (на 4+ недель от текущей)
   const showBackToToday = useMemo(() => {
     if (!weeks.length) return false;
-    // Показываем стрелку, когда пользователь пролистал достаточно ВЫШЕ сегодняшней недели:
-    // на 4 и более недель (чтобы не мигала при лёгком скролле вокруг today)
-    return visibleIndex <= initialIndex - 4;
+    return visibleIndex <= initialIndex - 4 || visibleIndex >= initialIndex + 4;
   }, [visibleIndex, initialIndex, weeks.length]);
 
   // Анимируем появление/исчезновение стрелки вниз
@@ -2030,25 +2028,26 @@ export default function CalendarScreen() {
           }}
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
           initialScrollIndex={initialIndex}
-          removeClippedSubviews={true}
-          windowSize={3}
-          maxToRenderPerBatch={3}
-          updateCellsBatchingPeriod={150}
-          initialNumToRender={5}
-          scrollEventThrottle={200}
+          removeClippedSubviews={Platform.OS === 'android'}
+          windowSize={5}
+          maxToRenderPerBatch={4}
+          updateCellsBatchingPeriod={100}
+          initialNumToRender={6}
+          scrollEventThrottle={32}
           maintainVisibleContentPosition={null}
           disableIntervalMomentum={true}
+          overScrollMode="never"
           onScrollToIndexFailed={() => {
             // Игнорируем ошибки скролла
           }}
           onScroll={(e) => {
-            const y = e.nativeEvent.contentOffset.y;
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            const y = contentOffset.y;
+            // Не обновлять индекс в зоне overscroll (bounce) — снижает лаг анимации у краёв
+            if (y < 0 || y > contentSize.height - layoutMeasurement.height + 1) return;
             const idx = Math.round(y / weekRowHeight);
-            
-            // Обновляем только если индекс действительно изменился и валиден
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < weeks.length) {
               lastScrollIndexRef.current = idx;
-              // Используем throttle для плавного обновления
               updateVisibleIndexThrottled(idx);
             }
           }}
@@ -2237,21 +2236,29 @@ export default function CalendarScreen() {
         </>
       )}
 
-      {/* Кнопка возврата к текущей неделе (вниз) с плавной анимацией - только для месячного режима */}
-      {calendarViewMode === 'month' && (
-        <Animated.View
-          style={[styles.backToTodayButton, backToTodayAnimatedStyle]}
-          pointerEvents={showBackToToday ? 'auto' : 'none'}
-        >
-          <TouchableOpacity
-            style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-            onPress={scrollToToday}
-            activeOpacity={0.8}
+      {/* Кнопка возврата к текущей неделе: стрелка вниз (выше) или вверх (ниже) */}
+      {calendarViewMode === 'month' && (() => {
+        const isAboveToday = weeks.length > 0 && visibleIndex <= initialIndex - 4;
+        const arrowUp = !isAboveToday;
+        return (
+          <Animated.View
+            style={[styles.backToTodayButton, backToTodayAnimatedStyle]}
+            pointerEvents={showBackToToday ? 'auto' : 'none'}
           >
-            <MaterialIcons name="keyboard-double-arrow-down" size={34} color={colors.primaryLight} />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+            <TouchableOpacity
+              style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+              onPress={scrollToToday}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name={arrowUp ? 'keyboard-arrow-up' : 'keyboard-double-arrow-down'}
+                size={34}
+                color={colors.primaryLight}
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      })()}
 
       <Modal visible={!!selectedDate && !addModalVisible && !customModalVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={() => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -141,7 +142,7 @@ export default function PremiumScreen() {
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false} directionalLockEnabled scrollEventThrottle={32}>
         <View style={styles.content}>
           {/* Hero Section */}
           <View style={styles.heroSection}>
@@ -200,12 +201,11 @@ export default function PremiumScreen() {
           <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               • Одноразовая покупка, без подписок{'\n'}
-              • Работает офлайн, без серверов{'\n'}
               • Все функции доступны сразу после покупки
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -7,10 +8,10 @@ import { getAllDrinks } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
-import { formatPrice } from '../utils/currency';
+import { formatPrice, formatPriceValueOnly } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatTotalVolume } from '../utils/units';
-import { WEEKDAY_SHORT_RU } from '../utils/date';
+import { WEEKDAY_SHORT_RU, MONTH_SHORT_RU } from '../utils/date';
 import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
 import AdvancedStatsContent from './AdvancedStatsContent';
@@ -200,7 +201,7 @@ export default function StatsScreen() {
           <AdvancedStatsContent allDrinks={allDrinks} />
         )
       ) : (
-        <ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}>
+        <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Предупреждение о ограничении для базовой версии */}
         {!isPremium && allDrinks.length > filteredDrinks.length && (
           <View style={styles.limitWarning}>
@@ -332,7 +333,7 @@ export default function StatsScreen() {
             <View style={[styles.statsRow, styles.statsRowSpent]}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.primary }]}>
-                  {currentStats.totalSpent > 0 ? formatPrice(currentStats.totalSpent, currency) : '—'}
+                  {currentStats.totalSpent > 0 ? formatPriceValueOnly(currentStats.totalSpent) : '—'}
                 </Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Сумма</Text>
                 {currentStats.totalSpent === 0 && (
@@ -382,7 +383,7 @@ export default function StatsScreen() {
                       <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
                         {period === 'week' 
                           ? WEEKDAY_SHORT_RU[index]
-                          : item.month.toLocaleDateString('ru-RU', { month: 'short' })
+                          : MONTH_SHORT_RU[item.month.getMonth()]
                         }
                       </Text>
                     </View>
@@ -433,7 +434,7 @@ export default function StatsScreen() {
                       <Text style={[styles.typeUnits, { color: colors.textSecondary }]}>{item.totalUnits.toFixed(1)} ед.</Text>
                       <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>{Math.round(item.totalUnits * 10)} г</Text>
                       {isPremium && item.totalSpent > 0 && (
-                        <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>· {formatPrice(item.totalSpent, currency)}</Text>
+                        <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>· {formatPriceValueOnly(item.totalSpent)}</Text>
                       )}
                     </View>
                   </View>
@@ -563,7 +564,7 @@ export default function StatsScreen() {
             })}
           </View>
         )}
-        </ScrollView>
+        </Animated.ScrollView>
       )}
     </SafeAreaView>
   );

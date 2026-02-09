@@ -59,3 +59,8 @@ export function formatPriceChart(amount: number, currency: CurrencyCode): string
   const value = amount >= 1000 ? `${(amount / 1000).toFixed(1)}k` : amount.toFixed(0);
   return `${value}${symbol}`;
 }
+
+/** Сумма без знака валюты (для столбцов статистики трат) */
+export function formatPriceValueOnly(amount: number): string {
+  return amount >= 1000 ? `${(amount / 1000).toFixed(1)}k` : amount.toFixed(0);
+}

@@ -46,4 +46,12 @@ export function formatISO(date: Date): string {
 
 export const WEEKDAY_SHORT_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+/** Короткие названия месяцев (3 буквы) для подписей под столбцами графика */
+export const MONTH_SHORT_RU = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+/** Дата в формате DD/MM для подписи недель (например 20/01) */
+export function formatDDMM(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 
