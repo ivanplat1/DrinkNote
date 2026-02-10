@@ -666,13 +666,22 @@ const YearCalendarView = React.memo(function YearCalendarView({
               cellStyle.opacity = 1;
             }
             
+            // Проверяем наличие меток на этот день (включая дни в серии)
+            const rangesOnDay = labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso);
+            
+            // Если день в зелёной серии И есть метка - убираем зелёный фон, оставляем только тонкую зелёную обводку
+            if ((isInCurrentStreak || isInBestStreak) && rangesOnDay.length > 0 && streakType === null) {
+              // Возвращаем базовый фон, но добавляем зелёную обводку для индикации серии
+              cellStyle.backgroundColor = cellBg;
+              const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
+              cellStyle.borderWidth = 1.5;
+              cellStyle.borderColor = streakGreen;
+            }
+            
             if (isToday) {
               cellStyle.borderWidth = 2;
               cellStyle.borderColor = colors.primary;
             }
-            const rangesOnDay = !isInCurrentStreak && !isInBestStreak
-              ? labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso)
-              : [];
 
             return (
               <TouchableOpacity
@@ -680,61 +689,6 @@ const YearCalendarView = React.memo(function YearCalendarView({
                 style={cellStyle}
                 onPress={() => onDayPress(iso)}
               >
-                {rangesOnDay.map((range) => {
-                  const inRange = (i: string) => range.fromISO <= i && i <= range.toISO;
-                  const col = idx % 7;
-                  const topEdge = !inRange(addDaysISO(iso, -7));
-                  const leftEdge = !inRange(addDaysISO(iso, -1)) || col === 0;
-                  const rightEdge = !inRange(addDaysISO(iso, 1)) || col === 6;
-                  const bottomEdge = !inRange(addDaysISO(iso, 7));
-                  if (!topEdge && !leftEdge && !rightEdge && !bottomEdge) return null;
-                  const strokeW = 2;
-                  const outlineW = isLightTheme ? 3 : 0;
-                  return (
-                    <React.Fragment key={range.id}>
-                      {outlineW > 0 && (
-                        <View
-                          pointerEvents="none"
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            borderRadius: daySize / 2,
-                            borderTopWidth: topEdge ? outlineW : 0,
-                            borderLeftWidth: leftEdge ? outlineW : 0,
-                            borderRightWidth: rightEdge ? outlineW : 0,
-                            borderBottomWidth: bottomEdge ? outlineW : 0,
-                            borderTopColor: LIGHT_THEME_CONTOUR_STROKE,
-                            borderLeftColor: LIGHT_THEME_CONTOUR_STROKE,
-                            borderRightColor: LIGHT_THEME_CONTOUR_STROKE,
-                            borderBottomColor: LIGHT_THEME_CONTOUR_STROKE,
-                          }}
-                        />
-                      )}
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          borderRadius: daySize / 2,
-                          borderTopWidth: topEdge ? strokeW : 0,
-                          borderLeftWidth: leftEdge ? strokeW : 0,
-                          borderRightWidth: rightEdge ? strokeW : 0,
-                          borderBottomWidth: bottomEdge ? strokeW : 0,
-                          borderTopColor: range.color,
-                          borderLeftColor: range.color,
-                          borderRightColor: range.color,
-                          borderBottomColor: range.color,
-                        }}
-                      />
-                    </React.Fragment>
-                  );
-                })}
                 <Text style={{ 
                   fontSize: 8,
                   color: (isInCurrentStreak || isInBestStreak) 
@@ -1832,8 +1786,7 @@ export default function CalendarScreen() {
       const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
       const cellBg = isLightTheme ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
 
-      // Все периоды, покрывающие этот день — для каждого рисуем свой контур (пересечения видны)
-      const rangesOnDay = !glowStyle ? labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso) : [];
+      // Рамки меток теперь рендерятся отдельным слоем поверх сетки
 
       return (
         <TouchableOpacity
@@ -1869,57 +1822,6 @@ export default function CalendarScreen() {
           ]}
           onPress={() => openDay(d)}
         >
-          {/* Слои контуров: каждый период рисует свою рамку (при пересечении видны оба цвета) */}
-          {rangesOnDay.map((range) => {
-            const inRange = (i: string) => range.fromISO <= i && i <= range.toISO;
-            const topEdge = !inRange(addDaysISO(iso, -7));
-            const leftEdge = !inRange(addDaysISO(iso, -1)) || idx === 0;
-            const rightEdge = !inRange(addDaysISO(iso, 1)) || idx === 6;
-            const bottomEdge = !inRange(addDaysISO(iso, 7));
-            if (!topEdge && !leftEdge && !rightEdge && !bottomEdge) return null;
-            const strokeW = 2;
-            const outlineW = isLightTheme ? 3 : 0;
-            return (
-              <React.Fragment key={range.id}>
-                {outlineW > 0 && (
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      StyleSheet.absoluteFill,
-                      {
-                        borderRadius: 10,
-                        borderTopWidth: topEdge ? outlineW : 0,
-                        borderLeftWidth: leftEdge ? outlineW : 0,
-                        borderRightWidth: rightEdge ? outlineW : 0,
-                        borderBottomWidth: bottomEdge ? outlineW : 0,
-                        borderTopColor: LIGHT_THEME_CONTOUR_STROKE,
-                        borderLeftColor: LIGHT_THEME_CONTOUR_STROKE,
-                        borderRightColor: LIGHT_THEME_CONTOUR_STROKE,
-                        borderBottomColor: LIGHT_THEME_CONTOUR_STROKE,
-                      },
-                    ]}
-                  />
-                )}
-                <View
-                  pointerEvents="none"
-                  style={[
-                    StyleSheet.absoluteFill,
-                    {
-                      borderRadius: 10,
-                      borderTopWidth: topEdge ? strokeW : 0,
-                      borderLeftWidth: leftEdge ? strokeW : 0,
-                      borderRightWidth: rightEdge ? strokeW : 0,
-                      borderBottomWidth: bottomEdge ? strokeW : 0,
-                      borderTopColor: range.color,
-                      borderLeftColor: range.color,
-                      borderRightColor: range.color,
-                      borderBottomColor: range.color,
-                    },
-                  ]}
-                />
-              </React.Fragment>
-            );
-          })}
           <View style={styles.cellContent}>
             {/* Градиент слитка + анимированная рамка */}
             {isInBestStreak && bestCompletedStreak && (
@@ -1989,6 +1891,102 @@ export default function CalendarScreen() {
       );
     });
     
+    // Кружки меток: размер от ячейки, 4 в ряд, до 2 рядов (макс. 8 на календаре), в модалке дня — все метки
+    const DOTS_PER_ROW = 4;
+    const MAX_DOTS_ON_CALENDAR = 8;
+    const dotRight = Math.max(6, Math.floor(cellWidth * 0.08));
+    const dotBottomOffset = Math.max(6, Math.floor(cellHeight * 0.08));
+    const dotGap = Math.max(2, Math.floor(cellWidth * 0.02));
+    const rowGap = Math.max(2, dotGap);
+    // В ряд помещается 4 кружка: 4*dotSize + 3*dotGap <= cellWidth - 2*dotRight
+    const availableWidth = cellWidth - 2 * dotRight;
+    const dotSize = Math.max(4, Math.min(12, Math.floor((availableWidth - 3 * dotGap) / DOTS_PER_ROW)));
+    const cellContentBottom = cellHeight - 4;
+    const blockWidth = DOTS_PER_ROW * dotSize + (DOTS_PER_ROW - 1) * dotGap;
+    
+    const labelDotsOverlay = labelRanges && labelRanges.length > 0 ? (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: CALENDAR_PADDING_H,
+          top: 0,
+          width: weekWidth,
+          height: cellHeight,
+          zIndex: 10,
+        }}
+      >
+        {weekDays.map((d, idx) => {
+          const iso = formatISO(d);
+          const rangesOnDay = labelRanges
+            .filter(r => r.fromISO <= iso && iso <= r.toISO)
+            .slice(0, MAX_DOTS_ON_CALENDAR);
+          if (rangesOnDay.length === 0) return null;
+          const row0 = rangesOnDay.slice(0, DOTS_PER_ROW);
+          const row1 = rangesOnDay.slice(DOTS_PER_ROW, MAX_DOTS_ON_CALENDAR);
+          const hasTwoRows = row1.length > 0;
+          const blockLeft = idx * cellWidth + cellWidth - dotRight - blockWidth;
+          const bottomRowTop = cellContentBottom - dotBottomOffset - dotSize;
+          const topRowTop = hasTwoRows ? bottomRowTop - dotSize - rowGap : bottomRowTop;
+          
+          return (
+            <View key={idx} pointerEvents="none" style={{ position: 'absolute', left: blockLeft, top: 0, width: blockWidth, height: cellContentBottom }}>
+              {/* Второй ряд (сверху): индексы 4–7 */}
+              {hasTwoRows && (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: topRowTop,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: dotGap,
+                  }}
+                >
+                  {row1.map(r => (
+                    <View
+                      key={r.id}
+                      style={{
+                        width: dotSize,
+                        height: dotSize,
+                        borderRadius: dotSize / 2,
+                        backgroundColor: r.color,
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+              {/* Первый ряд (нижний): индексы 0–3 */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: bottomRowTop,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: dotGap,
+                }}
+              >
+                {row0.map(r => (
+                  <View
+                    key={r.id}
+                    style={{
+                      width: dotSize,
+                      height: dotSize,
+                      borderRadius: dotSize / 2,
+                      backgroundColor: r.color,
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    ) : null;
+    
     return (
       <View
         style={{ height: dynamicWeekHeight, width: screenWidth, overflow: 'visible' }}
@@ -1996,11 +1994,13 @@ export default function CalendarScreen() {
         <View style={[styles.grid, { marginHorizontal: CALENDAR_PADDING_H, width: weekWidth }]}>
           {cells}
         </View>
+        {labelDotsOverlay}
       </View>
     );
   }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelsMap, labelRanges, themeName, CALENDAR_PADDING_H]);
 
 
+  
   // Мемоизируем календарь чтобы он не перерендеривался при изменении dayList
   const calendarView = useMemo(() => {
     if (listHeight === null || listHeight <= 0 || cellHeight <= 0) return null;
@@ -2010,7 +2010,7 @@ export default function CalendarScreen() {
     const totalContentHeight = weekRowHeight * weeks.length;
     
     return (
-      <View style={{ height: actualMonthHeight, width: screenWidth }}>
+      <View style={{ height: actualMonthHeight, width: screenWidth, overflow: 'visible' }}>
         <FlatList
           ref={listRef}
           data={weeks}
@@ -2018,7 +2018,7 @@ export default function CalendarScreen() {
           decelerationRate="normal"
           showsVerticalScrollIndicator={false}
           style={{ height: actualMonthHeight, width: screenWidth }}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 20, overflow: 'visible' }}
           getItemLayout={(_, index) => {
             return { 
               length: weekRowHeight, 
