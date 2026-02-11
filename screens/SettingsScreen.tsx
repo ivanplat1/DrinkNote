@@ -753,61 +753,87 @@ export default function SettingsScreen() {
       </Animated.ScrollView>
 
       {/* DateTimePicker для даты рождения */}
-      <Modal
-        visible={showBirthDatePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowBirthDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowBirthDatePicker(false)}
-          />
-          <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
-            <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity
-                onPress={() => setShowBirthDatePicker(false)}
-                style={styles.datePickerButton}
-              >
-                <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
-              </TouchableOpacity>
-              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата рождения</Text>
-              <TouchableOpacity
-                onPress={async () => {
-                  const dateISO = tempBirthDate.toISOString().split('T')[0];
-                  setBirthDateValue(dateISO);
-                  await setBirthDate(dateISO);
-                  const calculatedAge = calculateAgeFromDate(dateISO);
-                  setAge(calculatedAge);
-                  const lethal = await getLethalDose();
-                  setLethalDose(lethal);
-                  await updateRecommendation();
-                  setShowBirthDatePicker(false);
-                }}
-                style={styles.datePickerButton}
-              >
-                <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={tempBirthDate}
-              mode="date"
-              display="spinner"
-              maximumDate={new Date()}
-              minimumDate={new Date(1900, 0, 1)}
-              themeVariant="dark"
-              locale="ru-RU"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setTempBirthDate(selectedDate);
-                }
-              }}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showBirthDatePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowBirthDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setShowBirthDatePicker(false)}
             />
+            <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                  onPress={() => setShowBirthDatePicker(false)}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
+                </TouchableOpacity>
+                <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата рождения</Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const dateISO = tempBirthDate.toISOString().split('T')[0];
+                    setBirthDateValue(dateISO);
+                    await setBirthDate(dateISO);
+                    const calculatedAge = calculateAgeFromDate(dateISO);
+                    setAge(calculatedAge);
+                    const lethal = await getLethalDose();
+                    setLethalDose(lethal);
+                    await updateRecommendation();
+                    setShowBirthDatePicker(false);
+                  }}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={tempBirthDate}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                minimumDate={new Date(1900, 0, 1)}
+                themeVariant="dark"
+                locale="ru-RU"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                    setTempBirthDate(selectedDate);
+                  }
+                }}
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : (
+        showBirthDatePicker && (
+          <DateTimePicker
+            value={tempBirthDate}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+            onChange={async (event, selectedDate) => {
+              setShowBirthDatePicker(false);
+              if (event.type === 'set' && selectedDate) {
+                const dateISO = selectedDate.toISOString().split('T')[0];
+                setBirthDateValue(dateISO);
+                await setBirthDate(dateISO);
+                const calculatedAge = calculateAgeFromDate(dateISO);
+                setAge(calculatedAge);
+                const lethal = await getLethalDose();
+                setLethalDose(lethal);
+                await updateRecommendation();
+                setTempBirthDate(selectedDate);
+              }
+            }}
+          />
+        )
+      )}
 
       {/* Модальное окно для импорта данных */}
       <Modal
@@ -932,56 +958,77 @@ export default function SettingsScreen() {
       </Modal>
 
       {/* DateTimePicker для даты начала отсчета */}
-      <Modal
-        visible={showStartDatePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowStartDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowStartDatePicker(false)}
-          />
-          <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
-            <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity
-                onPress={() => setShowStartDatePicker(false)}
-                style={styles.datePickerButton}
-              >
-                <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
-              </TouchableOpacity>
-              <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата начала отсчета</Text>
-              <TouchableOpacity
-                onPress={async () => {
-                  const dateISO = tempStartDate.toISOString().split('T')[0];
-                  setAppStartDateValue(dateISO);
-                  await setAppStartDate(dateISO);
-                  setShowStartDatePicker(false);
-                }}
-                style={styles.datePickerButton}
-              >
-                <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={tempStartDate}
-              mode="date"
-              display="spinner"
-              maximumDate={new Date()}
-              minimumDate={new Date(2000, 0, 1)}
-              themeVariant="dark"
-              locale="ru-RU"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setTempStartDate(selectedDate);
-                }
-              }}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showStartDatePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowStartDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setShowStartDatePicker(false)}
             />
+            <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                  onPress={() => setShowStartDatePicker(false)}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
+                </TouchableOpacity>
+                <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата начала отсчета</Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const dateISO = tempStartDate.toISOString().split('T')[0];
+                    setAppStartDateValue(dateISO);
+                    await setAppStartDate(dateISO);
+                    setShowStartDatePicker(false);
+                  }}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={tempStartDate}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                minimumDate={new Date(2000, 0, 1)}
+                themeVariant="dark"
+                locale="ru-RU"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                    setTempStartDate(selectedDate);
+                  }
+                }}
+              />
+            </View>
           </View>
-    </View>
-      </Modal>
+        </Modal>
+      ) : (
+        showStartDatePicker && (
+          <DateTimePicker
+            value={tempStartDate}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            minimumDate={new Date(2000, 0, 1)}
+            onChange={(event, selectedDate) => {
+              setShowStartDatePicker(false);
+              if (event.type === 'set' && selectedDate) {
+                const dateISO = selectedDate.toISOString().split('T')[0];
+                setAppStartDateValue(dateISO);
+                setAppStartDate(dateISO);
+                setTempStartDate(selectedDate);
+              }
+            }}
+          />
+        )
+      )}
 
       {/* Выпадающий список валют */}
       <Modal
