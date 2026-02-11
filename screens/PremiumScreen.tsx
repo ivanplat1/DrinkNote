@@ -50,7 +50,14 @@ export default function PremiumScreen() {
         );
       } else {
         if (result.error !== 'Purchase canceled') {
-          Alert.alert('Ошибка', result.error || 'Не удалось выполнить покупку');
+          // Show more helpful error messages
+          let errorMessage = result.error || 'Не удалось выполнить покупку';
+          if (result.error?.includes('not configured')) {
+            errorMessage = 'Продукт не настроен в Google Play. Пожалуйста, обратитесь к разработчику.';
+          } else if (result.error?.includes('not available')) {
+            errorMessage = 'Покупки недоступны. Убедитесь, что приложение установлено из Google Play.';
+          }
+          Alert.alert('Ошибка покупки', errorMessage);
         }
       }
     } catch (error) {

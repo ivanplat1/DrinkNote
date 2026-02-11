@@ -56,7 +56,7 @@ export async function initPurchases(): Promise<boolean> {
     if (responseCode === module.IAPResponseCode.OK) {
       isInitialized = true;
       purchasesAvailable = true;
-      console.log('In-app purchases initialized successfully');
+      console.log(`In-app purchases initialized successfully. Product ID: ${PREMIUM_PRODUCT_ID}`);
       
       // Set purchase listener
       module.setPurchaseListener(({ responseCode, results, errorCode }) => {
@@ -80,7 +80,7 @@ export async function initPurchases(): Promise<boolean> {
       
       return true;
     } else {
-      console.error('Failed to initialize purchases:', responseCode);
+      console.error(`Failed to initialize purchases. Response code: ${responseCode}. Make sure the app is published in at least internal testing track.`);
       return false;
     }
   } catch (error) {
@@ -118,7 +118,17 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
     } else if (responseCode === module.IAPResponseCode.USER_CANCELED) {
       return { success: false, error: 'Purchase canceled' };
     } else {
-      return { success: false, error: 'Purchase failed' };
+      // More detailed error messages for debugging
+      let errorMessage = 'Purchase failed';
+      if (responseCode === module.IAPResponseCode.ERROR) {
+        errorMessage = 'Purchase error: Product may not be configured in Play Console';
+      } else if (responseCode === module.IAPResponseCode.DEFERRED) {
+        errorMessage = 'Purchase is pending approval';
+      } else {
+        errorMessage = `Purchase failed (code: ${responseCode})`;
+      }
+      console.error(`Purchase failed: responseCode=${responseCode}, productId=${PREMIUM_PRODUCT_ID}`);
+      return { success: false, error: errorMessage };
     }
   } catch (error) {
     console.error('Error purchasing premium:', error);
