@@ -827,12 +827,12 @@ export default function TodayScreen() {
                   .onEnd((e) => {
                     // Свайп вниз закрывает модальное окно
                     if (e.translationY > 50) {
-                      addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                      addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                         runOnJS(closeAddModal)();
                         addModalTranslateY.value = 0;
                       });
                     } else {
-                      addModalTranslateY.value = withTiming(0, { duration: 200 });
+                      addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                     }
                   })
                 }>
@@ -924,12 +924,12 @@ export default function TodayScreen() {
                     .onEnd((e) => {
                       // Свайп вниз закрывает модальное окно
                       if (e.translationY > 50) {
-                        customModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        customModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                           runOnJS(closeCustomModal)();
                           customModalTranslateY.value = 0;
                         });
                       } else {
-                        customModalTranslateY.value = withTiming(0, { duration: 200 });
+                        customModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                       }
                     })
                   }>
@@ -1057,12 +1057,12 @@ export default function TodayScreen() {
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        editModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        editModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                           runOnJS(closeEditModal)();
                           editModalTranslateY.value = 0;
                         });
                       } else {
-                        editModalTranslateY.value = withTiming(0, { duration: 200 });
+                        editModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                       }
                     })
                   }>
@@ -1168,12 +1168,12 @@ export default function TodayScreen() {
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        editPresetModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        editPresetModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                           runOnJS(closeEditPresetModal)();
                           editPresetModalTranslateY.value = 0;
                         });
                       } else {
-                        editPresetModalTranslateY.value = withTiming(0, { duration: 200 });
+                        editPresetModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                       }
                     })
                   }>
@@ -1296,12 +1296,12 @@ export default function TodayScreen() {
                   })
                   .onEnd((e) => {
                     if (e.translationY > 50) {
-                      datePickerModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                      datePickerModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                         runOnJS(setDatePickerVisible)(false);
                         datePickerModalTranslateY.value = 0;
                       });
                     } else {
-                      datePickerModalTranslateY.value = withTiming(0, { duration: 200 });
+                      datePickerModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                     }
                   })
                 }>

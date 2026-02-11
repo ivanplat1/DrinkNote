@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
 import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
@@ -51,9 +51,9 @@ function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
   const glowAnim = useSharedValue(0);
   
   React.useEffect(() => {
-    // Бесконечная анимация от 0 до 360 (градусы круга)
+    // Бесконечная анимация от 0 до 360 (градусы круга) - более плавная и менее ресурсоемкая
     glowAnim.value = withRepeat(
-      withTiming(360, { duration: 4000 }),
+      withTiming(360, { duration: 6000, easing: Easing.linear }),
       -1,
       false
     );
@@ -212,7 +212,7 @@ function MonthHeader({
 }
 
 // Компонент для свайп-удаления записи
-function SwipeableListItem({ item, onRemove, onQuantityChange, colors, currency }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: CurrencyCode }) {
+const SwipeableListItem = React.memo(function SwipeableListItem({ item, onRemove, onQuantityChange, colors, currency }: { item: Drink; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: CurrencyCode }) {
   const translateX = useSharedValue(0);
   const swipeState = useSharedValue(0); // 0 = idle, 1 = swiped
   const isFirstGesture = useSharedValue(true);
@@ -363,7 +363,7 @@ function SwipeableListItem({ item, onRemove, onQuantityChange, colors, currency 
       </View>
     </GestureDetector>
   );
-}
+});
 
 // Компонент годового календаря
 const YearCalendarView = React.memo(function YearCalendarView({
@@ -2029,11 +2029,11 @@ export default function CalendarScreen() {
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
           initialScrollIndex={initialIndex}
           removeClippedSubviews={Platform.OS === 'android'}
-          windowSize={5}
-          maxToRenderPerBatch={4}
-          updateCellsBatchingPeriod={100}
-          initialNumToRender={6}
-          scrollEventThrottle={32}
+          windowSize={3}
+          maxToRenderPerBatch={2}
+          updateCellsBatchingPeriod={200}
+          initialNumToRender={5}
+          scrollEventThrottle={50}
           maintainVisibleContentPosition={null}
           disableIntervalMomentum={true}
           overScrollMode="never"
@@ -2280,13 +2280,13 @@ export default function CalendarScreen() {
                   })
                   .onEnd((e) => {
                     if (e.translationY > 50) {
-                      dayModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                      dayModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                         runOnJS(setSelectedDate)(null);
                         runOnJS(loadAll)();
                         dayModalTranslateY.value = 0;
                       });
                     } else {
-                      dayModalTranslateY.value = withTiming(0, { duration: 200 });
+                      dayModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                     }
                   })
                 }>
@@ -2427,12 +2427,12 @@ export default function CalendarScreen() {
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        addModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                           runOnJS(closeAddModal)();
                           addModalTranslateY.value = 0;
                         });
                       } else {
-                        addModalTranslateY.value = withTiming(0, { duration: 200 });
+                        addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                       }
                     })
                   }>
@@ -2560,12 +2560,12 @@ export default function CalendarScreen() {
                     })
                     .onEnd((e) => {
                       if (e.translationY > 50) {
-                        customModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                        customModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
                           runOnJS(closeCustomModal)();
                           customModalTranslateY.value = 0;
                         });
                       } else {
-                        customModalTranslateY.value = withTiming(0, { duration: 200 });
+                        customModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
                       }
                     })
                   }>
