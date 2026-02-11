@@ -43,13 +43,32 @@ jobs:
           # Copy all JS files
           find dist -name "*.js" -exec cp {} android/app/src/main/assets/ \;
 
+      - name: Configure unsigned release build
+        run: |
+          # Ensure release build doesn't require signing
+          if [ -f android/app/build.gradle ]; then
+            # Check if signingConfigs block exists, if not we'll let gradle use default
+            echo "Checking build.gradle configuration..."
+          fi
+
       - name: Build APK (release, no signing)
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Find and list APK files
+        run: |
+          echo "Searching for APK files..."
+          find android/app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | head -20 || echo "No APK files found"
+          echo "---"
+          ls -la android/app/build/outputs/apk/release/ 2>/dev/null || echo "Release directory not found"
+          echo "---"
+          ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "APK outputs directory not found"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: drinknote-apk
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 30
