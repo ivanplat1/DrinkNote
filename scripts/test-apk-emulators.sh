@@ -4,12 +4,32 @@
 
 APK_PATH="$1"
 
+# Если путь не указан, попробовать найти APK автоматически
 if [ -z "$APK_PATH" ]; then
-  echo "Usage: ./scripts/test-apk-emulators.sh path/to/app.apk"
-  echo ""
-  echo "Available emulators:"
-  emulator -list-avds
-  exit 1
+  # Проверить downloads папку
+  if [ -d "./downloads" ] && [ -n "$(find ./downloads -name "*.apk" -type f 2>/dev/null | head -1)" ]; then
+    APK_PATH=$(find ./downloads -name "*.apk" -type f | head -1)
+    echo "Found APK in downloads: $APK_PATH"
+  # Проверить локальную сборку (release)
+  elif [ -f "./android/app/build/outputs/apk/release/app-release.apk" ]; then
+    APK_PATH="./android/app/build/outputs/apk/release/app-release.apk"
+    echo "Found local release APK: $APK_PATH"
+  # Проверить локальную сборку (debug)
+  elif [ -f "./android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+    APK_PATH="./android/app/build/outputs/apk/debug/app-debug.apk"
+    echo "Found local debug APK: $APK_PATH"
+  else
+    echo "Usage: ./scripts/test-apk-emulators.sh [path/to/app.apk]"
+    echo ""
+    echo "No APK found. Options:"
+    echo "  1. Download from GitHub: ./scripts/download-apk-from-github.sh"
+    echo "  2. Build locally: eas build --platform android --profile preview --local"
+    echo "  3. Specify path manually: ./scripts/test-apk-emulators.sh path/to/app.apk"
+    echo ""
+    echo "Available emulators:"
+    emulator -list-avds
+    exit 1
+  fi
 fi
 
 if [ ! -f "$APK_PATH" ]; then
