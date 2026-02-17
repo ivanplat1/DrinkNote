@@ -42,9 +42,21 @@ fi
 
 # Проверка авторизации
 if ! gh auth status &> /dev/null; then
-  echo "Not authenticated with GitHub. Please run:"
-  echo "  gh auth login"
-  exit 1
+  echo "Not authenticated with GitHub."
+  echo ""
+  read -p "Authenticate now? (y/n) " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Starting GitHub authentication..."
+    gh auth login
+    if [ $? -ne 0 ]; then
+      echo "Authentication failed. Please run manually: gh auth login"
+      exit 1
+    fi
+  else
+    echo "Authentication required. Run: gh auth login"
+    exit 1
+  fi
 fi
 
 # Создать директорию для загрузок
