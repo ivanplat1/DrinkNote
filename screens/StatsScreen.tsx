@@ -380,7 +380,12 @@ export default function StatsScreen() {
                           )}
                         </View>
                       </View>
-                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>
+                      <Text 
+                        style={[styles.chartLabel, { color: colors.textSecondary }]} 
+                        numberOfLines={1}
+                        adjustsFontSizeToFit={true}
+                        minimumFontScale={0.7}
+                      >
                         {period === 'week' 
                           ? WEEKDAY_SHORT_RU[index]
                           : MONTH_SHORT_RU[item.month.getMonth()]
@@ -887,10 +892,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   chartLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: defaultColors.textSecondary,
     marginTop: 4,
     fontWeight: '500',
+    textAlign: 'center',
+    width: '100%',
   },
   chartValueLabel: {
     fontSize: 9,

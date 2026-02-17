@@ -2913,6 +2913,10 @@ const styles = StyleSheet.create({
     width: '100%',
     zIndex: 10,
     minHeight: 20,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   cellEmpty: {
     padding: 8,
@@ -3139,6 +3143,11 @@ const styles = StyleSheet.create({
   deadIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   deadEmoji: {
     fontSize: 36,
