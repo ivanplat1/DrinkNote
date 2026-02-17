@@ -6,7 +6,30 @@
 - `Medium_Phone_API_36.1` - средний телефон
 - `Pixel_7` - современный телефон
 
-### Быстрое тестирование APK:
+### Автоматическое скачивание и тестирование APK:
+
+**Вариант 1: Полностью автоматически (рекомендуется)**
+
+```bash
+# Скачать APK из GitHub Actions и установить на эмуляторы
+./scripts/download-and-test-apk.sh feature/preview-premium-activation
+```
+
+Этот скрипт:
+1. Скачает последний APK из GitHub Actions в `./downloads/`
+2. Запустит эмуляторы (если не запущены)
+3. Установит APK на все эмуляторы
+
+**Вариант 2: Только скачать APK**
+
+```bash
+# Скачать APK из GitHub Actions
+./scripts/download-apk-from-github.sh feature/preview-premium-activation
+```
+
+APK будет сохранен в `./downloads/`
+
+**Вариант 3: Пошагово вручную**
 
 1. **Запустить эмуляторы:**
    ```bash
