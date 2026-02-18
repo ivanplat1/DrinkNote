@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     justifyContent: 'flex-end',
-    marginBottom: 8,
+    marginBottom: 4,
     alignItems: 'center',
     height: '100%',
   },

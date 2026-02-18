@@ -35,8 +35,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify icon assets exist
+        run: |
+          ls -la assets/icon.png assets/adaptive-icon.png
+
       - name: Prebuild Android
-        run: npx expo prebuild --platform android --no-install
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Verify Android icon resources
+        run: |
+          ls -la android/app/src/main/res/
+          ls -la android/app/src/main/res/mipmap-* 2>/dev/null || echo "::warning::Mipmap folders missing - app icon may not appear in APK"
 
       - name: Export and embed JavaScript bundle
         run: |
