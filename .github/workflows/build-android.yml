@@ -42,10 +42,18 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Verify Android icon resources
+      - name: Restore app icon (prebuild may skip it in CI)
         run: |
-          ls -la android/app/src/main/res/
-          ls -la android/app/src/main/res/mipmap-* 2>/dev/null || echo "::warning::Mipmap folders missing - app icon may not appear in APK"
+          RES="android/app/src/main/res"
+          BACKUP=".github/android-res-icons"
+          for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi mipmap-anydpi-v26; do
+            if [ -d "$BACKUP/$dir" ]; then
+              rm -rf "$RES/$dir"
+              cp -r "$BACKUP/$dir" "$RES/"
+              echo "Restored $dir"
+            fi
+          done
+          ls -la "$RES"/mipmap-*/
 
       - name: Export and embed JavaScript bundle
         run: |
