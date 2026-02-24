@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,6 +18,7 @@ import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
@@ -312,7 +313,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
@@ -626,11 +627,11 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Модалка: своя цель по серии */}
+        {/* Модалка: своя цель по серии — по центру экрана */}
         <Modal visible={showStreakGoalModal} transparent animationType="fade">
           <TouchableOpacity
             activeOpacity={1}
-            style={styles.modalOverlay}
+            style={styles.modalOverlayCenter}
             onPress={() => setShowStreakGoalModal(false)}
           >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContentWrap}>
@@ -1067,7 +1068,7 @@ export default function SettingsScreen() {
             activeOpacity={1}
             onPress={() => setShowCurrencyPicker(false)}
           />
-          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard }]}>
+          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard, paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom) }]}>
             <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>Выберите валюту</Text>
               <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} style={styles.currencyPickerClose}>
@@ -1076,6 +1077,7 @@ export default function SettingsScreen() {
             </View>
             <Animated.ScrollView
               style={styles.currencyPickerScroll}
+              contentContainerStyle={{ paddingBottom: insets.bottom }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={true}
               directionalLockEnabled
@@ -1444,6 +1446,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContentWrap: {

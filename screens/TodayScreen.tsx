@@ -612,7 +612,7 @@ export default function TodayScreen() {
   }));
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <TouchableOpacity
         style={styles.collapsibleHeader}
         onPress={() => setPresetsCollapsed(!presetsCollapsed)}
@@ -625,11 +625,14 @@ export default function TodayScreen() {
           color={colors.textSecondary} 
         />
       </TouchableOpacity>
-      {!presetsCollapsed && (
-        <View style={{ marginBottom: 12 }}>
+      {!presetsCollapsed && (() => {
+        const favoritesMaxHeight = Math.min(Dimensions.get('window').height * 0.36, 300);
+        return (
+        <View style={{ marginBottom: 12, maxHeight: favoritesMaxHeight }}>
           <ScrollView 
+            style={{ maxHeight: favoritesMaxHeight }}
             contentContainerStyle={styles.presetList} 
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             nestedScrollEnabled={true}
           >
             <TouchableWithoutFeedback
@@ -707,7 +710,8 @@ export default function TodayScreen() {
             </TouchableWithoutFeedback>
           </ScrollView>
         </View>
-      )}
+        );
+      })()}
 
 
       <TouchableOpacity
@@ -802,7 +806,7 @@ export default function TodayScreen() {
           );
         }}
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
-        contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       />
 
       {/* Модалка выбора напитка для добавления */}
@@ -1407,7 +1411,9 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 0,
     backgroundColor: defaultColors.background,
   },
   title: {
@@ -1533,6 +1539,8 @@ const styles = StyleSheet.create({
   addFavButtonRect: {
     paddingVertical: 10,
     paddingHorizontal: 14,
+    minWidth: 56,
+    minHeight: 56,
     backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginRight: 8,

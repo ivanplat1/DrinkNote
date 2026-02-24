@@ -140,8 +140,10 @@ export async function enablePreviewPremium(): Promise<void> {
 export async function disablePreviewPremium(): Promise<void> {
   try {
     await AsyncStorage.removeItem(PREVIEW_PREMIUM_KEY);
-    // Don't remove PREMIUM_KEY as it might be from actual purchase
-    premiumCache = null;
+    // In preview toggle flow we explicitly turn premium off for testing.
+    // If user really owns premium purchase, they can restore it from Premium screen.
+    await AsyncStorage.removeItem(PREMIUM_KEY);
+    premiumCache = false;
   } catch (error) {
     console.error('Failed to disable preview premium:', error);
   }

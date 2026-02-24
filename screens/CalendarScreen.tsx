@@ -645,7 +645,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
               // Градация по количеству алкоголя
               if (dailyGoal !== null && dailyGoal > 0) {
                 if (total <= dailyGoal * 0.5) {
-                  cellStyle.backgroundColor = '#22c55e'; // Светло-зеленый (низкое количество)
+                  cellStyle.backgroundColor = '#10b981'; // Зеленый (низкое количество)
                 } else if (total <= dailyGoal) {
                   cellStyle.backgroundColor = '#84cc16'; // Желто-зеленый (умеренное)
                 } else if (total <= dailyGoal * 1.5) {
@@ -839,6 +839,7 @@ export default function CalendarScreen() {
       // Загружаем данные при фокусе на экран
       loadAll();
       loadDailyGoal();
+      isPremiumUser().then(setIsPremium);
       getCalendarLabels().then(setLabelsMap);
       getCalendarLabelRanges().then(setLabelRanges);
       getStreakGoal().then(setStreakGoal);
@@ -1138,7 +1139,7 @@ export default function CalendarScreen() {
   }, [baseToday]);
   
   // Индекс недели, содержащей сегодняшний день
-  const initialIndex = useMemo(() => {
+  const todayIndex = useMemo(() => {
     const todayISO = formatISO(baseToday);
     const idx = weeks.findIndex((weekStart) => {
       const start = new Date(weekStart);
@@ -1148,8 +1149,28 @@ export default function CalendarScreen() {
     });
     return idx >= 0 ? idx : weeks.length - 1;
   }, [weeks, baseToday]);
-  const [visibleIndex, setVisibleIndex] = useState(initialIndex);
-  const lastScrollIndexRef = useRef(initialIndex);
+
+  // Стартовый фокус: на текущем месяце (центрируем середину месяца в видимой области).
+  const initialMonthFocusIndex = useMemo(() => {
+    const middleDayOfMonth = new Date(baseToday.getFullYear(), baseToday.getMonth(), 15);
+    const middleDayISO = formatISO(middleDayOfMonth);
+    const middleWeekIndex = weeks.findIndex((weekStart) => {
+      const start = new Date(weekStart);
+      const end = new Date(weekStart);
+      end.setDate(end.getDate() + 6);
+      return middleDayISO >= formatISO(start) && middleDayISO <= formatISO(end);
+    });
+
+    if (middleWeekIndex < 0) return todayIndex;
+
+    // В month-режиме видим 5 недель; center = top + 2.
+    const centeredTopIndex = middleWeekIndex - 2;
+    return Math.max(0, Math.min(centeredTopIndex, weeks.length - 1));
+  }, [weeks, baseToday, todayIndex]);
+
+  const [visibleIndex, setVisibleIndex] = useState(initialMonthFocusIndex);
+  const lastScrollIndexRef = useRef(initialMonthFocusIndex);
+  const didInitialMonthFocusRef = useRef(false);
   const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Отдельное состояние для текста заголовка и его анимации
@@ -1612,26 +1633,57 @@ export default function CalendarScreen() {
     if (listRef.current && listHeight && listHeight > 0) {
       try {
         listRef.current.scrollToIndex({ 
-          index: initialIndex, 
+          index: todayIndex, 
           animated: true,
         });
       } catch (error) {
         // Если не удалось, пробуем через offset
         if (listRef.current) {
           listRef.current.scrollToOffset({ 
-            offset: initialIndex * cellHeight, 
+            offset: todayIndex * cellHeight, 
             animated: true,
           });
         }
       }
     }
-  }, [listHeight, initialIndex]);
+  }, [listHeight, todayIndex, cellHeight]);
+
+  const scrollToCurrentMonth = useCallback(() => {
+    if (listRef.current && listHeight && listHeight > 0) {
+      try {
+        listRef.current.scrollToIndex({
+          index: initialMonthFocusIndex,
+          animated: true,
+        });
+      } catch (error) {
+        if (listRef.current) {
+          listRef.current.scrollToOffset({
+            offset: initialMonthFocusIndex * cellHeight,
+            animated: true,
+          });
+        }
+      }
+    }
+  }, [listHeight, initialMonthFocusIndex, cellHeight]);
+
+  // Делаем автопереход к текущему месяцу только один раз при первом открытии календаря.
+  useEffect(() => {
+    if (didInitialMonthFocusRef.current) return;
+    if (calendarViewMode !== 'month') return;
+    if (!listHeight || listHeight <= 0) return;
+    didInitialMonthFocusRef.current = true;
+    lastScrollIndexRef.current = initialMonthFocusIndex;
+    setVisibleIndex(initialMonthFocusIndex);
+    requestAnimationFrame(() => {
+      scrollToCurrentMonth();
+    });
+  }, [calendarViewMode, listHeight, initialMonthFocusIndex, scrollToCurrentMonth]);
 
   // Показываем кнопку «Сегодня», когда уехали в прошлое или в будущее (на 4+ недель от текущей)
   const showBackToToday = useMemo(() => {
     if (!weeks.length) return false;
-    return visibleIndex <= initialIndex - 4 || visibleIndex >= initialIndex + 4;
-  }, [visibleIndex, initialIndex, weeks.length]);
+    return visibleIndex <= todayIndex - 4 || visibleIndex >= todayIndex + 4;
+  }, [visibleIndex, todayIndex, weeks.length]);
 
   // Анимируем появление/исчезновение стрелки вниз
   useEffect(() => {
@@ -1836,22 +1888,27 @@ export default function CalendarScreen() {
                      bestCompletedStreak.length >= 14 ? 'silver' : 'bronze'} 
               />
             )}
-            <Text style={[
-              styles.dayNum, 
-              !isCurrentMonth && styles.dayNumMuted,
-              { 
-                color: !isCurrentMonth 
-                  ? colors.textTertiary 
-                  : (glowStyle 
-                      ? '#ffffff' 
-                      : (total >= lethalDose 
-                          ? '#ffffff' 
-                          : (cellColorStyle && total > 0 
-                              ? colors.text 
-                              : colors.text)))
-              }
-            ]}>{d.getDate()}</Text>
-            {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) && (
+            {/* Верхняя виртуальная половина ячейки — число */}
+            <View style={styles.cellTopBlock}>
+              <Text style={[
+                styles.dayNum, 
+                !isCurrentMonth && styles.dayNumMuted,
+                { 
+                  color: !isCurrentMonth 
+                    ? colors.textTertiary 
+                    : (glowStyle 
+                        ? '#ffffff' 
+                        : (total >= lethalDose 
+                            ? '#ffffff' 
+                            : (cellColorStyle && total > 0 
+                                ? colors.text 
+                                : colors.text)))
+                }
+              ]}>{d.getDate()}</Text>
+            </View>
+            {/* Нижняя виртуальная половина — бейдж по центру */}
+            <View style={styles.cellBottomBlock}>
+            {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) ? (
               <View style={styles.badgeContainer}>
                 {total >= lethalDose ? (
                   <View style={styles.deadIconContainer}>
@@ -1859,15 +1916,18 @@ export default function CalendarScreen() {
                   </View>
                 ) : total > 0 ? (
                   <View style={[
-                    styles.badge, 
+                    styles.badge,
+                    {
+                      width: Math.max(28, Math.min(Math.floor(cellWidth * 0.76), 48)),
+                      minHeight: Math.min(Math.floor(cellHeight * 0.55), 48),
+                      maxHeight: Math.min(Math.floor(cellHeight * 0.7), 56),
+                      ...(cellHeight < 44 || cellWidth < 32
+                        ? { paddingHorizontal: 2, paddingVertical: 2, borderRadius: 6, minHeight: 28 }
+                        : {}),
+                    },
                     (themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord'))
                       ? { 
                           backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                          borderRadius: 8,
-                          paddingHorizontal: 4,
-                          paddingVertical: 3,
-                          minWidth: 40,
-                          minHeight: 44,
                           ...Platform.select({
                             ios: {
                               shadowColor: '#000',
@@ -1880,9 +1940,9 @@ export default function CalendarScreen() {
                         } 
                       : { backgroundColor: colors.primaryLight }
                   ]}>
-                    <MaterialCommunityIcons name="cup" size={14} color="#f59e0b" />
-                    <Text style={[styles.badgeUnits, { color: colors.text }]}>{total.toFixed(1)}</Text>
-                    <Text style={[styles.badgeAlcohol, { color: colors.textSecondary }]}>{(total * 10).toFixed(0)}г</Text>
+                    <MaterialCommunityIcons name="cup" size={12} color="#f59e0b" />
+                    <Text style={[styles.badgeUnits, { color: colors.text, fontSize: 11 }]} numberOfLines={1}>{total.toFixed(1)}</Text>
+                    <Text style={[styles.badgeAlcohol, { color: colors.textSecondary, fontSize: 9 }]} numberOfLines={1}>{(total * 10).toFixed(0)}г</Text>
                   </View>
                 ) : isInBestStreak && bestCompletedStreak ? (
                   <Text style={styles.awardEmoji}>
@@ -1891,19 +1951,19 @@ export default function CalendarScreen() {
                   </Text>
                 ) : null}
               </View>
-            )}
+            ) : null}
+            </View>
           </View>
         </TouchableOpacity>
       );
     });
     
-    // Кружки меток: размер от ячейки, 4 в ряд, до 2 рядов (макс. 8 на календаре), в модалке дня — все метки
+    // Кружки меток: один ряд до 4 штук, чтобы не конфликтовать с новым размером бейджа.
     const DOTS_PER_ROW = 4;
-    const MAX_DOTS_ON_CALENDAR = 8;
+    const MAX_DOTS_ON_CALENDAR = 4;
     const dotRight = Math.max(6, Math.floor(cellWidth * 0.08));
-    const dotBottomOffset = Math.max(6, Math.floor(cellHeight * 0.08));
+    const dotBottomOffset = Math.max(4, Math.floor(cellHeight * 0.05));
     const dotGap = Math.max(2, Math.floor(cellWidth * 0.02));
-    const rowGap = Math.max(2, dotGap);
     // В ряд помещается 4 кружка: 4*dotSize + 3*dotGap <= cellWidth - 2*dotRight
     const availableWidth = cellWidth - 2 * dotRight;
     const dotSize = Math.max(4, Math.min(12, Math.floor((availableWidth - 3 * dotGap) / DOTS_PER_ROW)));
@@ -1929,41 +1989,12 @@ export default function CalendarScreen() {
             .slice(0, MAX_DOTS_ON_CALENDAR);
           if (rangesOnDay.length === 0) return null;
           const row0 = rangesOnDay.slice(0, DOTS_PER_ROW);
-          const row1 = rangesOnDay.slice(DOTS_PER_ROW, MAX_DOTS_ON_CALENDAR);
-          const hasTwoRows = row1.length > 0;
-          const blockLeft = idx * cellWidth + cellWidth - dotRight - blockWidth;
+          const blockLeft = idx * cellWidth + (cellWidth - blockWidth) / 2;
           const bottomRowTop = cellContentBottom - dotBottomOffset - dotSize;
-          const topRowTop = hasTwoRows ? bottomRowTop - dotSize - rowGap : bottomRowTop;
           
           return (
             <View key={idx} pointerEvents="none" style={{ position: 'absolute', left: blockLeft, top: 0, width: blockWidth, height: cellContentBottom }}>
-              {/* Второй ряд (сверху): индексы 4–7 */}
-              {hasTwoRows && (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: topRowTop,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: dotGap,
-                  }}
-                >
-                  {row1.map(r => (
-                    <View
-                      key={r.id}
-                      style={{
-                        width: dotSize,
-                        height: dotSize,
-                        borderRadius: dotSize / 2,
-                        backgroundColor: r.color,
-                      }}
-                    />
-                  ))}
-                </View>
-              )}
-              {/* Первый ряд (нижний): индексы 0–3 */}
+              {/* Один ряд: индексы 0–3 */}
               <View
                 pointerEvents="none"
                 style={{
@@ -2033,7 +2064,7 @@ export default function CalendarScreen() {
             };
           }}
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
-          initialScrollIndex={initialIndex}
+          initialScrollIndex={initialMonthFocusIndex}
           removeClippedSubviews={Platform.OS === 'android'}
           windowSize={3}
           maxToRenderPerBatch={2}
@@ -2254,7 +2285,7 @@ export default function CalendarScreen() {
 
       {/* Кнопка возврата к текущей неделе: стрелка вниз (выше) или вверх (ниже) */}
       {calendarViewMode === 'month' && (() => {
-        const isAboveToday = weeks.length > 0 && visibleIndex <= initialIndex - 4;
+        const isAboveToday = weeks.length > 0 && visibleIndex <= todayIndex - 4;
         const arrowUp = !isAboveToday;
         return (
           <Animated.View
@@ -2676,12 +2707,14 @@ export default function CalendarScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Модалка меток на период (премиум) */}
+      {/* Модалка меток на период (премиум) — по центру экрана */}
       <Modal visible={labelsModalVisible} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setLabelsModalVisible(false)} />
-          <ScrollView style={styles.labelsModalScroll} contentContainerStyle={styles.labelsModalScrollContent} keyboardShouldPersistTaps="handled">
-            <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
+        <View style={styles.labelsModalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLabelsModalVisible(false)} />
+          <View style={[styles.labelsModalBackdropCenter, StyleSheet.absoluteFillObject]} pointerEvents="box-none">
+            <View style={styles.labelsModalCardWrap}>
+              <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
+              <ScrollView style={styles.labelsModalScroll} contentContainerStyle={[styles.labelsModalScrollContent, { paddingBottom: 16 }]} keyboardShouldPersistTaps="handled">
               <Text style={[styles.labelsModalTitle, { color: colors.text }]}>{editingRange ? 'Редактировать метку' : 'Метка на период'}</Text>
               <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>Период от и до включительно. Один день — выберите одинаковые даты.</Text>
 
@@ -2790,7 +2823,8 @@ export default function CalendarScreen() {
                   ))}
                 </View>
               </View>
-              <View style={styles.labelsModalActions}>
+              </ScrollView>
+              <View style={[styles.labelsModalActions, styles.labelsModalActionsFixed, { borderTopColor: colors.border }]}>
                 <TouchableOpacity
                   style={[styles.labelsModalButton, { backgroundColor: colors.primary }]}
                   onPress={async () => {
@@ -2821,12 +2855,10 @@ export default function CalendarScreen() {
                 >
                   <Text style={[styles.labelsModalButtonText, { color: '#fff' }]}>{editingRange ? 'Сохранить' : 'Установить'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.labelsModalButton, { borderWidth: 1, borderColor: colors.border }]} onPress={() => setLabelsModalVisible(false)}>
-                  <Text style={[styles.labelsModalButtonText, { color: colors.textSecondary }]}>Закрыть</Text>
-                </TouchableOpacity>
+              </View>
               </View>
             </View>
-          </ScrollView>
+          </View>
         </View>
         {labelDatePickerMode !== null && (
           <DateTimePicker
@@ -2907,13 +2939,29 @@ const styles = StyleSheet.create({
     borderLeftColor: 'rgba(0, 0, 0, 0.3)',
   },
   cellContent: {
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     width: '100%',
     height: '100%',
     paddingTop: 2,
     paddingBottom: 2,
     position: 'relative',
+  },
+  cellTopBlock: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 0,
+    width: '100%',
+  },
+  cellBottomBlock: {
+    flex: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 0,
+    width: '100%',
   },
   cellLabelDot: {
     position: 'absolute',
@@ -2926,13 +2974,8 @@ const styles = StyleSheet.create({
   badgeContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
     zIndex: 10,
-    minHeight: 20,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    overflow: 'visible',
   },
   cellEmpty: {
     padding: 8,
@@ -2942,7 +2985,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     color: defaultColors.text,
-    marginTop: 2,
+    marginTop: 0,
     zIndex: 10,
   },
   dayNumMuted: {
@@ -3110,10 +3153,10 @@ const styles = StyleSheet.create({
   },
   // Тепловая карта: от зеленого к красному (больше оттенков)
   cellVeryLowAmount: {
-    backgroundColor: '#22c55e70', // Светло-зеленый - минимальное количество (70% непрозрачности)
+    backgroundColor: '#10b98170', // Зеленый - минимальное количество (70% непрозрачности)
   },
   cellLowAmount: {
-    backgroundColor: '#22c55e75', // Светло-зеленый - небольшое количество (75% непрозрачности)
+    backgroundColor: '#10b98175', // Зеленый - небольшое количество (75% непрозрачности)
   },
   cellLowModerateAmount: {
     backgroundColor: '#84cc1675', // Желто-зеленый - низко-умеренное (75% непрозрачности)
@@ -3143,8 +3186,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 40,
-    minHeight: 44,
+    minWidth: 28,
+    minHeight: 32,
   },
   badgeUnits: {
     color: defaultColors.text,
@@ -3160,18 +3203,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    overflow: 'visible',
   },
   deadEmoji: {
-    fontSize: 36,
+    fontSize: 26,
+    textAlign: 'center',
   },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
+  },
+  labelsModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+  },
+  labelsModalBackdropCenter: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  labelsModalCardWrap: {
+    width: '92%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
   modalSpacer: {
     height: 40,
@@ -3287,9 +3342,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 24,
+    width: '100%',
+    maxHeight: '85%',
+    overflow: 'hidden',
   },
   labelsModalTitle: {
     fontSize: 18,
@@ -3333,6 +3388,13 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 16,
   },
+  labelsModalActionsFixed: {
+    marginTop: 0,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   labelsModalButton: {
     paddingVertical: 14,
     borderRadius: 12,
@@ -3344,12 +3406,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   labelsModalScroll: {
-    flex: 1,
+    width: '100%',
+    maxHeight: '100%',
+    flexGrow: 0,
   },
   labelsModalScrollContent: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    width: '100%',
+    paddingTop: 20,
+    paddingHorizontal: 20,
   },
   labelsModalSection: {
     marginBottom: 12,

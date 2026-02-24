@@ -5,8 +5,10 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform, AppState, Linking } from 'react-native';
+import { View, Platform, AppState, Linking } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import TodayScreen from './screens/TodayScreen';
@@ -43,6 +45,17 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 );
 
 const ADD_DRINK_PATH = 'add-drink';
+const TEST_DATA_SEEDED_KEY = '@drinknote_test_data_seeded_v1';
+const ANDROID_NAV_COLORS: Record<string, string> = {
+  dark: '#0f172a',
+  light: '#e8eaed',
+  sepia: '#1c1917',
+  highContrast: '#fce7f3',
+  violet: '#ede9fe',
+  sand: '#f5f5f4',
+  nord: '#d8dee9',
+  darcula: '#2b2b2b',
+};
 
 function parsePresetIdFromUrl(url: string): string | null {
   try {
@@ -132,21 +145,39 @@ function AppContent() {
   // Определяем стиль статус-бара в зависимости от темы
   const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
   const statusBarStyle = isLightTheme ? 'dark' : 'light';
-  
-  // TODO: Удалить перед релизом - загрузка тестовых данных
-  // Установите FORCE_LOAD_TEST_DATA = true для принудительной загрузки
-  const FORCE_LOAD_TEST_DATA = true; // Изменить на false перед релизом
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const applyAndroidNavBar = async () => {
+      try {
+        const navColor = ANDROID_NAV_COLORS[themeName] ?? colors.background;
+        // На ряде оболочек (MIUI/HyperOS) кастомный цвет игнорируется в absolute edge-to-edge.
+        // Переводим панель в relative, чтобы цвет применялся стабильно в 3-кнопочной навигации.
+        await NavigationBar.setPositionAsync('relative');
+        await NavigationBar.setBackgroundColorAsync(navColor);
+        await NavigationBar.setButtonStyleAsync(isLightTheme ? 'dark' : 'light');
+      } catch (error) {
+        console.log('Failed to set Android navigation bar style:', error);
+      }
+    };
+    applyAndroidNavBar();
+  }, [themeName, colors.background, isLightTheme]);
   
   React.useEffect(() => {
     const loadTestData = async () => {
       try {
+        const wasSeeded = await AsyncStorage.getItem(TEST_DATA_SEEDED_KEY);
+        if (wasSeeded === '1') {
+          return;
+        }
+
         const existingDrinks = await getAllDrinks();
         const existingPresets = await getUserPresets();
         
         console.log(`📊 Существующие записи: ${existingDrinks.length}, пресеты: ${existingPresets.length}`);
         
-        // Загружаем тестовые данные если их нет или если включена принудительная загрузка
-        if (existingDrinks.length === 0 || FORCE_LOAD_TEST_DATA) {
+        // Генерируем тестовые данные только один раз при первом запуске.
+        if (existingDrinks.length === 0) {
           const testDrinks = generateTestDrinks();
           console.log(`🔄 Генерирую ${testDrinks.length} тестовых записей...`);
           await setAllDrinks(testDrinks);
@@ -159,11 +190,13 @@ function AppContent() {
           console.log(`⏭️ Пропускаю загрузку тестовых данных (уже есть ${existingDrinks.length} записей)`);
         }
         
-        if (existingPresets.length === 0 || FORCE_LOAD_TEST_DATA) {
+        if (existingPresets.length === 0) {
           const testPresets = generateTestPresets();
           await setUserPresets(testPresets);
           console.log(`✅ Загружено ${testPresets.length} тестовых пресетов`);
         }
+
+        await AsyncStorage.setItem(TEST_DATA_SEEDED_KEY, '1');
       } catch (error) {
         console.error('❌ Ошибка загрузки тестовых данных:', error);
       }
