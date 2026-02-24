@@ -48,7 +48,23 @@ if ! gh auth status &> /dev/null; then
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Starting GitHub authentication..."
-    gh auth login
+    echo ""
+    echo "Choose authentication method:"
+    echo "  1) Browser (code will be copied to clipboard)"
+    echo "  2) Token (create at https://github.com/settings/tokens)"
+    read -p "Choose (1 or 2): " -n 1 -r auth_method
+    echo
+    if [[ $auth_method == "1" ]]; then
+      gh auth login --web --clipboard
+    elif [[ $auth_method == "2" ]]; then
+      echo "Create token at: https://github.com/settings/tokens"
+      echo "Required scopes: repo, read:org, workflow"
+      echo ""
+      gh auth login --with-token
+    else
+      echo "Invalid choice. Run manually: gh auth login"
+      exit 1
+    fi
     if [ $? -ne 0 ]; then
       echo "Authentication failed. Please run manually: gh auth login"
       exit 1
@@ -117,8 +133,9 @@ if [ $? -eq 0 ]; then
   echo "APK location:"
   find "$OUTPUT_DIR" -name "*.apk" -type f
   echo ""
-  echo "To install on emulators:"
-  echo "  ./scripts/test-apk-emulators.sh $OUTPUT_DIR/*.apk"
+  echo "To install on all devices (emulators + real phone):"
+  echo "  ./scripts/install-apk.sh"
+  echo "  # or: ./scripts/test-apk-emulators.sh $OUTPUT_DIR/*.apk"
 else
   echo "✗ Failed to download APK"
   exit 1

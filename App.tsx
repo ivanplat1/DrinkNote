@@ -202,10 +202,10 @@ function AppContent() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              paddingBottom: isIOS ? Math.max(8, insets.bottom) : 8, // Минимальный отступ от Home индикатора
-              paddingTop: 8, // Padding сверху
-              height: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Фиксированная высота с учетом padding
-              minHeight: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Минимальная высота
+              paddingBottom: isIOS ? Math.max(8, insets.bottom) : Math.max(8, insets.bottom),
+              paddingTop: 8,
+              height: isIOS ? 60 + Math.max(8, insets.bottom) : 70 + Math.max(0, insets.bottom),
+              minHeight: isIOS ? 60 + Math.max(8, insets.bottom) : 70 + Math.max(0, insets.bottom),
               elevation: 8, // Тень для Android (фиксирует поверх контента)
               shadowColor: '#000', // Тень для iOS
               shadowOffset: { width: 0, height: -2 },
@@ -273,7 +273,7 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <CurrencyProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
             <AppContent />
           </GestureHandlerRootView>
         </CurrencyProvider>

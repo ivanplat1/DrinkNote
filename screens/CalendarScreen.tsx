@@ -756,6 +756,7 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [weekRowHeight, setWeekRowHeight] = useState<number>(0);
+  const [calendarAreaHeight, setCalendarAreaHeight] = useState<number | null>(null);
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'year'>('month');
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
@@ -783,21 +784,25 @@ export default function CalendarScreen() {
   const hasMeasuredHeaderRef = useRef<boolean>(false);
   const hasMeasuredWeekRowRef = useRef<boolean>(false);
   
+  // Высота таб-бара должна совпадать с App.tsx, чтобы календарь не уезжал под него
+  const tabBarHeight = useMemo(() => {
+    if (Platform.OS === 'android') return 70 + Math.max(0, insets.bottom);
+    return 60 + Math.max(8, insets.bottom);
+  }, [insets.bottom]);
+
   // Вычисляем высоту списка на основе измеренных высот header и weekRow
   const listHeight = useMemo(() => {
     if (headerHeight === 0 || weekRowHeight === 0) {
       return null;
     }
-    // Высота = экран - SafeArea insets - paddingTop (12px) - переключатель режимов (44px) - marginBottom (8px) - header - marginBottom (8px) - weekRow - marginBottom (6px) - таб-бар (49px)
     const paddingTop = 12;
-    const switcherHeight = 44; // Высота переключателя режимов
+    const switcherHeight = 44;
     const marginAfterSwitcher = 8;
     const marginAfterHeader = 8;
     const marginAfterWeekRow = 6;
-    const tabBarHeight = 49; // Стандартная высота таб-бара React Navigation
     const calculatedHeight = screenHeight - insets.top - insets.bottom - paddingTop - switcherHeight - marginAfterSwitcher - headerHeight - marginAfterHeader - weekRowHeight - marginAfterWeekRow - tabBarHeight;
     return Math.max(300, calculatedHeight);
-  }, [screenHeight, insets.top, insets.bottom, headerHeight, weekRowHeight]);
+  }, [screenHeight, insets.top, insets.bottom, headerHeight, weekRowHeight, tabBarHeight]);
 
   const loadAll = useCallback(async () => {
     const startTime = performance.now();
@@ -1639,7 +1644,8 @@ export default function CalendarScreen() {
   // Мемоизируем renderItem для оптимизации производительности
   // Высота ячейки подбирается так, чтобы на экране помещалось примерно 5 недель
   const VISIBLE_WEEKS = 5;
-  const cellHeight = listHeight ? Math.floor(listHeight / VISIBLE_WEEKS) : 0;
+  const effectiveListHeight = calendarAreaHeight ?? listHeight ?? 0;
+  const cellHeight = effectiveListHeight > 0 ? Math.floor(effectiveListHeight / VISIBLE_WEEKS) : 0;
   const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
   // Горизонтальные отступы календаря (как у заголовка и строки дней недели)
@@ -2010,15 +2016,15 @@ export default function CalendarScreen() {
     const totalContentHeight = weekRowHeight * weeks.length;
     
     return (
-      <View style={{ height: actualMonthHeight, width: screenWidth, overflow: 'visible' }}>
+      <View style={{ flex: 1, minHeight: actualMonthHeight, width: screenWidth, overflow: 'visible' }}>
         <FlatList
           ref={listRef}
           data={weeks}
           horizontal={false}
           decelerationRate="normal"
           showsVerticalScrollIndicator={false}
-          style={{ height: actualMonthHeight, width: screenWidth }}
-          contentContainerStyle={{ paddingBottom: 20, overflow: 'visible' }}
+          style={{ flex: 1, minHeight: actualMonthHeight, width: screenWidth }}
+          contentContainerStyle={{ paddingBottom: 0, overflow: 'visible' }}
           getItemLayout={(_, index) => {
             return { 
               length: weekRowHeight, 
@@ -2081,7 +2087,7 @@ export default function CalendarScreen() {
   }));
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Переключатель режима календаря */}
       <View style={[styles.viewModeSwitcher, { backgroundColor: colors.backgroundSecondary }]}>
         <TouchableOpacity
@@ -2160,8 +2166,18 @@ export default function CalendarScreen() {
             ))}
           </View>
 
-          {/* Календарь - мемоизирован, не перерендеривается при изменении dayList */}
-          {!needsMeasurement && calendarView}
+          {/* Область календаря с flex: 1 — тянется до низа; onLayout даёт реальную высоту для сетки */}
+          {!needsMeasurement && (
+            <View
+              style={{ flex: 1, minHeight: listHeight ?? 0 }}
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0) setCalendarAreaHeight(h);
+              }}
+            >
+              {calendarView}
+            </View>
+          )}
           
           {/* Спиннер пока измеряется высота */}
           {needsMeasurement && (
@@ -3731,9 +3747,6 @@ const styles = StyleSheet.create({
   },
   yearCalendarContainer: {
     flex: 1,
-    // Чуть сдвигаем вниз, чтобы визуально убрать остаточную полоску снизу,
-    // как во вкладке месяца (табар перекрывает нижнюю часть)
-    marginBottom: -10,
   },
 });
 
