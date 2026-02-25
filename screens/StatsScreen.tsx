@@ -146,7 +146,7 @@ export default function StatsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       {/* Переключатель вкладок (родительские) */}
       <View style={styles.parentTabContainer}>
         <TouchableOpacity

@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
-import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
+import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
@@ -30,11 +30,8 @@ export default function SettingsScreen() {
   const [birthDate, setBirthDateValue] = useState<string>('');
   const [age, setAge] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
-  const [appStartDate, setAppStartDateValue] = useState<string>('');
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
-  const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [importText, setImportText] = useState('');
@@ -108,18 +105,6 @@ export default function SettingsScreen() {
     
     const lethal = await getLethalDose();
     setLethalDose(lethal);
-    
-    let startDate = await getAppStartDate();
-    
-    // Если дата не установлена, устанавливаем сегодняшнюю как дату первого запуска
-    if (!startDate) {
-      const today = new Date();
-      const todayISO = today.toISOString().split('T')[0]; // ГГГГ-ММ-ДД
-      await setAppStartDate(todayISO);
-      startDate = todayISO;
-    }
-    
-    setAppStartDateValue(startDate);
     
     // Загружаем рекомендацию
     await updateRecommendation();
@@ -313,7 +298,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
@@ -510,29 +495,6 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
 
-          </View>
-        </View>
-
-        {/* Дата начала отсчета */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дата начала отсчета</Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Рекорды будут считаться с этой даты</Text>
-          
-          <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
-            <View style={styles.profileRow}>
-              <Text style={[styles.profileLabel, { color: colors.text }]}>Дата отсчета:</Text>
-              <TouchableOpacity
-                style={{ flex: 1, alignItems: 'flex-end' }}
-                onPress={() => {
-                  setTempStartDate(appStartDate ? new Date(appStartDate) : new Date());
-                  setShowStartDatePicker(true);
-                }}
-              >
-                <Text style={[styles.profileValue, !appStartDate && styles.valuePlaceholder, { color: appStartDate ? colors.textSecondary : colors.textTertiary }]}>
-                  {appStartDate ? new Date(appStartDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
 
@@ -981,79 +943,6 @@ export default function SettingsScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-
-      {/* DateTimePicker для даты начала отсчета */}
-      {Platform.OS === 'ios' ? (
-        <Modal
-          visible={showStartDatePicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowStartDatePicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={styles.modalBackdrop}
-              activeOpacity={1}
-              onPress={() => setShowStartDatePicker(false)}
-            />
-            <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
-              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity
-                  onPress={() => setShowStartDatePicker(false)}
-                  style={styles.datePickerButton}
-                >
-                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
-                </TouchableOpacity>
-                <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата начала отсчета</Text>
-                <TouchableOpacity
-                  onPress={async () => {
-                    const dateISO = tempStartDate.toISOString().split('T')[0];
-                    setAppStartDateValue(dateISO);
-                    await setAppStartDate(dateISO);
-                    setShowStartDatePicker(false);
-                  }}
-                  style={styles.datePickerButton}
-                >
-                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={tempStartDate}
-                mode="date"
-                display="spinner"
-                maximumDate={new Date()}
-                minimumDate={new Date(2000, 0, 1)}
-                themeVariant="dark"
-                locale="ru-RU"
-                onChange={(event, selectedDate) => {
-                  if (selectedDate) {
-                    setTempStartDate(selectedDate);
-                  }
-                }}
-              />
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        showStartDatePicker && (
-          <DateTimePicker
-            value={tempStartDate}
-            mode="date"
-            display="default"
-            maximumDate={new Date()}
-            minimumDate={new Date(2000, 0, 1)}
-            onChange={(event, selectedDate) => {
-              setShowStartDatePicker(false);
-              if (event.type === 'set' && selectedDate) {
-                const dateISO = selectedDate.toISOString().split('T')[0];
-                setAppStartDateValue(dateISO);
-                setAppStartDate(dateISO);
-                setTempStartDate(selectedDate);
-              }
-            }}
-          />
-        )
-      )}
 
       {/* Выпадающий список валют */}
       <Modal

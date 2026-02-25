@@ -48,96 +48,39 @@ const VISIBLE_WEEKS = 5;
 
 // Компонент диагонального градиента для плоских металлических слитков
 function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
-  const glowAnim = useSharedValue(0);
-  
-  React.useEffect(() => {
-    // Бесконечная анимация от 0 до 360 (градусы круга) - более плавная и менее ресурсоемкая
-    glowAnim.value = withRepeat(
-      withTiming(360, { duration: 6000, easing: Easing.linear }),
-      -1,
-      false
-    );
-  }, []);
-  
-  // Выраженные диагональные градиенты (перевернутые - темное сверху)
+  // Static diagonal gradients: keep ingot look without animated shine.
   const gradients = {
     bronze: {
       colors: ['#7d4d2f', '#a66841', '#c08850', '#e8c4a0'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#c08850',
     },
     silver: {
       colors: ['#505050', '#808080', '#b0b0b0', '#e0e0e0'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#b0b0b0',
     },
     gold: {
       colors: ['#a07d1a', '#c9a029', '#f4c430', '#ffe680'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#f4c430',
     },
   };
   
   const gradient = gradients[type];
   
-  const animatedBorderStyle = useAnimatedStyle(() => {
-    'worklet';
-    const angle = glowAnim.value % 360; // 0-360 градусов, циклически
-    
-    // Функция для расчета яркости стороны в зависимости от угла света
-    const getBrightness = (sideAngle: number) => {
-      // Расстояние между текущим углом света и углом стороны
-      let diff = Math.abs(angle - sideAngle);
-      // Нормализуем разницу (кратчайший путь по кругу)
-      if (diff > 180) diff = 360 - diff;
-      
-      // Чем ближе свет, тем ярче (от 0.2 до 0.8)
-      // diff от 0 (прямо на стороне) до 180 (противоположная сторона)
-      const brightness = 0.2 + (1 - diff / 180) * 0.6;
-      return brightness;
-    };
-    
-    const topBrightness = getBrightness(0);     // Верх = 0°
-    const rightBrightness = getBrightness(90);  // Право = 90°
-    const bottomBrightness = getBrightness(180); // Низ = 180°
-    const leftBrightness = getBrightness(270);   // Лево = 270°
-    
-    return {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      right: -4,
-      bottom: -4,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderTopColor: `rgba(255, 255, 255, ${topBrightness})`,
-      borderRightColor: `rgba(255, 255, 255, ${rightBrightness})`,
-      borderBottomColor: `rgba(255, 255, 255, ${bottomBrightness})`,
-      borderLeftColor: `rgba(255, 255, 255, ${leftBrightness})`,
-    };
-  });
-  
   return (
-    <>
-      {/* Диагональный градиент внутри рамки */}
-      <LinearGradient
-        colors={gradient.colors}
-        locations={gradient.locations}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          position: 'absolute',
-          top: -3,
-          left: -3,
-          right: -3,
-          bottom: -3,
-          borderRadius: 9,
-        }}
-      />
-      
-      {/* Анимированная светящаяся рамка */}
-      <Animated.View style={animatedBorderStyle} pointerEvents="none" />
-    </>
+    <LinearGradient
+      colors={gradient.colors}
+      locations={gradient.locations}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        position: 'absolute',
+        top: -3,
+        left: -3,
+        right: -3,
+        bottom: -3,
+        borderRadius: 9,
+      }}
+    />
   );
 }
 
@@ -201,14 +144,16 @@ function MonthHeader({
           </View>
         )}
       </View>
-      {sobrietyStats && sobrietyStats.bestStreak > 0 && (
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
-            Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
-          </Text>
+      {(rightAction != null || (sobrietyStats && sobrietyStats.bestStreak > 0)) && (
+        <View style={{ marginLeft: 8, alignItems: 'flex-end' }}>
+          {rightAction != null ? <View>{rightAction}</View> : null}
+          {sobrietyStats && sobrietyStats.bestStreak > 0 && (
+            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginTop: rightAction != null ? 4 : 0 }}>
+              Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
+            </Text>
+          )}
         </View>
       )}
-      {rightAction != null ? <View style={{ marginLeft: 8 }}>{rightAction}</View> : null}
     </Animated.View>
   );
 }
@@ -233,8 +178,10 @@ const SwipeableListItem = React.memo(function SwipeableListItem({ item, onRemove
   const startX = useSharedValue(0);
   
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
+    // In modal list users often move finger slightly diagonally; allow more vertical tolerance
+    // so horizontal delete swipe can still activate reliably.
+    .activeOffsetX([-8, 8])
+    .failOffsetY([-40, 40])
     .onStart(() => {
       startX.value = translateX.value;
       isFirstGesture.value = Math.abs(translateX.value) < 1;
@@ -399,7 +346,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
 }) {
   const isLightTheme = themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord') || themeName === 'violet' || themeName === 'sand';
   const todayISO = useMemo(() => formatISO(new Date()), []);
-  const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
+  const { bestStreakDays, bestCompletedStreak } = streakMaps;
   
   const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
   const monthNamesShort = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -578,22 +525,12 @@ const YearCalendarView = React.memo(function YearCalendarView({
             const iso = formatISO(date);
             const total = totalsByDate[iso] ?? 0;
             const isToday = iso === todayISO;
-            const streakDayNumber = currentStreakDays.get(iso);
-            const isInCurrentStreak = streakDayNumber !== undefined;
             const bestStreakDayNumber = bestStreakDays.get(iso);
             const isInBestStreak = bestStreakDayNumber !== undefined;
             
-            // Определяем тип серии для металлического эффекта
+            // В годовом режиме подсвечиваем только лучшую завершенную серию.
             let streakType: 'bronze' | 'silver' | 'gold' | null = null;
-            let streakLength = 0;
-            
-            if (isInBestStreak && bestCompletedStreak) {
-              streakLength = bestCompletedStreak.length;
-            } else if (isInCurrentStreak && streakDayNumber) {
-              // Для текущей серии используем общее количество дней
-              streakLength = streakDayNumber;
-            }
-            
+            const streakLength = isInBestStreak && bestCompletedStreak ? bestCompletedStreak.length : 0;
             if (streakLength >= 30) {
               streakType = 'gold';
             } else if (streakLength >= 14) {
@@ -618,8 +555,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
             };
             
             // Цветовая градация по количеству алкоголя
-            if (isInCurrentStreak || isInBestStreak) {
-              // Серии воздержания - металлические цвета с обводкой
+            if (isInBestStreak) {
+              // Лучшая завершенная серия - металлические цвета
               if (streakType === 'gold') {
                 cellStyle.backgroundColor = '#f4c430'; // Золото
                 cellStyle.borderWidth = 1.5;
@@ -632,13 +569,6 @@ const YearCalendarView = React.memo(function YearCalendarView({
                 cellStyle.backgroundColor = '#c08850'; // Бронза
                 cellStyle.borderWidth = 1.5;
                 cellStyle.borderColor = '#e8c4a0';
-              } else {
-                // Для коротких серий (менее 7 дней): на светлой теме — изумрудный, на тёмной — зелёный
-                const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
-                const streakBorder = isLightTheme ? STREAK_GREEN_LIGHT : '#34d399';
-                cellStyle.backgroundColor = streakGreen;
-                cellStyle.borderWidth = 1.5;
-                cellStyle.borderColor = streakBorder;
               }
               cellStyle.opacity = 1;
             } else if (total > 0) {
@@ -658,26 +588,28 @@ const YearCalendarView = React.memo(function YearCalendarView({
                   cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
                 }
               } else {
-                // Если цель не установлена
+                // Если цель не установлена, используем абсолютные пороги (как в месячном календаре)
                 if (total >= lethalDose) {
                   cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
+                } else if (total >= 15) {
+                  cellStyle.backgroundColor = '#ef4444'; // Красный
+                } else if (total >= 10) {
+                  cellStyle.backgroundColor = '#f97316'; // Оранжево-красный
+                } else if (total >= 7) {
+                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый
+                } else if (total >= 5) {
+                  cellStyle.backgroundColor = '#fbbf24'; // Янтарный
+                } else if (total >= 3) {
+                  cellStyle.backgroundColor = '#84cc16'; // Желто-зеленый
+                } else if (total >= 1.5) {
+                  cellStyle.backgroundColor = '#22c55e'; // Светло-зеленый
+                } else if (total >= 0.5) {
+                  cellStyle.backgroundColor = '#10b981'; // Зеленый
                 } else {
-                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый (по умолчанию)
+                  cellStyle.backgroundColor = '#34d399'; // Очень низкое количество
                 }
               }
               cellStyle.opacity = 1;
-            }
-            
-            // Проверяем наличие меток на этот день (включая дни в серии)
-            const rangesOnDay = labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso);
-            
-            // Если день в зелёной серии И есть метка - убираем зелёный фон, оставляем только тонкую зелёную обводку
-            if ((isInCurrentStreak || isInBestStreak) && rangesOnDay.length > 0 && streakType === null) {
-              // Возвращаем базовый фон, но добавляем зелёную обводку для индикации серии
-              cellStyle.backgroundColor = cellBg;
-              const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
-              cellStyle.borderWidth = 1.5;
-              cellStyle.borderColor = streakGreen;
             }
             
             if (isToday) {
@@ -693,8 +625,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
               >
                 <Text style={{ 
                   fontSize: 8,
-                  color: (isInCurrentStreak || isInBestStreak) 
-                    ? (streakType === 'gold' || streakType === 'bronze' ? '#ffffff' : '#000000')
+                  color: isInBestStreak
+                    ? (streakType === 'silver' ? '#000000' : '#ffffff')
                     : (total > 0 && total >= lethalDose 
                         ? '#ffffff' 
                         : (total > 0 
@@ -710,7 +642,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
         </View>
       </View>
     );
-  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors, labelsMap, isLightTheme, themeName]);
+  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors, labelsMap, isLightTheme, themeName]);
   
   const months = useMemo(() => {
     return monthNames.map((_, index) => index);
@@ -1785,13 +1717,15 @@ export default function CalendarScreen() {
       
       // Сначала проверяем лучшую серию (стили дублируют стандартные, градиент поверх)
       if (isInBestStreak && bestStreakDayNumber && bestCompletedStreak) {
+        // Keep bronze/silver/gold colors for the best streak,
+        // but avoid heavy animated MetalGradient to preserve scroll performance.
         const bestLength = bestCompletedStreak.length;
         if (bestLength >= 30) {
-          glowStyle = styles.cellGoldStrong; // 30+ дней - золото
+          glowStyle = styles.cellGoldStrong;
         } else if (bestLength >= 14) {
-          glowStyle = styles.cellGoldMedium; // 14-29 дней - серебро
+          glowStyle = styles.cellGoldMedium;
         } else {
-          glowStyle = styles.cellGoldLight; // 7-13 дней - медь
+          glowStyle = styles.cellGoldLight;
         }
       } else if (isInCurrentStreak && streakDayNumber) {
         if (streakDayNumber >= 30) {
@@ -1922,10 +1856,11 @@ export default function CalendarScreen() {
                 styles.dayNum, 
                 !isCurrentMonth && styles.dayNumMuted,
                 { 
-                  color: !isCurrentMonth 
-                    ? colors.textTertiary 
-                    : (glowStyle 
-                        ? '#ffffff' 
+                  // При glow-фоне (бронза/серебро/золото и streak) всегда даём контрастный белый текст.
+                  color: glowStyle
+                    ? '#ffffff'
+                    : (!isCurrentMonth 
+                        ? colors.textTertiary 
                         : (total >= lethalDose 
                             ? '#ffffff' 
                             : (cellColorStyle && total > 0 
@@ -2096,7 +2031,7 @@ export default function CalendarScreen() {
               // Обновляем выделение месяца во время скролла, но не на каждый пиксель,
               // чтобы сохранить плавность на слабых устройствах.
               const now = Date.now();
-              if (idx !== visibleIndex && now - lastVisibleIndexUpdateMsRef.current >= 80) {
+              if (idx !== visibleIndex && now - lastVisibleIndexUpdateMsRef.current >= 40) {
                 lastVisibleIndexUpdateMsRef.current = now;
                 setVisibleIndex(idx);
               }
@@ -2236,7 +2171,7 @@ export default function CalendarScreen() {
               flex: 1,
               justifyContent: 'center', 
               alignItems: 'center',
-              backgroundColor: defaultColors.background
+              backgroundColor: colors.background
             }}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
@@ -3024,16 +2959,22 @@ const styles = StyleSheet.create({
   },
   // Металлические стили (прозрачная рамка, анимированная рамка поверх)
   cellGoldLight: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Bronze (static lightweight fallback without MetalGradient)
+    backgroundColor: 'rgba(176, 106, 70, 0.28)',
+    borderColor: 'rgba(205, 127, 50, 0.92)',
+    borderWidth: 1.5,
   },
   cellGoldMedium: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Silver
+    backgroundColor: 'rgba(170, 178, 190, 0.28)',
+    borderColor: 'rgba(192, 192, 192, 0.95)',
+    borderWidth: 1.5,
   },
   cellGoldStrong: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Gold
+    backgroundColor: 'rgba(223, 179, 59, 0.30)',
+    borderColor: 'rgba(255, 215, 0, 0.95)',
+    borderWidth: 1.5,
   },
   cellToday: {
     borderWidth: 2,
