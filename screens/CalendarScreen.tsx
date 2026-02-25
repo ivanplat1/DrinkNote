@@ -169,8 +169,10 @@ function MonthHeader({
 
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
-      <View style={{ flex: 1 }}>
-        <Text style={monthStyle}>{label}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[monthStyle, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+          {label}
+        </Text>
         {sobrietyStats && sobrietyStats.currentStreak > 0 && (
           <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
             🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
@@ -1108,7 +1110,7 @@ export default function CalendarScreen() {
     };
   }, [totalsByDate]);
 
-  // Подготовим список недель: 3 года назад до конца текущего месяца
+  // Подготовим список недель: от 12 месяцев назад до конца следующего месяца
   const baseToday = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -1116,12 +1118,12 @@ export default function CalendarScreen() {
   }, []);
 
   const weeks: Date[] = useMemo(() => {
-    // Верхняя граница: конец месяца через 2 месяца от сегодня
-    const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 3, 0);
+    // Верхняя граница: конец следующего месяца
+    const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 2, 0);
     endMonth.setHours(0, 0, 0, 0);
 
-    // Нижняя граница: начало месяца 2 года назад
-    const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 24, 1);
+    // Нижняя граница: начало месяца 12 месяцев назад
+    const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 12, 1);
     startMonth.setHours(0, 0, 0, 0);
 
     // Выравниваем к понедельнику (0 = понедельник в getWeekdayIndexMonFirst)
@@ -1171,23 +1173,11 @@ export default function CalendarScreen() {
   const [visibleIndex, setVisibleIndex] = useState(initialMonthFocusIndex);
   const lastScrollIndexRef = useRef(initialMonthFocusIndex);
   const didInitialMonthFocusRef = useRef(false);
-  const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVisibleIndexUpdateMsRef = useRef(0);
   
   // Отдельное состояние для текста заголовка и его анимации
   const [monthLabel, setMonthLabel] = useState<string>('');
-  const monthHeaderFade = useSharedValue(1);
   const backToTodayFade = useSharedValue(0);
-  
-  // Throttle для обновления visibleIndex (короткий, чтобы кнопка «Сегодня» реагировала без задержки)
-  const updateVisibleIndexThrottled = useCallback((idx: number) => {
-    if (throttleTimerRef.current) {
-      return;
-    }
-    throttleTimerRef.current = setTimeout(() => {
-      setVisibleIndex(idx);
-      throttleTimerRef.current = null;
-    }, 50);
-  }, []);
   
   // Анимация модалок - движение за пальцем
   const dayModalTranslateY = useSharedValue(0);
@@ -1223,15 +1213,11 @@ export default function CalendarScreen() {
     setMonthLabel(dateFormatter.format(dominantMonth.date));
   }, [dominantMonth, dateFormatter]);
 
-  // Анимация появления заголовка при смене месяца
+  // Держим заголовок месяца стабильным без reset-анимации, чтобы не было "скачков" шапки.
   const monthHeaderAnimatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: monthHeaderFade.value,
-      transform: [
-        {
-          translateY: (1 - monthHeaderFade.value) * 8, // лёгкий сдвиг вверх при появлении
-        },
-      ],
+      opacity: 1,
+      transform: [{ translateY: 0 }],
     };
   });
 
@@ -1245,12 +1231,6 @@ export default function CalendarScreen() {
       ],
     };
   });
-
-  useEffect(() => {
-    if (!dominantMonth) return;
-    monthHeaderFade.value = 0;
-    monthHeaderFade.value = withTiming(1, { duration: 220 });
-  }, [dominantMonth?.year, dominantMonth?.month]);
 
   // initialScrollIndex делает начальный скролл, не нужен useEffect
 
@@ -1648,6 +1628,32 @@ export default function CalendarScreen() {
     }
   }, [listHeight, todayIndex, cellHeight]);
 
+  // Предвычисляем попадание range-меток по дням, чтобы не делать filter в каждой ячейке во время скролла.
+  const labelRangesByDate = useMemo(() => {
+    const map: Record<string, LabelRange[]> = {};
+    if (!labelRanges.length || !weeks.length) return map;
+
+    const viewStartISO = formatISO(weeks[0]);
+    const viewEndDate = new Date(weeks[weeks.length - 1]);
+    viewEndDate.setDate(viewEndDate.getDate() + 6);
+    const viewEndISO = formatISO(viewEndDate);
+
+    for (const range of labelRanges) {
+      const startISO = range.fromISO > viewStartISO ? range.fromISO : viewStartISO;
+      const endISO = range.toISO < viewEndISO ? range.toISO : viewEndISO;
+      if (startISO > endISO) continue;
+
+      let cursorISO = startISO;
+      while (cursorISO <= endISO) {
+        if (!map[cursorISO]) map[cursorISO] = [];
+        map[cursorISO].push(range);
+        cursorISO = addDaysISO(cursorISO, 1);
+      }
+    }
+
+    return map;
+  }, [labelRanges, weeks]);
+
   const scrollToCurrentMonth = useCallback(() => {
     if (listRef.current && listHeight && listHeight > 0) {
       try {
@@ -1729,6 +1735,33 @@ export default function CalendarScreen() {
     
     // Используем предвычисленные Maps вместо пересчета на каждой неделе
     const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
+    const isLightCalendarTheme =
+      themeName === 'light' ||
+      themeName === 'highContrast' ||
+      themeName === 'violet' ||
+      themeName === 'sand' ||
+      themeName === 'nord';
+    const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
+    const cellBgBase = isLightCalendarTheme
+      ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT)
+      : colors.backgroundCard;
+    const badgeSizeStyle = {
+      width: Math.max(28, Math.min(Math.floor(cellWidth * 0.76), 48)),
+      minHeight: Math.min(Math.floor(cellHeight * 0.55), 48),
+      maxHeight: Math.min(Math.floor(cellHeight * 0.7), 56),
+      ...(cellHeight < 44 || cellWidth < 32
+        ? { paddingHorizontal: 2, paddingVertical: 2, borderRadius: 6, minHeight: 28 }
+        : {}),
+    } as const;
+    const lightBadgeStyle = Platform.OS === 'ios'
+      ? {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 } as const,
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+        }
+      : { backgroundColor: 'rgba(255, 255, 255, 0.9)' };
     
     const cells = weekDays.map((d, idx) => {
       const iso = formatISO(d);
@@ -1747,9 +1780,6 @@ export default function CalendarScreen() {
          d.getMonth() === dominantMonthNum) ||
         isInCurrentStreak;
       const isToday = iso === todayISO;
-      const isLastCol = (idx % 7) === 6;
-      const isLastRow = Math.floor(idx / 7) === 5;
-      
       // Определяем стиль свечения в зависимости от длины серии (детальная прогрессия)
       let glowStyle = null;
       
@@ -1839,10 +1869,8 @@ export default function CalendarScreen() {
         }
       }
       
-      const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
       const hasData = total > 0 || total >= lethalDose;
-      const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
-      const cellBg = isLightTheme ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
+      const cellBg = cellBgBase;
 
       // Рамки меток теперь рендерятся отдельным слоем поверх сетки
 
@@ -1853,7 +1881,7 @@ export default function CalendarScreen() {
             styles.cell,
             { width: cellWidth, height: cellHeight - 4, margin: 0 },
             // Для дней с данными на светлых темах убираем тени и затемненные границы
-            isLightTheme && hasData && {
+            isLightCalendarTheme && hasData && {
               shadowColor: 'transparent',
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0,
@@ -1866,11 +1894,11 @@ export default function CalendarScreen() {
             },
             // Для дней в серии не применяем cellCurrent/cellAdjacent, чтобы зеленый фон был виден
             // Для дней с данными на светлых темах тоже не применяем cellCurrent/cellAdjacent, чтобы цветной фон был виден
-            !glowStyle && !(cellColorStyle && isLightTheme) && (isCurrentMonth 
+            !glowStyle && !(cellColorStyle && isLightCalendarTheme) && (isCurrentMonth 
               ? [styles.cellCurrent, { backgroundColor: cellBg }] 
               : [styles.cellAdjacent, { backgroundColor: cellBg }]),
             glowStyle, // glowStyle применяется после, чтобы перекрыть фон
-            isLightTheme && glowStyle && isInCurrentStreak && {
+            isLightCalendarTheme && glowStyle && isInCurrentStreak && {
               backgroundColor: STREAK_GREEN_LIGHT,
               borderColor: STREAK_GREEN_LIGHT,
               shadowColor: STREAK_GREEN_LIGHT,
@@ -1917,27 +1945,9 @@ export default function CalendarScreen() {
                 ) : total > 0 ? (
                   <View style={[
                     styles.badge,
-                    {
-                      width: Math.max(28, Math.min(Math.floor(cellWidth * 0.76), 48)),
-                      minHeight: Math.min(Math.floor(cellHeight * 0.55), 48),
-                      maxHeight: Math.min(Math.floor(cellHeight * 0.7), 56),
-                      ...(cellHeight < 44 || cellWidth < 32
-                        ? { paddingHorizontal: 2, paddingVertical: 2, borderRadius: 6, minHeight: 28 }
-                        : {}),
-                    },
+                    badgeSizeStyle,
                     (themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord'))
-                      ? { 
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                          ...Platform.select({
-                            ios: {
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: 1 },
-                              shadowOpacity: 0.2,
-                              shadowRadius: 2,
-                            },
-                            android: { elevation: 2 },
-                          }),
-                        } 
+                      ? lightBadgeStyle
                       : { backgroundColor: colors.primaryLight }
                   ]}>
                     <MaterialCommunityIcons name="cup" size={12} color="#f59e0b" />
@@ -1984,9 +1994,7 @@ export default function CalendarScreen() {
       >
         {weekDays.map((d, idx) => {
           const iso = formatISO(d);
-          const rangesOnDay = labelRanges
-            .filter(r => r.fromISO <= iso && iso <= r.toISO)
-            .slice(0, MAX_DOTS_ON_CALENDAR);
+          const rangesOnDay = (labelRangesByDate[iso] ?? []).slice(0, MAX_DOTS_ON_CALENDAR);
           if (rangesOnDay.length === 0) return null;
           const row0 = rangesOnDay.slice(0, DOTS_PER_ROW);
           const blockLeft = idx * cellWidth + (cellWidth - blockWidth) / 2;
@@ -2003,10 +2011,9 @@ export default function CalendarScreen() {
                   top: bottomRowTop,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: dotGap,
                 }}
               >
-                {row0.map(r => (
+                {row0.map((r, dotIdx) => (
                   <View
                     key={r.id}
                     style={{
@@ -2014,6 +2021,7 @@ export default function CalendarScreen() {
                       height: dotSize,
                       borderRadius: dotSize / 2,
                       backgroundColor: r.color,
+                      marginRight: dotIdx < row0.length - 1 ? dotGap : 0,
                     }}
                   />
                 ))}
@@ -2034,7 +2042,7 @@ export default function CalendarScreen() {
         {labelDotsOverlay}
       </View>
     );
-  }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelsMap, labelRanges, themeName, CALENDAR_PADDING_H]);
+  }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelRanges, labelRangesByDate, themeName, CALENDAR_PADDING_H]);
 
 
   
@@ -2085,14 +2093,26 @@ export default function CalendarScreen() {
             const idx = Math.round(y / weekRowHeight);
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < weeks.length) {
               lastScrollIndexRef.current = idx;
-              updateVisibleIndexThrottled(idx);
+              // Обновляем выделение месяца во время скролла, но не на каждый пиксель,
+              // чтобы сохранить плавность на слабых устройствах.
+              const now = Date.now();
+              if (idx !== visibleIndex && now - lastVisibleIndexUpdateMsRef.current >= 80) {
+                lastVisibleIndexUpdateMsRef.current = now;
+                setVisibleIndex(idx);
+              }
+            }
+          }}
+          onScrollEndDrag={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            const idx = Math.round(y / weekRowHeight);
+            if (idx >= 0 && idx < weeks.length && idx !== visibleIndex) {
+              setVisibleIndex(idx);
             }
           }}
           onMomentumScrollEnd={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / weekRowHeight);
-            const currentIdx = lastScrollIndexRef.current;
-            if (idx !== currentIdx) {
+            if (idx >= 0 && idx < weeks.length && idx !== visibleIndex) {
               setVisibleIndex(idx);
             }
           }}
@@ -2100,7 +2120,7 @@ export default function CalendarScreen() {
         />
       </View>
     );
-  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight, updateVisibleIndexThrottled]);
+  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight]);
   
 
   // Пока не измерили высоту, показываем только структуру для измерения
@@ -2391,7 +2411,7 @@ export default function CalendarScreen() {
                     {dayLabels.length > 0 ? (
                       <View style={styles.dayLabelsList}>
                         {dayLabels.map((entry, i) => (
-                          <View key={`${entry.text}-${entry.color}-${i}`} style={[styles.dayLabelChip, { borderColor: colors.border }]}>
+                          <View key={`${entry.text}-${entry.color}-${i}`} style={[styles.dayLabelChip, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}>
                             <View style={[styles.dayLabelColorDot, { backgroundColor: entry.color }]} />
                             <Text style={[styles.dayLabelChipText, { color: colors.text }]} numberOfLines={1}>{entry.text || '—'}</Text>
                           </View>
