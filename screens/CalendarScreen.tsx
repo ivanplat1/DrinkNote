@@ -109,21 +109,33 @@ function MonthHeader({
   const currentStreak = sobrietyStats?.currentStreak ?? 0;
   const showGoalProgress = streakGoal != null && streakGoal > 0;
   const goalReached = showGoalProgress && currentStreak >= streakGoal;
+  const hasBestStreak = !!sobrietyStats && sobrietyStats.bestStreak > 0;
+  const metaTextStyle = { color: colors.textSecondary, fontSize: 11, fontWeight: '600' } as const;
 
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[monthStyle, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-          {label}
-        </Text>
-        {sobrietyStats && sobrietyStats.currentStreak > 0 && (
-          <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
-            🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
-          </Text>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, minWidth: 0, paddingRight: rightAction != null ? 8 : 0 }}>
+            <Text style={[monthStyle, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+              {label}
+            </Text>
+            {sobrietyStats && sobrietyStats.currentStreak > 0 && (
+              <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
+                🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
+              </Text>
+            )}
+          </View>
+          {rightAction != null ? (
+            <View style={{ alignSelf: 'flex-start' }}>
+              {rightAction}
+            </View>
+          ) : null}
+        </View>
+
         {showGoalProgress && (
-          <View style={{ marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <View style={{ marginTop: 6, width: '100%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ flex: 1, height: 6, backgroundColor: colors.backgroundTertiary, borderRadius: 3, overflow: 'hidden' }}>
                 <View
                   style={{
@@ -134,26 +146,27 @@ function MonthHeader({
                   }}
                 />
               </View>
-              <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginLeft: 8 }}>
-                {currentStreak} / {streakGoal}
-              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 4 }}>
+              <Text style={metaTextStyle}>{currentStreak} / {streakGoal}</Text>
+              {hasBestStreak && sobrietyStats ? (
+                <Text style={metaTextStyle}>Рекорд: {sobrietyStats.bestStreak}</Text>
+              ) : (
+                <Text style={metaTextStyle} />
+              )}
             </View>
             {goalReached && (
-              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }}>Цель достигнута!</Text>
+              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600', marginTop: 2 }}>Цель достигнута!</Text>
             )}
           </View>
         )}
+
+        {!showGoalProgress && hasBestStreak && sobrietyStats && (
+          <Text style={[metaTextStyle, { marginTop: 4 }]}>
+            Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
+          </Text>
+        )}
       </View>
-      {(rightAction != null || (sobrietyStats && sobrietyStats.bestStreak > 0)) && (
-        <View style={{ marginLeft: 8, alignItems: 'flex-end' }}>
-          {rightAction != null ? <View>{rightAction}</View> : null}
-          {sobrietyStats && sobrietyStats.bestStreak > 0 && (
-            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginTop: rightAction != null ? 4 : 0 }}>
-              Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
-            </Text>
-          )}
-        </View>
-      )}
     </Animated.View>
   );
 }
@@ -676,6 +689,13 @@ const YearCalendarView = React.memo(function YearCalendarView({
 
 export default function CalendarScreen() {
   const { colors, themeName } = useTheme();
+  const isLightCalendarTheme =
+    themeName === 'light' ||
+    themeName === 'highContrast' ||
+    themeName === 'violet' ||
+    themeName === 'sand' ||
+    themeName === 'nord';
+  const todayWeekdayIndex = useMemo(() => getWeekdayIndexMonFirst(new Date()), []);
   const { currency } = useCurrency();
   const [all, setAll] = useState<Drink[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -1667,12 +1687,6 @@ export default function CalendarScreen() {
     
     // Используем предвычисленные Maps вместо пересчета на каждой неделе
     const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
-    const isLightCalendarTheme =
-      themeName === 'light' ||
-      themeName === 'highContrast' ||
-      themeName === 'violet' ||
-      themeName === 'sand' ||
-      themeName === 'nord';
     const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
     const cellBgBase = isLightCalendarTheme
       ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT)
@@ -1694,6 +1708,8 @@ export default function CalendarScreen() {
           shadowRadius: 2,
         }
       : { backgroundColor: 'rgba(255, 255, 255, 0.9)' };
+    const badgeMainTextColor = isLightCalendarTheme ? colors.text : '#ffffff';
+    const badgeSubTextColor = isLightCalendarTheme ? colors.textSecondary : 'rgba(255,255,255,0.9)';
     
     const cells = weekDays.map((d, idx) => {
       const iso = formatISO(d);
@@ -1886,8 +1902,8 @@ export default function CalendarScreen() {
                       : { backgroundColor: colors.primaryLight }
                   ]}>
                     <MaterialCommunityIcons name="cup" size={12} color="#f59e0b" />
-                    <Text style={[styles.badgeUnits, { color: colors.text, fontSize: 11 }]} numberOfLines={1}>{total.toFixed(1)}</Text>
-                    <Text style={[styles.badgeAlcohol, { color: colors.textSecondary, fontSize: 9 }]} numberOfLines={1}>{(total * 10).toFixed(0)}г</Text>
+                    <Text style={[styles.badgeUnits, { color: badgeMainTextColor, fontSize: 11 }]} numberOfLines={1}>{total.toFixed(1)}</Text>
+                    <Text style={[styles.badgeAlcohol, { color: badgeSubTextColor, fontSize: 9 }]} numberOfLines={1}>{(total * 10).toFixed(0)}г</Text>
                   </View>
                 ) : isInBestStreak && bestCompletedStreak ? (
                   <Text style={styles.awardEmoji}>
@@ -2081,7 +2097,7 @@ export default function CalendarScreen() {
           onPress={() => setCalendarViewMode('month')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? colors.text : colors.textSecondary }]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
             Месяц
           </Text>
         </TouchableOpacity>
@@ -2090,7 +2106,7 @@ export default function CalendarScreen() {
           onPress={() => setCalendarViewMode('year')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? colors.text : colors.textSecondary }]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
             Год
           </Text>
         </TouchableOpacity>
@@ -2147,10 +2163,30 @@ export default function CalendarScreen() {
               }
             }}
           >
-            {WEEKDAY_SHORT_RU.map((w) => (
-              <Text key={w} style={[styles.weekCell, { color: colors.textSecondary }]}>{w}</Text>
-            ))}
+            {WEEKDAY_SHORT_RU.map((w, idx) => {
+              const isTodayWeekday = idx === todayWeekdayIndex;
+              return (
+                <Text
+                  key={w}
+                  style={[
+                    styles.weekCell,
+                    {
+                      color: isTodayWeekday ? colors.primary : colors.textSecondary,
+                      fontWeight: isTodayWeekday ? '700' : '600',
+                    },
+                  ]}
+                >
+                  {w}
+                </Text>
+              );
+            })}
           </View>
+          <View
+            style={[
+              styles.weekRowDivider,
+              { backgroundColor: isLightCalendarTheme ? colors.borderLight : colors.border },
+            ]}
+          />
 
           {/* Область календаря с flex: 1 — тянется до низа; onLayout даёт реальную высоту для сетки */}
           {!needsMeasurement && (
@@ -2863,16 +2899,22 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 6,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
+  },
+  weekRowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 12,
+    marginBottom: 0,
   },
   weekCell: {
     flex: 1,
     textAlign: 'center',
     color: defaultColors.textSecondary,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 12,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   grid: {
     flexDirection: 'row',
