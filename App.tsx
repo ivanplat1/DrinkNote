@@ -7,7 +7,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, Platform, AppState, Linking } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,9 +18,6 @@ import PremiumScreen from './screens/PremiumScreen';
 import AddFromWidgetScreen from './screens/AddFromWidgetScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { CurrencyProvider } from './theme/CurrencyContext';
-import { generateTestDrinks, generateTestPresets } from './utils/testData';
-import { getAllDrinks, setAllDrinks } from './storage/drinks';
-import { getUserPresets, setUserPresets } from './storage/presets';
 import { updateAllWidgets } from './services/widget';
 
 const Tab = createBottomTabNavigator();
@@ -45,7 +41,6 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 );
 
 const ADD_DRINK_PATH = 'add-drink';
-const TEST_DATA_SEEDED_KEY = '@drinknote_test_data_seeded_v1';
 const ANDROID_NAV_COLORS: Record<string, string> = {
   dark: '#0f172a',
   light: '#e8eaed',
@@ -163,48 +158,6 @@ function AppContent() {
     applyAndroidNavBar();
   }, [themeName, colors.background, isLightTheme]);
   
-  React.useEffect(() => {
-    const loadTestData = async () => {
-      try {
-        const wasSeeded = await AsyncStorage.getItem(TEST_DATA_SEEDED_KEY);
-        if (wasSeeded === '1') {
-          return;
-        }
-
-        const existingDrinks = await getAllDrinks();
-        const existingPresets = await getUserPresets();
-        
-        console.log(`📊 Существующие записи: ${existingDrinks.length}, пресеты: ${existingPresets.length}`);
-        
-        // Генерируем тестовые данные только один раз при первом запуске.
-        if (existingDrinks.length === 0) {
-          const testDrinks = generateTestDrinks();
-          console.log(`🔄 Генерирую ${testDrinks.length} тестовых записей...`);
-          await setAllDrinks(testDrinks);
-          console.log(`✅ Загружено ${testDrinks.length} тестовых записей о напитках`);
-          
-          // Проверяем, что данные сохранились
-          const verify = await getAllDrinks();
-          console.log(`✓ Проверка: сохранено ${verify.length} записей`);
-        } else {
-          console.log(`⏭️ Пропускаю загрузку тестовых данных (уже есть ${existingDrinks.length} записей)`);
-        }
-        
-        if (existingPresets.length === 0) {
-          const testPresets = generateTestPresets();
-          await setUserPresets(testPresets);
-          console.log(`✅ Загружено ${testPresets.length} тестовых пресетов`);
-        }
-
-        await AsyncStorage.setItem(TEST_DATA_SEEDED_KEY, '1');
-      } catch (error) {
-        console.error('❌ Ошибка загрузки тестовых данных:', error);
-      }
-    };
-    
-    loadTestData();
-  }, []);
-
   // Update home screen widgets when app opens or returns to foreground (Android)
   React.useEffect(() => {
     updateAllWidgets();

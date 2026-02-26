@@ -16,6 +16,14 @@ if (!fs.existsSync(distDir)) {
   process.exit(1);
 }
 
+// Копируем политику конфиденциальности (для Google Play и веб)
+const privacySrc = path.join(__dirname, '..', 'docs', 'privacy.html');
+const privacyDest = path.join(distDir, 'privacy.html');
+if (fs.existsSync(privacySrc)) {
+  fs.copyFileSync(privacySrc, privacyDest);
+  console.log('✅ Скопирована политика конфиденциальности: privacy.html');
+}
+
 // Копируем иконки для PWA
 const assetsDir = path.join(__dirname, '..', 'assets');
 const distAssetsDir = path.join(distDir, 'assets');

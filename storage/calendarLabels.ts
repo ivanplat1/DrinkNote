@@ -169,6 +169,22 @@ export async function getCalendarLabelRanges(): Promise<LabelRange[]> {
   return getDefinitions();
 }
 
+/** Полная замена списка периодов меток (для импорта/восстановления). */
+export async function setCalendarLabelRanges(ranges: LabelRange[]): Promise<LabelRange[]> {
+  const normalized = (Array.isArray(ranges) ? ranges : [])
+    .filter((d) => d && d.fromISO && d.toISO && typeof d.text === 'string')
+    .map((d) => ({
+      id: d.id || genId(),
+      fromISO: d.fromISO,
+      toISO: d.toISO,
+      text: d.text.trim(),
+      color: d.color || DEFAULT_LABEL_COLOR,
+    }))
+    .filter((d) => d.text.length > 0);
+  await saveDefinitions(normalized);
+  return getDefinitions();
+}
+
 /** Удалить период по id. */
 export async function deleteCalendarLabelRange(id: string): Promise<LabelDefinition[]> {
   const defs = await getDefinitions();

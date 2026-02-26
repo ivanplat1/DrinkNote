@@ -235,7 +235,7 @@ export default function SettingsScreen() {
         // Для веба используем скрытый input file
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,application/json';
+        input.accept = '.json,.txt,application/json,text/plain';
         input.onchange = async (e) => {
           const file = (e.target as HTMLInputElement).files?.[0];
           if (file) {
@@ -247,7 +247,8 @@ export default function SettingsScreen() {
       } else {
         // Для мобильных используем expo-document-picker
         const result = await DocumentPicker.getDocumentAsync({
-          type: ['application/json'],
+          // Google Drive и некоторые файловые менеджеры часто отдают JSON как text/plain/.txt.
+          type: ['application/json', 'text/plain', 'application/octet-stream'],
           copyToCacheDirectory: true,
         });
         
@@ -448,7 +449,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('female')}
                 >
-                  <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? colors.text : colors.textSecondary} />
+                  <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -461,7 +462,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('male')}
                 >
-                  <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? colors.text : colors.textSecondary} />
+                  <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -474,7 +475,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('genderless')}
                 >
-                  <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? colors.text : colors.textSecondary} />
+                  <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -899,7 +900,7 @@ export default function SettingsScreen() {
                   scrollEventThrottle={32}
                 >
                   <Text style={[styles.importHint, { color: colors.textSecondary }]}>
-                    Выберите файл или вставьте JSON данные из экспортированного файла
+                    Выберите файл (.json или .txt) или вставьте JSON данные из экспортированного файла
                   </Text>
                   
                   <TouchableOpacity
@@ -921,7 +922,19 @@ export default function SettingsScreen() {
                   />
                 </Animated.ScrollView>
                 
-                <View style={[styles.importButtonsContainer, { backgroundColor: colors.backgroundCard, borderTopColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.importButtonsContainer,
+                    {
+                      backgroundColor: colors.backgroundCard,
+                      borderTopColor: colors.border,
+                      paddingBottom: Math.max(
+                        Platform.OS === 'ios' ? 34 : 20,
+                        insets.bottom + (Platform.OS === 'android' ? 12 : 0)
+                      ),
+                    },
+                  ]}
+                >
                   <TouchableOpacity
                     style={[styles.importButton, styles.importButtonReplace, { backgroundColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
                     onPress={() => handleImport(false)}

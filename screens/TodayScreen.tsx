@@ -268,6 +268,13 @@ export default function TodayScreen() {
     isPremiumUser().then(setIsPremium);
   }, []);
 
+  // Обновляем статус премиума при каждом фокусе (после активации в Настройках)
+  useFocusEffect(
+    useCallback(() => {
+      isPremiumUser().then(setIsPremium);
+    }, [])
+  );
+
   // Сбрасываем позиции модалок при открытии
   useEffect(() => {
     if (addModalVisible) addModalTranslateY.value = 0;
@@ -654,6 +661,7 @@ export default function TodayScreen() {
                       styles.presetButton,
                       { backgroundColor: beverageColor.light },
                       isEditing && styles.presetButtonDeleting,
+                      isEditing && { borderColor: colors.primary },
                     ]}
                     onPress={() => {
                       if (isEditing) {
@@ -966,10 +974,15 @@ export default function TodayScreen() {
                       {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                         <TouchableOpacity
                           key={t}
-                          style={[styles.typeChip, newType === t && styles.typeChipActive, newType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary }]}
+                          style={[
+                            styles.typeChip,
+                            { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                            newType === t && styles.typeChipActive,
+                            newType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary },
+                          ]}
                           onPress={() => setNewType(t)}
                         >
-                          <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
+                          <Text style={[styles.typeChipText, { color: newType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1210,10 +1223,15 @@ export default function TodayScreen() {
                         {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                           <TouchableOpacity
                             key={t}
-                            style={[styles.typeChip, presetType === t && styles.typeChipActive, presetType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary }]}
+                            style={[
+                              styles.typeChip,
+                              { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                              presetType === t && styles.typeChipActive,
+                              presetType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary },
+                            ]}
                             onPress={() => setPresetType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>

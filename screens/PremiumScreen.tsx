@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { colors as defaultColors } from '../theme/colors';
 import { isPremiumUser } from '../storage/premium';
 import { initPurchases, purchasePremium, restorePurchases } from '../services/purchases';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 export default function PremiumScreen() {
   const { colors } = useTheme();
@@ -17,11 +17,15 @@ export default function PremiumScreen() {
   const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
-    checkPremiumStatus();
     // Initialize purchases only when Premium screen is opened
-    // This avoids loading the native module on app startup
     initializePurchases();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPremiumStatus();
+    }, [])
+  );
 
   const checkPremiumStatus = async () => {
     const premium = await isPremiumUser();

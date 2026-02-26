@@ -11,7 +11,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:web": "PUBLIC_URL=/DrinkNote expo export --platform web && node scripts/add-pwa-files.js",
-    "build:android": "eas build --platform android --profile preview"
+    "build:android": "eas build --platform android --profile preview",
+    "build:android:aab": "cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

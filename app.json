@@ -1,5 +1,5 @@
 {
-    "expo": {
+  "expo": {
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
@@ -14,7 +14,8 @@
       "backgroundColor": "#050525"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drinknote.app"
     },
     "android": {
       "package": "com.drinknote.app",
@@ -87,6 +88,10 @@
     "extra": {
       "eas": {
         "projectId": "1f026970-5d72-4828-915f-6b0955bbcaf1"
+      },
+      "expo-navigation-bar": {
+        "backgroundColor": "#00000000",
+        "position": "absolute"
       }
     }
   }

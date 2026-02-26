@@ -2643,7 +2643,7 @@ export default function CalendarScreen() {
                             ]}
                             onPress={() => setNewType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: newType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>

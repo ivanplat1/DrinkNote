@@ -2,6 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAllDrinks } from './drinks';
 import { setAllDrinks } from './drinks';
 import { Drink } from '../types/drink';
+import { PresetDrink } from '../types/preset';
+import { getUserPresets, setUserPresets } from './presets';
+import { getCalendarLabelRanges, setCalendarLabelRanges, LabelRange } from './calendarLabels';
 
 const SETTINGS_KEY = 'app_settings_v1';
 const DAILY_GOAL_KEY = 'daily_goal_units';
@@ -61,6 +64,8 @@ export async function setDailyGoal(units: number | null): Promise<void> {
 
 export async function exportData(): Promise<string> {
   const drinks = await getAllDrinks();
+  const favorites = await getUserPresets();
+  const labels = await getCalendarLabelRanges();
   const settings = await getDailyGoal();
   const weight = await getUserWeight();
   const gender = await getUserGender();
@@ -71,6 +76,8 @@ export async function exportData(): Promise<string> {
     version: '1.0',
     exportDate: new Date().toISOString(),
     drinks,
+    favorites,
+    labels,
     settings: {
       dailyGoalUnits: settings,
       weight: weight,
@@ -87,6 +94,8 @@ export interface ImportData {
   version?: string;
   exportDate?: string;
   drinks?: Drink[];
+  favorites?: PresetDrink[];
+  labels?: LabelRange[];
   settings?: {
     dailyGoalUnits?: number | null;
     weight?: number | null;
@@ -119,6 +128,50 @@ export async function importData(jsonString: string, merge: boolean = false): Pr
       } else {
         // Заменяем все
         await setAllDrinks(parsed.drinks);
+      }
+    }
+
+    // Импорт избранных напитков (presets)
+    if (parsed.favorites && Array.isArray(parsed.favorites)) {
+      if (merge) {
+        const existingPresets = await getUserPresets();
+        const hasSamePreset = (left: PresetDrink, right: PresetDrink) =>
+          left.name.trim().toLowerCase() === right.name.trim().toLowerCase() &&
+          left.volumeMl === right.volumeMl &&
+          left.abvPercent === right.abvPercent &&
+          left.beverageType === right.beverageType;
+
+        const mergedPresets = [...existingPresets];
+        for (const incoming of parsed.favorites) {
+          if (!mergedPresets.some((preset) => hasSamePreset(preset, incoming))) {
+            mergedPresets.push(incoming);
+          }
+        }
+        await setUserPresets(mergedPresets);
+      } else {
+        await setUserPresets(parsed.favorites);
+      }
+    }
+
+    // Импорт меток календаря (периоды)
+    if (parsed.labels && Array.isArray(parsed.labels)) {
+      if (merge) {
+        const existingRanges = await getCalendarLabelRanges();
+        const hasSameRange = (left: LabelRange, right: LabelRange) =>
+          left.fromISO === right.fromISO &&
+          left.toISO === right.toISO &&
+          left.text.trim().toLowerCase() === right.text.trim().toLowerCase() &&
+          (left.color || '').toLowerCase() === (right.color || '').toLowerCase();
+
+        const mergedRanges = [...existingRanges];
+        for (const incoming of parsed.labels) {
+          if (!mergedRanges.some((range) => hasSameRange(range, incoming))) {
+            mergedRanges.push(incoming);
+          }
+        }
+        await setCalendarLabelRanges(mergedRanges);
+      } else {
+        await setCalendarLabelRanges(parsed.labels);
       }
     }
     
