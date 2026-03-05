@@ -11,13 +11,15 @@ import { addDrink, addOrMergeDrink, getDrinksByDate, getAllDrinks, removeDrink, 
 import { isPremiumUser } from '../storage/premium';
 import { calculateStandardUnits, todayISO, formatTotalVolume } from '../utils/units';
 import { Drink } from '../types/drink';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
 import { formatPrice, formatPriceShort } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
 import { runNotificationChecks } from '../services/notifications';
+import { useOnboarding } from '../context/OnboardingContext';
+import OnboardingOverlayContent from '../components/OnboardingOverlayContent';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
   return themeColors[type] || themeColors.other;
@@ -618,8 +620,109 @@ export default function TodayScreen() {
     transform: [{ translateY: Math.max(0, datePickerModalTranslateY.value) }],
   }));
 
+  const navigation = useNavigation();
+  const { interactiveStep, registerTarget, targets, stepConfig, setInteractiveStep, finishInteractive } = useOnboarding();
+  const screenRootRef = useRef<View>(null);
+  const favoritesRef = useRef<View>(null);
+  const addButtonRef = useRef<View>(null);
+  const firstPresetRef = useRef<View>(null);
+  const modalHeaderPlusRef = useRef<View>(null);
+
+  // Регистрация координат только из useEffect (относительно корня экрана). Шаги 0–2: избранное, редактирование, кнопка «плюс».
+  useEffect(() => {
+    if (interactiveStep === null || interactiveStep > 2) return;
+    const key = ['favorites', 'favoritesEdit', 'addButton'][interactiveStep];
+    const refs = [favoritesRef, firstPresetRef, addButtonRef] as const;
+    const r = refs[interactiveStep];
+    // Шаг 0: даём время отрисоваться избранному и демо-пресетам; остальные — быстрее
+    const delay = interactiveStep === 0 ? 400 : 200;
+    const t = setTimeout(() => {
+      screenRootRef.current?.measureInWindow((x0, y0) => {
+        r.current?.measureInWindow((x1, y1, w, h) => {
+          const relY = y1 - y0;
+          const relX = x1 - x0;
+          // Для блока «Избранное» добавляем по высоте, чтобы рамка не обрезала низ (карточки + кнопка)
+          const extraH = key === 'favorites' ? 8 : 0;
+          registerTarget(key, { x: relX, y: relY, width: w, height: h + extraH });
+        });
+      });
+    }, delay);
+    return () => clearTimeout(t);
+  }, [interactiveStep, registerTarget]);
+
+  // Перемерка блока «Избранное» при появлении пресетов (шаг 0), чтобы рамка не обрезала контент
+  useEffect(() => {
+    if (interactiveStep !== 0 || !userPresets.length) return;
+    const t = setTimeout(() => {
+      screenRootRef.current?.measureInWindow((x0, y0) => {
+        favoritesRef.current?.measureInWindow((x1, y1, w, h) => {
+          registerTarget('favorites', { x: x1 - x0, y: y1 - y0, width: w, height: h + 8 });
+        });
+      });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [interactiveStep, userPresets.length, registerTarget]);
+
+  // Демо-пресеты для онбординга: Пиво 500мл, Вино, Коньяк, Виски кола (только при пустом избранном)
+  const demoPresetsAddedRef = useRef(false);
+  useEffect(() => {
+    if (interactiveStep !== 0 || userPresets.length > 0 || demoPresetsAddedRef.current) return;
+    demoPresetsAddedRef.current = true;
+    const demo = [
+      { name: 'Пиво 500мл', beverageType: 'beer' as const, volumeMl: 500, abvPercent: 5 },
+      { name: 'Вино', beverageType: 'wine' as const, volumeMl: 150, abvPercent: 12 },
+      { name: 'Коньяк', beverageType: 'spirit' as const, volumeMl: 50, abvPercent: 40 },
+      { name: 'Виски кола', beverageType: 'cocktail' as const, volumeMl: 250, abvPercent: 16 },
+    ];
+    (async () => {
+      for (const p of demo) {
+        await addPreset(p);
+      }
+      const updated = await getUserPresets();
+      setUserPresets(updated);
+    })();
+  }, [interactiveStep, userPresets.length]);
+
+  // Шаг 1: показать иконки редактирования на первом пресете (Пиво)
+  useEffect(() => {
+    if (interactiveStep === 1 && userPresets.length > 0) {
+      setEditingPresetId(userPresets[0].id);
+    } else if (interactiveStep !== 1) {
+      setEditingPresetId(null);
+    }
+  }, [interactiveStep, userPresets]);
+
+  // Шаг 3+ (календарь и далее): закрыть модалки добавления в избранное
+  useEffect(() => {
+    if (interactiveStep >= 3) {
+      const t = setTimeout(() => {
+        setAddModalVisible(false);
+        setCustomModalVisible(false);
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [interactiveStep]);
+
+
+  const step = interactiveStep !== null ? stepConfig[interactiveStep] : null;
+  const goNext = useCallback(() => {
+    if (interactiveStep === null) return;
+    if (interactiveStep === 2) {
+      navigation.navigate('Календарь' as never);
+      setInteractiveStep(3);
+      return;
+    }
+    if (interactiveStep === stepConfig.length - 1) {
+      finishInteractive();
+    } else {
+      setInteractiveStep(interactiveStep + 1);
+    }
+  }, [interactiveStep, stepConfig.length, finishInteractive, setInteractiveStep, navigation]);
+
   return (
+    <View ref={screenRootRef} style={{ flex: 1 }}>
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <View ref={favoritesRef} collapsable={false}>
       <TouchableOpacity
         style={styles.collapsibleHeader}
         onPress={() => setPresetsCollapsed(!presetsCollapsed)}
@@ -632,7 +735,7 @@ export default function TodayScreen() {
           color={colors.textSecondary} 
         />
       </TouchableOpacity>
-      {!presetsCollapsed && (() => {
+      {(!presetsCollapsed || (interactiveStep !== null && interactiveStep <= 2)) && (() => {
         const favoritesMaxHeight = Math.min(Dimensions.get('window').height * 0.36, 300);
         return (
         <View style={{ marginBottom: 12, maxHeight: favoritesMaxHeight }}>
@@ -651,12 +754,15 @@ export default function TodayScreen() {
               }}
             >
               <View style={styles.presetList}>
-            {userPresets.map((p) => {
+            {userPresets.map((p, idx) => {
               const beverageColor = getBeverageColor(p.beverageType, colors);
               const isEditing = editingPresetId === p.id;
+              const isFirst = idx === 0;
               return (
                 <View key={p.id} style={{ position: 'relative' }}>
                   <TouchableOpacity
+                    ref={isFirst ? firstPresetRef : undefined}
+                    collapsable={false}
                     style={[
                       styles.presetButton,
                       { backgroundColor: beverageColor.light },
@@ -704,6 +810,8 @@ export default function TodayScreen() {
               );
             })}
             <TouchableOpacity
+              ref={addButtonRef}
+              collapsable={false}
               style={[styles.addFavButtonRect, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
               onPress={() => {
                 setDeletingPresetId(null);
@@ -720,7 +828,7 @@ export default function TodayScreen() {
         </View>
         );
       })()}
-
+      </View>
 
       <TouchableOpacity
         activeOpacity={1}
@@ -790,6 +898,7 @@ export default function TodayScreen() {
           </>
         )}
       </View>
+      <View style={{ flex: 1 }}>
       <FlatList
         data={todayList}
         keyExtractor={(item) => item.id}
@@ -816,6 +925,7 @@ export default function TodayScreen() {
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
+      </View>
 
       {/* Модалка выбора напитка для добавления */}
       <Modal visible={addModalVisible} animationType="slide" transparent>
@@ -862,8 +972,19 @@ export default function TodayScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                     <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
-                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из предложенных или добавьте свой</Text>
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <View ref={modalHeaderPlusRef} collapsable={false}>
+                        <TouchableOpacity
+                          style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
+                          onPress={openCustomModal}
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
+                          <Entypo name="add-to-list" size={22} color={colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из списка или нажмите + для своего напитка</Text>
                   
                     {/* Строка поиска для предложенных пресетов */}
                     {availableSuggestedPresets.length > 0 && (
@@ -895,13 +1016,6 @@ export default function TodayScreen() {
                           <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                         </TouchableOpacity>
                       ))}
-                      
-                      <TouchableOpacity
-                        style={[styles.addCustomButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
-                        onPress={openCustomModal}
-                      >
-                        <Text style={[styles.addCustomButtonText, { color: colors.primaryLight }]}>+ Добавить свой напиток</Text>
-                      </TouchableOpacity>
                     </ScrollView>
 
                     </View>
@@ -1023,9 +1137,9 @@ export default function TodayScreen() {
                       />
                     </View>
                   </View>
-                  {isPremium && (
-                    <View style={{ marginBottom: 12 }}>
-                      <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                    {isPremium ? (
                       <TextInput
                         placeholder="Не указана"
                         placeholderTextColor={colors.textTertiary}
@@ -1034,8 +1148,16 @@ export default function TodayScreen() {
                         onChangeText={(t) => setNewPriceVal(t.replace(',', '.'))}
                         style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       />
-                    </View>
-                  )}
+                    ) : (
+                      <TextInput
+                        placeholder="Доступно в полной версии"
+                        placeholderTextColor={colors.textTertiary}
+                        editable={false}
+                        value=""
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.textTertiary }]}
+                      />
+                    )}
+                  </View>
                   <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                     <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeCustomModal}>
                       <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
@@ -1272,9 +1394,9 @@ export default function TodayScreen() {
                         />
                       </View>
                     </View>
-                    {isPremium && (
-                      <View style={{ marginBottom: 12 }}>
-                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Цена</Text>
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Цена</Text>
+                      {isPremium ? (
                         <TextInput
                           placeholder="Не указана"
                           placeholderTextColor={colors.textTertiary}
@@ -1283,8 +1405,16 @@ export default function TodayScreen() {
                           onChangeText={(t) => setPresetPrice(t.replace(',', '.'))}
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         />
-                      </View>
-                    )}
+                      ) : (
+                        <TextInput
+                          placeholder="Доступно в полной версии"
+                          placeholderTextColor={colors.textTertiary}
+                          editable={false}
+                          value={presetPrice}
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.textTertiary }]}
+                        />
+                      )}
+                    </View>
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditPresetModal}>
                         <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
@@ -1423,6 +1553,19 @@ export default function TodayScreen() {
       </Modal>
 
     </SafeAreaView>
+    {interactiveStep !== null && interactiveStep <= 2 && step && (
+      <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+        <OnboardingOverlayContent
+          layout={targets[step.key]}
+          tooltip={step.tooltip}
+          isLast={interactiveStep === stepConfig.length - 1}
+          onNext={goNext}
+          hideSpotlight={false}
+          tightBottom={interactiveStep === 0}
+        />
+      </View>
+    )}
+    </View>
   );
 }
 
@@ -1651,11 +1794,49 @@ shadowOpacity: 0.5,
     backgroundColor: defaultColors.textTertiary,
     alignSelf: 'center',
   },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalHeaderPlusBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    marginBottom: 12,
     color: defaultColors.text,
+    flex: 1,
+  },
+  onboardingFooterInModal: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 24,
+    ...(Platform.OS === 'android' ? { elevation: 12 } : {}),
+  },
+  tooltipCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    ...(Platform.OS === 'android' ? { elevation: 8 } : {}),
+  },
+  tooltipText: { fontSize: 16, lineHeight: 24, textAlign: 'center' },
+  onboardingNextBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  onboardingNextText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  onboardingSpotlightWrap: {
+    borderWidth: 3,
+    borderRadius: 14,
+    padding: 4,
+    ...(Platform.OS === 'android' ? { elevation: 8 } : {}),
   },
   input: {
     borderWidth: 1.5,

@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -19,6 +19,9 @@ import AddFromWidgetScreen from './screens/AddFromWidgetScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { CurrencyProvider } from './theme/CurrencyContext';
 import { updateAllWidgets } from './services/widget';
+import { setHasCompletedFirstLaunch, setHasSeenOnboarding } from './storage/settings';
+import OnboardingOverlay from './components/OnboardingOverlay';
+import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -69,6 +72,14 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const { colors, themeName } = useTheme();
   const navigationRef = useNavigationContainerRef();
+  const [initialTab, setInitialTab] = React.useState<'Сегодня' | 'Настройки' | null>(null);
+  const { onboardingSeen, setOnboardingSeen, interactiveStep } = useOnboarding();
+
+  // После загрузки флага онбординга (в контексте) показываем вкладку «Сегодня»
+  useEffect(() => {
+    if (onboardingSeen === null) return;
+    setInitialTab('Сегодня');
+  }, [onboardingSeen]);
 
   // Deep link: drinknote://add-drink/PRESET_ID — открыть экран добавления из виджета (один раз за 3 с по одному presetId)
   useEffect(() => {
@@ -167,6 +178,35 @@ function AppContent() {
     return () => sub.remove();
   }, []);
 
+  // Навигация по вкладкам: шаг 3 — Календарь, 4 — Статистика, 5 и 6 — Настройки (чтобы календарь и статистика были видны в онбординге).
+  useLayoutEffect(() => {
+    if (interactiveStep === null) return;
+    if (!navigationRef.isReady()) return;
+    if (interactiveStep === 3) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
+    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
+    if (interactiveStep === 5 || interactiveStep === 6 || interactiveStep === 7) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
+  }, [interactiveStep]);
+
+  const completeOnboarding = async () => {
+    try {
+      await setHasSeenOnboarding();
+      await setHasCompletedFirstLaunch();
+      setOnboardingSeen(true);
+    } catch (e) {
+      setOnboardingSeen(true);
+    }
+  };
+
+  // Ожидание загрузки флага онбординга и initialTab
+  if (onboardingSeen === null || initialTab === null) {
+    return (
+      <NavigationContainer ref={navigationRef}>
+        <StatusBar style={statusBarStyle} />
+        <View style={{ flex: 1, backgroundColor: colors.background }} />
+      </NavigationContainer>
+    );
+  }
+
   return (
     <NavigationContainer ref={navigationRef}>
         <StatusBar style={statusBarStyle} />
@@ -174,6 +214,7 @@ function AppContent() {
           <Stack.Screen name="MainTabs">
             {() => (
         <Tab.Navigator
+          initialRouteName={initialTab}
           screenOptions={{
             headerShown: true,
             headerStyle: {
@@ -250,6 +291,8 @@ function AppContent() {
           />
           <Stack.Screen name="AddFromWidget" component={AddFromWidgetScreen} />
         </Stack.Navigator>
+      {/* Глобальный оверлей онбординга для шагов 3–6 (Календарь, Статистика, Настройки, профиль) */}
+      {!onboardingSeen && interactiveStep !== null && interactiveStep >= 3 && <OnboardingOverlay onComplete={completeOnboarding} />}
       </NavigationContainer>
   );
 }
@@ -259,9 +302,11 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <CurrencyProvider>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
-            <AppContent />
-          </GestureHandlerRootView>
+          <OnboardingProvider>
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+              <AppContent />
+            </GestureHandlerRootView>
+          </OnboardingProvider>
         </CurrencyProvider>
       </ThemeProvider>
     </SafeAreaProvider>

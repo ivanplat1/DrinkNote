@@ -305,6 +305,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, marginTop: 4 }]}>Условная единица (ед.) = 10 г чистого этанола.</Text>
           <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Левая часть - Своё значение */}
             <View style={styles.goalColumn}>
@@ -318,7 +319,7 @@ export default function SettingsScreen() {
                       const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
                       setDailyGoalValue(normalized);
                     }}
-                    placeholder="0.00"
+                    placeholder={`${recommendedLimit.toFixed(1)} ед.`}
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
@@ -334,8 +335,8 @@ export default function SettingsScreen() {
                   onPress={() => setIsEditingGoal(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.goalValue, { color: colors.text }]}>
-                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : 'Не установлена'}
+                  <Text style={[styles.goalValue, { color: dailyGoal ? colors.text : colors.textTertiary }]}>
+                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : `${recommendedLimit.toFixed(1)} ед.`}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -354,7 +355,8 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     Alert.alert(
-                      'Как рассчитывается условная норма',
+                      '',
+                      '📐 Условная единица (ед.) = 10 г чистого этанола.\n\n' +
                       '📊 Базовая норма:\n' +
                       '• Мужчины: 2.5 ед. (25г спирта)\n' +
                       '• Женщины: 1.5 ед. (15г спирта)\n\n' +
@@ -382,7 +384,7 @@ export default function SettingsScreen() {
         {/* Параметры профиля */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Параметры профиля</Text>
-          
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Настройте профиль для определения условной нормы</Text>
           <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Вес */}
             <View style={styles.profileRow}>
@@ -565,10 +567,10 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Цель по серии (только для премиум) */}
-        {isPremium && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+        {/* Цель по серии: премиум — активна, базовая — показать заблокированной */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+          {isPremium ? (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
               onPress={() => {
@@ -587,8 +589,18 @@ export default function SettingsScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
             </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <View style={[styles.actionButton, { backgroundColor: colors.backgroundCard, opacity: 0.8 }]}>
+              <MaterialCommunityIcons name="target" size={24} color={colors.textTertiary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Доступно в полной версии</Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textTertiary }]}>
+                  Отслеживание прогресса в статистике и календаре
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Модалка: своя цель по серии — по центру экрана */}
         <Modal visible={showStreakGoalModal} transparent animationType="fade">

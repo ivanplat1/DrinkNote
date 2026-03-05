@@ -28,6 +28,8 @@ import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, g
 import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useOnboarding } from '../context/OnboardingContext';
+import { getDemoDrinksForOnboarding } from '../utils/onboardingDemoData';
 
 const LABEL_COLOR_PRESETS = [
   '#6B9BD1', '#E07C7C', '#7EC87E', '#E8B84A', '#9B7EDE',
@@ -689,6 +691,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
 
 export default function CalendarScreen() {
   const { colors, themeName } = useTheme();
+  const { isOnboardingActive } = useOnboarding();
+  const wasOnboardingRef = useRef(isOnboardingActive);
   const isLightCalendarTheme =
     themeName === 'light' ||
     themeName === 'highContrast' ||
@@ -788,9 +792,39 @@ export default function CalendarScreen() {
     isPremiumUser().then(setIsPremium);
   }, []);
 
+  // При завершении онбординга сразу сбрасываем демо-данные и грузим реальные, чтобы не мелькали при открытии календаря
+  useEffect(() => {
+    if (wasOnboardingRef.current === true && isOnboardingActive === false) {
+      setAll([]);
+      setDayList([]);
+      loadAll();
+      loadDailyGoal();
+      isPremiumUser().then(setIsPremium);
+      getCalendarLabels().then(setLabelsMap);
+      getCalendarLabelRanges().then(setLabelRanges);
+      getStreakGoal().then(setStreakGoal);
+    }
+    wasOnboardingRef.current = isOnboardingActive;
+  }, [isOnboardingActive, loadAll, loadDailyGoal]);
+
   useFocusEffect(
     useCallback(() => {
-      // Загружаем данные при фокусе на экран
+      // Во время онбординга показываем только демо-данные (не пишем в память)
+      if (isOnboardingActive) {
+        setAll(getDemoDrinksForOnboarding());
+        setDailyGoal(3);
+        setLethalDose(15);
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        const startIso = formatISO(d);
+        appStartDateRef.current = startIso;
+        setAppStartDate(startIso);
+        isPremiumUser().then(setIsPremium);
+        getCalendarLabels().then(setLabelsMap);
+        getCalendarLabelRanges().then(setLabelRanges);
+        getStreakGoal().then(setStreakGoal);
+        return () => {};
+      }
       loadAll();
       loadDailyGoal();
       isPremiumUser().then(setIsPremium);
@@ -798,7 +832,7 @@ export default function CalendarScreen() {
       getCalendarLabelRanges().then(setLabelRanges);
       getStreakGoal().then(setStreakGoal);
       return () => {};
-    }, [loadAll, loadDailyGoal])
+    }, [loadAll, loadDailyGoal, isOnboardingActive])
   );
 
   useEffect(() => {

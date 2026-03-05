@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,6 +14,8 @@ import { formatTotalVolume } from '../utils/units';
 import { WEEKDAY_SHORT_RU, MONTH_SHORT_RU } from '../utils/date';
 import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
+import { useOnboarding } from '../context/OnboardingContext';
+import { getDemoDrinksForOnboarding } from '../utils/onboardingDemoData';
 import AdvancedStatsContent from './AdvancedStatsContent';
 import {
   getOverallStats,
@@ -37,6 +39,8 @@ export default function StatsScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { currency } = useCurrency();
+  const { isOnboardingActive } = useOnboarding();
+  const wasOnboardingRef = React.useRef(isOnboardingActive);
   const [allDrinks, setAllDrinks] = useState<Drink[]>([]);
   const [period, setPeriod] = useState<PeriodType>('overall');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -72,12 +76,29 @@ export default function StatsScreen() {
     setStreakGoal(goal);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
+  // При завершении онбординга сразу сбрасываем демо-данные и грузим реальные, чтобы не мелькали при открытии вкладки
+  useEffect(() => {
+    if (wasOnboardingRef.current === true && isOnboardingActive === false) {
+      setAllDrinks([]);
       loadDrinks();
       checkPremium();
       loadStreakGoal();
-    }, [loadDrinks, checkPremium, loadStreakGoal])
+    }
+    wasOnboardingRef.current = isOnboardingActive;
+  }, [isOnboardingActive, loadDrinks, checkPremium, loadStreakGoal]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isOnboardingActive) {
+        setAllDrinks(getDemoDrinksForOnboarding());
+        checkPremium();
+        loadStreakGoal();
+        return;
+      }
+      loadDrinks();
+      checkPremium();
+      loadStreakGoal();
+    }, [loadDrinks, checkPremium, loadStreakGoal, isOnboardingActive])
   );
 
   const overallStats = useMemo(() => getOverallStats(filteredDrinks), [filteredDrinks]);
