@@ -178,13 +178,14 @@ function AppContent() {
     return () => sub.remove();
   }, []);
 
-  // Навигация по вкладкам: шаг 3 — Календарь, 4 — Статистика, 5 и 6 — Настройки (чтобы календарь и статистика были видны в онбординге).
+  // Навигация по вкладкам: шаг 3 — «Сегодня» (полоска «Добавить разовую запись»), 4 — Календарь, 5 — Статистика, 6–8 — Настройки.
   useLayoutEffect(() => {
     if (interactiveStep === null) return;
     if (!navigationRef.isReady()) return;
-    if (interactiveStep === 3) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
-    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
-    if (interactiveStep === 5 || interactiveStep === 6 || interactiveStep === 7) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
+    if (interactiveStep === 3) navigationRef.navigate('MainTabs' as never, { screen: 'Сегодня' } as never);
+    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
+    if (interactiveStep === 5) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
+    if (interactiveStep === 6 || interactiveStep === 7 || interactiveStep === 8) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
   }, [interactiveStep]);
 
   const completeOnboarding = async () => {

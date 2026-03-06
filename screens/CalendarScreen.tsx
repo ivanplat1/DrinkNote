@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
-import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons, Entypo } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
@@ -30,6 +30,7 @@ import { getStreakGoal } from '../storage/streakGoal';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useOnboarding } from '../context/OnboardingContext';
 import { getDemoDrinksForOnboarding } from '../utils/onboardingDemoData';
+import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
 
 const LABEL_COLOR_PRESETS = [
   '#6B9BD1', '#E07C7C', '#7EC87E', '#E8B84A', '#9B7EDE',
@@ -1295,6 +1296,7 @@ export default function CalendarScreen() {
   // Состояния для добавления напитков
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
@@ -1349,6 +1351,11 @@ export default function CalendarScreen() {
       other: 'Другое',
     };
     return labels[type] || labels.other;
+  };
+
+  const getBeverageColors = (type: PresetDrink['beverageType']) => {
+    const c = (colors as Record<string, { main: string; light: string; text: string }>)[type] ?? (colors as Record<string, { main: string; light: string; text: string }>).other;
+    return { main: c.main, light: c.light, text: c.text };
   };
 
   // Функции для работы с модальными окнами
@@ -1423,6 +1430,25 @@ export default function CalendarScreen() {
       console.error('[CalendarScreen] Error in addDrinkFromPreset:', error);
     }
   };
+
+  const saveOneTimeEntry = useCallback(async (data: OneTimeEntryData) => {
+    if (!selectedDate) return;
+    const units = calculateStandardUnits(data.volumeMl, data.abvPercent);
+    const entry: Drink = {
+      id: `drink_${Date.now()}`,
+      dateISO: selectedDate,
+      name: data.name,
+      beverageType: data.beverageType,
+      volumeMl: data.volumeMl,
+      abvPercent: data.abvPercent,
+      standardUnits: units,
+      quantity: 1,
+      ...(data.price != null && { price: data.price }),
+    };
+    const updated = await addOrMergeDrink(entry);
+    const list = updated.filter((d) => d.dateISO === selectedDate);
+    setDayList(list);
+  }, [selectedDate]);
 
   // Изменение количества записи
   const changeQuantity = async (id: string, delta: number) => {
@@ -2474,8 +2500,8 @@ export default function CalendarScreen() {
         <TouchableWithoutFeedback onPress={closeAddModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 20}
               style={[
                 styles.kav,
                 searchQuery && searchQuery.trim() && { justifyContent: 'flex-start' }
@@ -2518,8 +2544,18 @@ export default function CalendarScreen() {
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
-                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из избранного или добавьте свой</Text>
-                  
+                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>Выберите из избранного или добавьте свой</Text>
+                    <TouchableOpacity
+                      style={[styles.addOneTimeButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setOneTimeModalVisible(true);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Entypo name="plus" size={18} color={colors.primary} />
+                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>Добавить разовую запись</Text>
+                    </TouchableOpacity>
                     {/* Строка поиска для предложенных пресетов */}
                     <TextInput
                       placeholder="Поиск напитков..."
@@ -2615,8 +2651,8 @@ export default function CalendarScreen() {
         <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -2649,7 +2685,7 @@ export default function CalendarScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
-                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Объём и крепость будут автоматически добавлены в название
@@ -2667,19 +2703,22 @@ export default function CalendarScreen() {
                     <View style={styles.row}>
                       <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                       <View style={styles.typeRow}>
-                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
-                          <TouchableOpacity
-                            key={t}
-                            style={[
-                              styles.typeChip, 
-                              { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                              newType === t && [styles.typeChipActive, { backgroundColor: colors.primaryDark, borderColor: colors.primary }]
-                            ]}
-                            onPress={() => setNewType(t)}
-                          >
-                            <Text style={[styles.typeChipText, { color: newType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
+                          const bc = getBeverageColors(t);
+                          const isSelected = newType === t;
+                          return (
+                            <TouchableOpacity
+                              key={t}
+                              style={[
+                                styles.typeChip,
+                                { backgroundColor: isSelected ? bc.main : bc.light, borderColor: bc.main },
+                              ]}
+                              onPress={() => setNewType(t)}
+                            >
+                              <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </View>
                     <View style={styles.row}>
@@ -2731,6 +2770,13 @@ export default function CalendarScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <AddOneTimeEntryModal
+        visible={oneTimeModalVisible}
+        onClose={() => setOneTimeModalVisible(false)}
+        isPremium={isPremium}
+        onSave={saveOneTimeEntry}
+      />
 
       {/* Модалка меток на период (премиум) — по центру экрана */}
       <Modal visible={labelsModalVisible} transparent animationType="fade">
@@ -3667,20 +3713,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   addCustomButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     backgroundColor: defaultColors.backgroundSecondary,
-    borderRadius: 12,
+    borderRadius: 10,
     marginTop: 8,
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: defaultColors.border,
   },
   addCustomButtonText: {
     color: defaultColors.primaryLight || defaultColors.primary,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addOneTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    gap: 6,
+  },
+  addOneTimeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   addButton: {
     flexDirection: 'row',

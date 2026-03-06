@@ -20,6 +20,7 @@ import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix 
 import { runNotificationChecks } from '../services/notifications';
 import { useOnboarding } from '../context/OnboardingContext';
 import OnboardingOverlayContent from '../components/OnboardingOverlayContent';
+import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
   return themeColors[type] || themeColors.other;
@@ -252,6 +253,7 @@ export default function TodayScreen() {
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date());
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
 
   // Анимация модалок - движение за пальцем
   const addModalTranslateY = useSharedValue(0);
@@ -427,6 +429,23 @@ export default function TodayScreen() {
     const list = await getDrinksByDate(formatISO(selectedDateForAdd));
     setTodayList(list);
   }, [selectedDateForAdd]);
+
+  const saveOneTimeEntry = useCallback(async (data: OneTimeEntryData) => {
+    const units = calculateStandardUnits(data.volumeMl, data.abvPercent);
+    const entry: Drink = {
+      id: `drink_${Date.now()}`,
+      dateISO: formatISO(selectedDateForAdd),
+      name: data.name,
+      beverageType: data.beverageType,
+      volumeMl: data.volumeMl,
+      abvPercent: data.abvPercent,
+      standardUnits: units,
+      quantity: 1,
+      ...(data.price != null && { price: data.price }),
+    };
+    await addOrMergeDrink(entry);
+    await reloadToday();
+  }, [selectedDateForAdd, reloadToday]);
 
   useFocusEffect(
     useCallback(() => {
@@ -626,6 +645,7 @@ export default function TodayScreen() {
   const favoritesRef = useRef<View>(null);
   const addButtonRef = useRef<View>(null);
   const firstPresetRef = useRef<View>(null);
+  const oneTimeEntryRef = useRef<View>(null);
   const modalHeaderPlusRef = useRef<View>(null);
 
   // Регистрация координат только из useEffect (относительно корня экрана). Шаги 0–2: избранное, редактирование, кнопка «плюс».
@@ -662,6 +682,17 @@ export default function TodayScreen() {
     }, 100);
     return () => clearTimeout(t);
   }, [interactiveStep, userPresets.length, registerTarget]);
+
+  // Шаг 3: координаты полоски «Добавить запись» (в координатах окна для глобального оверлея)
+  useEffect(() => {
+    if (interactiveStep !== 3) return;
+    const t = setTimeout(() => {
+      oneTimeEntryRef.current?.measureInWindow((x, y, w, h) => {
+        registerTarget('oneTimeEntry', { x, y, width: w, height: h });
+      });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [interactiveStep, registerTarget]);
 
   // Демо-пресеты для онбординга: Пиво 500мл, Вино, Коньяк, Виски кола (только при пустом избранном)
   const demoPresetsAddedRef = useRef(false);
@@ -707,8 +738,8 @@ export default function TodayScreen() {
   const step = interactiveStep !== null ? stepConfig[interactiveStep] : null;
   const goNext = useCallback(() => {
     if (interactiveStep === null) return;
+    // Шаг 2 → 3: остаёмся на «Сегодня» (следующий слайд — полоска «Добавить запись»)
     if (interactiveStep === 2) {
-      navigation.navigate('Календарь' as never);
       setInteractiveStep(3);
       return;
     }
@@ -923,6 +954,17 @@ export default function TodayScreen() {
           );
         }}
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
+        ListFooterComponent={
+          <TouchableOpacity
+            ref={oneTimeEntryRef}
+            style={[styles.addOneTimeStrip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
+            onPress={() => setOneTimeModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Entypo name="plus" size={22} color={colors.primary} />
+            <Text style={[styles.addOneTimeStripText, { color: colors.primary }]}>Добавить разовую запись</Text>
+          </TouchableOpacity>
+        }
         contentContainerStyle={{ paddingBottom: 24 }}
       />
       </View>
@@ -931,7 +973,7 @@ export default function TodayScreen() {
       <Modal visible={addModalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
           style={styles.kav}
         >
           <TouchableWithoutFeedback onPress={closeAddModal}>
@@ -1033,7 +1075,7 @@ export default function TodayScreen() {
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -1085,20 +1127,22 @@ export default function TodayScreen() {
                   <View style={styles.row}>
                     <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                     <View style={styles.typeRow}>
-                      {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
-                        <TouchableOpacity
-                          key={t}
-                          style={[
-                            styles.typeChip,
-                            { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                            newType === t && styles.typeChipActive,
-                            newType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary },
-                          ]}
-                          onPress={() => setNewType(t)}
-                        >
-                          <Text style={[styles.typeChipText, { color: newType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
-                        </TouchableOpacity>
-                      ))}
+                      {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
+                        const bc = getBeverageColor(t, colors);
+                        const isSelected = newType === t;
+                        return (
+                          <TouchableOpacity
+                            key={t}
+                            style={[
+                              styles.typeChip,
+                              { backgroundColor: isSelected ? bc.main : bc.light, borderColor: bc.main },
+                            ]}
+                            onPress={() => setNewType(t)}
+                          >
+                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t)}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   </View>
                   <View style={styles.row}>
@@ -1180,7 +1224,7 @@ export default function TodayScreen() {
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -1291,7 +1335,7 @@ export default function TodayScreen() {
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -1552,6 +1596,12 @@ export default function TodayScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
+      <AddOneTimeEntryModal
+        visible={oneTimeModalVisible}
+        onClose={() => setOneTimeModalVisible(false)}
+        isPremium={isPremium}
+        onSave={saveOneTimeEntry}
+      />
     </SafeAreaView>
     {interactiveStep !== null && interactiveStep <= 2 && step && (
       <View style={StyleSheet.absoluteFill} pointerEvents="auto">
@@ -2081,32 +2131,21 @@ shadowOpacity: 0.5,
     fontWeight: '500',
   },
   addCustomButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     backgroundColor: defaultColors.backgroundSecondary,
-    borderRadius: 12,
+    borderRadius: 10,
     marginTop: 8,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: defaultColors.primary,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: defaultColors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
   },
   addCustomButtonText: {
     color: defaultColors.primaryLight,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsBar: {
     flexDirection: 'row',
@@ -2266,6 +2305,23 @@ shadowOpacity: 0.5,
     fontSize: 16,
     fontWeight: '600',
     color: defaultColors.text,
+  },
+  addOneTimeStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  addOneTimeStripText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   qtyButton: {
     width: 32,

@@ -300,7 +300,8 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
-      <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <Animated.ScrollView keyboardShouldPersistTaps="handled" style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }, { paddingBottom: 280 }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
@@ -609,7 +610,7 @@ export default function SettingsScreen() {
             style={styles.modalOverlayCenter}
             onPress={() => setShowStreakGoalModal(false)}
           >
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContentWrap}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40} style={styles.modalContentWrap}>
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.modalContent, { backgroundColor: colors.backgroundCard }]}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Цель: дней без алкоголя</Text>
                 <TextInput
@@ -750,7 +751,8 @@ export default function SettingsScreen() {
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
           </View>
     </View>
-      </Animated.ScrollView>
+        </Animated.ScrollView>
+      </KeyboardAvoidingView>
 
       {/* DateTimePicker для даты рождения */}
       {Platform.OS === 'ios' ? (
