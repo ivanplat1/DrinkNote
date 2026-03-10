@@ -5,6 +5,9 @@ import { useTheme } from '../theme/ThemeContext';
 import OnboardingOverlayContent from './OnboardingOverlayContent';
 
 type Props = { onComplete?: () => void };
+// Визуально у пунктирной кнопки сверху/по бокам зазор воспринимается меньше,
+// поэтому делаем асимметричный внешний отступ рамки.
+const ONE_TIME_ENTRY_SPOT_MARGINS = { top: 10, right: 10, bottom: 10, left: 10 };
 
 /** Оверлей для шагов 3–6 (Календарь, Статистика, Настройки, профиль). Непрозрачный фон — без «швов» при смене слайда. */
 export default function OnboardingOverlay({ onComplete }: Props) {
@@ -14,7 +17,7 @@ export default function OnboardingOverlay({ onComplete }: Props) {
   const [overlayOrigin, setOverlayOrigin] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (interactiveStep === null || interactiveStep < 3) return;
+    if (interactiveStep === null || interactiveStep < 4) return;
     const key = stepConfig[interactiveStep]?.key;
     if (key && targets[key]) {
       const t = setTimeout(() => {
@@ -34,6 +37,9 @@ export default function OnboardingOverlay({ onComplete }: Props) {
   const layout = raw
     ? { x: raw.x - overlayOrigin.x, y: raw.y - overlayOrigin.y, width: raw.width, height: raw.height }
     : null;
+  if (__DEV__ && step?.key === 'oneTimeEntry' && raw) {
+    console.log('[OnboardingOverlay oneTimeEntry] overlayOrigin', overlayOrigin, 'raw', raw, 'layout', layout);
+  }
 
   const isLast = interactiveStep === stepConfig.length - 1;
   const goNext = () => {
@@ -62,7 +68,10 @@ export default function OnboardingOverlay({ onComplete }: Props) {
           isLast={isLast}
           onNext={goNext}
           hideSpotlight={hideSpotlight}
-          footerOffset={72}
+          tightTop={step?.key === 'oneTimeEntry'}
+          footerOffset={0}
+          bottomReservedSpace={96}
+          spotMargins={step?.key === 'oneTimeEntry' ? ONE_TIME_ENTRY_SPOT_MARGINS : undefined}
         />
       </View>
     </Modal>

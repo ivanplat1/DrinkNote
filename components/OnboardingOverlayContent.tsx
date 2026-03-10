@@ -17,8 +17,16 @@ export type OnboardingOverlayContentProps = {
   hideSpotlight?: boolean;
   /** Только для шага 0: уменьшить отступ снизу у рамки, чтобы не обрезало */
   tightBottom?: boolean;
+  /** Не добавлять отступ сверху у рамки (например шаг oneTimeEntry: выделение не выше кнопки) */
+  tightTop?: boolean;
   /** Доп. отступ снизу у футера (для оверлея поверх табов — приподнять блок, чтобы были видны вкладки) */
   footerOffset?: number;
+  /** Зарезервировать снизу область (например под таб-бар), чтобы не затемнять и не перекрывать её футером */
+  bottomReservedSpace?: number;
+  /** Не затемнять область ниже подсветки (чтобы не перекрывать таб-бар на шагах 5+) */
+  hideBottomShade?: boolean;
+  /** Явные внешние отступы рамки вокруг target (top/right/bottom/left) */
+  spotMargins?: { top: number; right: number; bottom: number; left: number };
 };
 
 export default function OnboardingOverlayContent({
@@ -28,31 +36,48 @@ export default function OnboardingOverlayContent({
   onNext,
   hideSpotlight = false,
   tightBottom = false,
+  tightTop = false,
   footerOffset = 0,
+  bottomReservedSpace = 0,
+  hideBottomShade = false,
+  spotMargins,
 }: OnboardingOverlayContentProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const x = (layout?.x ?? 0) - SPOT_PADDING;
-  const y = (layout?.y ?? 0) - SPOT_PADDING;
-  const w = (layout?.width ?? 0) + SPOT_PADDING * 2;
-  const bottomPad = tightBottom ? SPOT_PADDING_BOTTOM : SPOT_PADDING;
-  const h = (layout?.height ?? 0) + SPOT_PADDING + bottomPad;
+  const defaultTop = tightTop ? 0 : SPOT_PADDING;
+  const defaultRight = SPOT_PADDING;
+  const defaultBottom = tightBottom ? SPOT_PADDING_BOTTOM : SPOT_PADDING;
+  const defaultLeft = SPOT_PADDING;
+  const topPad = spotMargins?.top ?? defaultTop;
+  const rightPad = spotMargins?.right ?? defaultRight;
+  const bottomPad = spotMargins?.bottom ?? defaultBottom;
+  const leftPad = spotMargins?.left ?? defaultLeft;
+
+  const x = (layout?.x ?? 0) - leftPad;
+  const rawY = (layout?.y ?? 0) - topPad;
+  const y = Math.max(0, rawY);
+  const w = (layout?.width ?? 0) + leftPad + rightPad;
+  const h = (layout?.height ?? 0) + topPad + bottomPad;
 
   return (
     <>
-      {layout && !hideSpotlight && (
+      {hideSpotlight ? (
+        <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.5)', top: 0, left: 0, right: 0, bottom: 0 }]} />
+      ) : layout ? (
         <>
           <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, height: Math.max(0, y) }]} />
           <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: 0, width: Math.max(0, x), height: h }]} />
           <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: x + w, right: 0, height: h }]} />
-          <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y + h, left: 0, right: 0, bottom: 0 }]} />
+          {!hideBottomShade && (
+            <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y + h, left: 0, right: 0, bottom: bottomReservedSpace }]} />
+          )}
           <View
             style={[styles.spotlight, { left: x, top: y, width: w, height: h, borderColor: colors.primary, backgroundColor: 'transparent' }]}
           />
         </>
-      )}
-      <View style={[styles.footer, { paddingBottom: 24 + insets.bottom + footerOffset, paddingHorizontal: 24 }]} pointerEvents="auto">
+      ) : null}
+      <View style={[styles.footer, { bottom: bottomReservedSpace, paddingBottom: 16 + insets.bottom + footerOffset, paddingHorizontal: 20 }]} pointerEvents="auto">
         <View style={[styles.tooltipCard, { backgroundColor: colors.backgroundCard, borderColor: colors.primary }]}>
           <Text style={[styles.tooltip, { color: colors.text }]}>{tooltip}</Text>
         </View>
@@ -74,13 +99,13 @@ const styles = StyleSheet.create({
   },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   tooltipCard: {
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 10,
     borderWidth: 1,
     ...(Platform.OS === 'android' ? { elevation: 8 } : {}),
   },
-  tooltip: { fontSize: 16, lineHeight: 24, textAlign: 'center' },
-  nextBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  nextText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  tooltip: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  nextBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  nextText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

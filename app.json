@@ -1,5 +1,8 @@
 {
   "expo": {
+    "autolinking": {
+      "exclude": ["expo-in-app-purchases"]
+    },
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
