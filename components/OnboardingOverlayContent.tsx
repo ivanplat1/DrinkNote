@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import type { SpotLayout } from '../context/OnboardingContext';
@@ -47,6 +47,10 @@ export default function OnboardingOverlayContent({
 }: OnboardingOverlayContentProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const shadeOpacity = useRef(new Animated.Value(1)).current;
+  const spotlightOpacity = useRef(new Animated.Value(1)).current;
+  const spotlightScale = useRef(new Animated.Value(1)).current;
+  const footerTranslateY = useRef(new Animated.Value(0)).current;
 
   const defaultTop = tightTop ? 0 : SPOT_PADDING;
   const defaultRight = SPOT_PADDING;
@@ -63,26 +67,86 @@ export default function OnboardingOverlayContent({
   const w = (layout?.width ?? 0) + leftPad + rightPad;
   const h = (layout?.height ?? 0) + topPad + bottomPad;
 
+  useEffect(() => {
+    shadeOpacity.setValue(0.65);
+    spotlightOpacity.setValue(0);
+    spotlightScale.setValue(0.92);
+    footerTranslateY.setValue(28);
+
+    const smoothOut = Easing.bezier(0.22, 1, 0.36, 1);
+
+    Animated.parallel([
+      Animated.timing(shadeOpacity, {
+        toValue: 1,
+        duration: 480,
+        easing: smoothOut,
+        useNativeDriver: true,
+      }),
+      Animated.timing(spotlightOpacity, {
+        toValue: 1,
+        duration: 580,
+        easing: smoothOut,
+        useNativeDriver: true,
+      }),
+      Animated.timing(spotlightScale, {
+        toValue: 1,
+        duration: 580,
+        easing: smoothOut,
+        useNativeDriver: true,
+      }),
+      Animated.timing(footerTranslateY, {
+        toValue: 0,
+        duration: 600,
+        easing: smoothOut,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [tooltip, hideSpotlight, shadeOpacity, spotlightOpacity, spotlightScale, footerTranslateY]);
+
   return (
     <>
       {hideSpotlight ? (
-        <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.5)', top: 0, left: 0, right: 0, bottom: 0 }]} />
+        <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.5)', top: 0, left: 0, right: 0, bottom: 0 }]} />
       ) : layout ? (
         <>
-          <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, height: Math.max(0, y) }]} />
-          <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: 0, width: Math.max(0, x), height: h }]} />
-          <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: x + w, right: 0, height: h }]} />
+          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, height: Math.max(0, y) }]} />
+          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: 0, width: Math.max(0, x), height: h }]} />
+          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: x + w, right: 0, height: h }]} />
           {!hideBottomShade && (
-            <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: y + h, left: 0, right: 0, bottom: bottomReservedSpace }]} />
+            <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y + h, left: 0, right: 0, bottom: bottomReservedSpace }]} />
           )}
-          <View
-            style={[styles.spotlight, { left: x, top: y, width: w, height: h, borderColor: colors.primary, backgroundColor: 'transparent' }]}
+          <Animated.View
+            style={[
+              styles.spotlight,
+              {
+                opacity: spotlightOpacity,
+                transform: [{ scale: spotlightScale }],
+                left: x,
+                top: y,
+                width: w,
+                height: h,
+                borderColor: colors.primary,
+                backgroundColor: 'transparent',
+              },
+            ]}
           />
         </>
       ) : (
-        <View style={[styles.shade, { backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, bottom: bottomReservedSpace }]} />
+        <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, bottom: bottomReservedSpace }]} />
       )}
-      <View style={[styles.footer, { bottom: bottomReservedSpace, paddingBottom: 16 + insets.bottom + footerOffset, paddingHorizontal: 20 }]} pointerEvents="auto">
+      <Animated.View
+        style={[
+          styles.footer,
+          {
+            transform: [{ translateY: footerTranslateY }],
+            bottom: bottomReservedSpace,
+            paddingBottom: 16 + insets.bottom + footerOffset,
+            paddingHorizontal: 20,
+          },
+        ]}
+        pointerEvents="auto"
+      >
+        <View style={[styles.footerSurface, { backgroundColor: colors.background }]} pointerEvents="none" />
         <View style={[styles.tooltipCard, { backgroundColor: colors.backgroundCard, borderColor: colors.primary }]}>
           <Text style={[styles.tooltip, { color: colors.text }]}>{tooltip}</Text>
         </View>
@@ -94,20 +158,27 @@ export default function OnboardingOverlayContent({
         >
           <Text style={styles.nextText}>{isLast ? 'Готово' : 'Далее'}</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  shade: { position: 'absolute' },
+  shade: { position: 'absolute', zIndex: 1 },
   spotlight: {
     position: 'absolute',
+    zIndex: 2,
     borderWidth: 3,
     borderRadius: 12,
     backgroundColor: 'transparent',
   },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, elevation: 20 },
+  footerSurface: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 1,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
   tooltipCard: {
     padding: 12,
     borderRadius: 12,
