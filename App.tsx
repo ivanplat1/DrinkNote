@@ -5,6 +5,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { View, Platform, AppState, Linking } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -72,14 +73,8 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const { colors, themeName } = useTheme();
   const navigationRef = useNavigationContainerRef();
-  const [initialTab, setInitialTab] = React.useState<'Сегодня' | 'Настройки' | null>(null);
+  const [initialTab] = React.useState<'Сегодня' | 'Настройки'>('Сегодня');
   const { onboardingSeen, setOnboardingSeen, interactiveStep } = useOnboarding();
-
-  // После загрузки флага онбординга (в контексте) показываем вкладку «Сегодня»
-  useEffect(() => {
-    if (onboardingSeen === null) return;
-    setInitialTab('Сегодня');
-  }, [onboardingSeen]);
 
   // Deep link: drinknote://add-drink/PRESET_ID — открыть экран добавления из виджета (один раз за 3 с по одному presetId)
   useEffect(() => {
@@ -151,9 +146,10 @@ function AppContent() {
   // Определяем стиль статус-бара в зависимости от темы
   const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
   const statusBarStyle = isLightTheme ? 'dark' : 'light';
+  const isEdgeToEdgeEnabled = Boolean((Constants as any)?.expoConfig?.android?.edgeToEdgeEnabled);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== 'android' || isEdgeToEdgeEnabled) return;
     const applyAndroidNavBar = async () => {
       try {
         const navColor = ANDROID_NAV_COLORS[themeName] ?? colors.background;
@@ -167,7 +163,7 @@ function AppContent() {
       }
     };
     applyAndroidNavBar();
-  }, [themeName, colors.background, isLightTheme]);
+  }, [themeName, colors.background, isLightTheme, isEdgeToEdgeEnabled]);
   
   // Update home screen widgets when app opens or returns to foreground (Android)
   React.useEffect(() => {
@@ -178,14 +174,14 @@ function AppContent() {
     return () => sub.remove();
   }, []);
 
-  // Навигация по вкладкам: шаг 3 — «Сегодня» (полоска «Добавить разовую запись»), 4 — Календарь, 5 — Статистика, 6–8 — Настройки.
+  // Навигация по вкладкам: шаг 4 — «Сегодня» (полоска разовой записи), 5 — Календарь, 6 — Статистика, 7–9 — Настройки.
   useLayoutEffect(() => {
     if (interactiveStep === null) return;
     if (!navigationRef.isReady()) return;
-    if (interactiveStep === 3) navigationRef.navigate('MainTabs' as never, { screen: 'Сегодня' } as never);
-    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
-    if (interactiveStep === 5) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
-    if (interactiveStep === 6 || interactiveStep === 7 || interactiveStep === 8) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
+    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Сегодня' } as never);
+    if (interactiveStep === 5) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
+    if (interactiveStep === 6) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
+    if (interactiveStep === 7 || interactiveStep === 8 || interactiveStep === 9) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
   }, [interactiveStep]);
 
   const completeOnboarding = async () => {
@@ -198,8 +194,8 @@ function AppContent() {
     }
   };
 
-  // Ожидание загрузки флага онбординга и initialTab
-  if (onboardingSeen === null || initialTab === null) {
+  // Ожидание загрузки флага онбординга
+  if (onboardingSeen === null) {
     return (
       <NavigationContainer ref={navigationRef}>
         <StatusBar style={statusBarStyle} />
@@ -292,8 +288,8 @@ function AppContent() {
           />
           <Stack.Screen name="AddFromWidget" component={AddFromWidgetScreen} />
         </Stack.Navigator>
-      {/* Глобальный оверлей онбординга для шагов 3–6 (Календарь, Статистика, Настройки, профиль) */}
-      {!onboardingSeen && interactiveStep !== null && interactiveStep >= 3 && <OnboardingOverlay onComplete={completeOnboarding} />}
+      {/* Глобальный оверлей онбординга для всех интерактивных шагов. */}
+      {!onboardingSeen && interactiveStep !== null && <OnboardingOverlay onComplete={completeOnboarding} />}
       </NavigationContainer>
   );
 }

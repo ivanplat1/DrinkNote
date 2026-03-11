@@ -34,6 +34,12 @@ export default function Onboarding({ onComplete, onStartInteractive }: Props) {
 
   const slides: Slide[] = [
     {
+      key: 'hello',
+      icon: <Ionicons name="hand-left" size={72} color={colors.primary} />,
+      title: 'Привет!',
+      description: 'Рады видеть вас. Сейчас коротко покажем, как пользоваться приложением.',
+    },
+    {
       key: 'welcome',
       icon: <Ionicons name="wine" size={72} color={colors.primary} />,
       title: 'Добро пожаловать в DrinkNote',

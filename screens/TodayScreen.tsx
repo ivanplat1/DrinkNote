@@ -19,7 +19,6 @@ import { colors as defaultColors } from '../theme/colors';
 import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix } from '../utils/date';
 import { runNotificationChecks } from '../services/notifications';
 import { useOnboarding } from '../context/OnboardingContext';
-import OnboardingOverlayContent from '../components/OnboardingOverlayContent';
 import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
@@ -364,9 +363,7 @@ export default function TodayScreen() {
         userPreset.beverageType === suggested.beverageType
       );
     });
-    
-    console.log('[FILTER] Before search filter, count:', filtered.length, 'searchQuery:', searchQuery);
-    
+
     // Фильтрация по поисковому запросу
     let result = filtered;
     if (searchQuery && searchQuery.trim()) {
@@ -374,9 +371,6 @@ export default function TodayScreen() {
       result = filtered.filter((preset) => 
         preset.name.toLowerCase().includes(query)
       );
-      console.log('[FILTER] After search filter, query:', query, 'result count:', result.length, 'names:', result.map(p => p.name));
-    } else {
-      console.log('[FILTER] No search query, returning all:', filtered.length);
     }
     
     return result;
@@ -406,6 +400,7 @@ export default function TodayScreen() {
   };
 
   const [todayList, setTodayList] = useState<Drink[]>([]);
+  const todayListRef = useRef<FlatList<Drink>>(null);
   const totalUnits = useMemo(() => todayList.reduce((s, d) => s + d.standardUnits, 0), [todayList]);
   const totalVolumeMl = useMemo(() => todayList.reduce((s, d) => s + d.volumeMl * (d.quantity ?? 1), 0), [todayList]);
   const totalPrice = useMemo(() => todayList.reduce((s, d) => s + (d.price ?? 0), 0), [todayList]);
@@ -588,18 +583,7 @@ export default function TodayScreen() {
   const [deletingPresetId, setDeletingPresetId] = useState<string | null>(null);
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 
-  // Логирование изменений searchQuery
-  useEffect(() => {
-    console.log('[SEARCH] searchQuery changed to:', searchQuery, 'length:', searchQuery.length);
-  }, [searchQuery]);
-
-  // Логирование изменений addModalVisible
-  useEffect(() => {
-    console.log('[MODAL] addModalVisible changed to:', addModalVisible);
-  }, [addModalVisible]);
-
   const handleSearchChange = (text: string) => {
-    console.log('[SEARCH] onChangeText called, new text:', text, 'old text:', searchQuery);
     setSearchQuery(text);
   };
 
@@ -640,22 +624,22 @@ export default function TodayScreen() {
   }));
 
   const navigation = useNavigation();
-  const { interactiveStep, registerTarget, targets, stepConfig, setInteractiveStep, finishInteractive } = useOnboarding();
+  const { interactiveStep, registerTarget } = useOnboarding();
   const screenRootRef = useRef<View>(null);
   const favoritesRef = useRef<View>(null);
   const addButtonRef = useRef<View>(null);
   const firstPresetRef = useRef<View>(null);
-  const oneTimeEntryRef = useRef<View>(null);
+  const oneTimeEntryContainerRef = useRef<View>(null);
+  const oneTimeEntryRef = useRef<any>(null);
   const modalHeaderPlusRef = useRef<View>(null);
 
-  // Регистрация координат только из useEffect (относительно корня экрана). Шаги 0–2: избранное, редактирование, кнопка «плюс».
+  // Регистрация координат: шаг 0 — приветствие (без цели), шаги 1–3: избранное, редактирование, кнопка «плюс».
   useEffect(() => {
-    if (interactiveStep === null || interactiveStep > 2) return;
-    const key = ['favorites', 'favoritesEdit', 'addButton'][interactiveStep];
+    if (interactiveStep === null || interactiveStep < 1 || interactiveStep > 3) return;
+    const key = ['favorites', 'favoritesEdit', 'addButton'][interactiveStep - 1];
     const refs = [favoritesRef, firstPresetRef, addButtonRef] as const;
-    const r = refs[interactiveStep];
-    // Шаг 0: даём время отрисоваться избранному и демо-пресетам; остальные — быстрее
-    const delay = interactiveStep === 0 ? 400 : 200;
+    const r = refs[interactiveStep - 1];
+    const delay = interactiveStep === 1 ? 80 : 16;
     const t = setTimeout(() => {
       screenRootRef.current?.measureInWindow((x0, y0) => {
         r.current?.measureInWindow((x1, y1, w, h) => {
@@ -670,34 +654,40 @@ export default function TodayScreen() {
     return () => clearTimeout(t);
   }, [interactiveStep, registerTarget]);
 
-  // Перемерка блока «Избранное» при появлении пресетов (шаг 0), чтобы рамка не обрезала контент
+  // Перемерка блока «Избранное» при появлении пресетов (шаг 1), чтобы рамка не обрезала контент
   useEffect(() => {
-    if (interactiveStep !== 0 || !userPresets.length) return;
+    if (interactiveStep !== 1 || !userPresets.length) return;
     const t = setTimeout(() => {
       screenRootRef.current?.measureInWindow((x0, y0) => {
         favoritesRef.current?.measureInWindow((x1, y1, w, h) => {
           registerTarget('favorites', { x: x1 - x0, y: y1 - y0, width: w, height: h + 8 });
         });
       });
-    }, 100);
+    }, 16);
     return () => clearTimeout(t);
   }, [interactiveStep, userPresets.length, registerTarget]);
 
-  // Шаг 3: координаты полоски «Добавить запись» (в координатах окна для глобального оверлея)
-  useEffect(() => {
-    if (interactiveStep !== 3) return;
-    const t = setTimeout(() => {
-      oneTimeEntryRef.current?.measureInWindow((x, y, w, h) => {
-        registerTarget('oneTimeEntry', { x, y, width: w, height: h });
+  // Шаг 4: подсветка кнопки разовой записи в единой системе координат относительно screenRootRef.
+  const registerOneTimeEntryTarget = useCallback(() => {
+    screenRootRef.current?.measureInWindow((rx, ry) => {
+      oneTimeEntryContainerRef.current?.measureInWindow((x, y, w, h) => {
+        const relX = x - rx;
+        const relY = y - ry;
+        registerTarget('oneTimeEntry', { x: relX, y: relY, width: w, height: h });
       });
-    }, 200);
+    });
+  }, [registerTarget]);
+  useEffect(() => {
+    if (interactiveStep !== 4) return;
+    todayListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    const t = setTimeout(registerOneTimeEntryTarget, 16);
     return () => clearTimeout(t);
-  }, [interactiveStep, registerTarget]);
+  }, [interactiveStep, registerOneTimeEntryTarget]);
 
   // Демо-пресеты для онбординга: Пиво 500мл, Вино, Коньяк, Виски кола (только при пустом избранном)
   const demoPresetsAddedRef = useRef(false);
   useEffect(() => {
-    if (interactiveStep !== 0 || userPresets.length > 0 || demoPresetsAddedRef.current) return;
+    if (interactiveStep !== 1 || userPresets.length > 0 || demoPresetsAddedRef.current) return;
     demoPresetsAddedRef.current = true;
     const demo = [
       { name: 'Пиво 500мл', beverageType: 'beer' as const, volumeMl: 500, abvPercent: 5 },
@@ -714,18 +704,18 @@ export default function TodayScreen() {
     })();
   }, [interactiveStep, userPresets.length]);
 
-  // Шаг 1: показать иконки редактирования на первом пресете (Пиво)
+  // Шаг 2 (третий слайд): показать иконки редактирования на первом пресете (Пиво)
   useEffect(() => {
-    if (interactiveStep === 1 && userPresets.length > 0) {
+    if (interactiveStep === 2 && userPresets.length > 0) {
       setEditingPresetId(userPresets[0].id);
-    } else if (interactiveStep !== 1) {
+    } else if (interactiveStep !== 2) {
       setEditingPresetId(null);
     }
   }, [interactiveStep, userPresets]);
 
-  // Шаг 3+ (календарь и далее): закрыть модалки добавления в избранное
+  // Шаг 4+ (разовая запись, календарь и далее): закрыть модалки добавления в избранное
   useEffect(() => {
-    if (interactiveStep >= 3) {
+    if (interactiveStep >= 4) {
       const t = setTimeout(() => {
         setAddModalVisible(false);
         setCustomModalVisible(false);
@@ -733,23 +723,6 @@ export default function TodayScreen() {
       return () => clearTimeout(t);
     }
   }, [interactiveStep]);
-
-
-  const step = interactiveStep !== null ? stepConfig[interactiveStep] : null;
-  const goNext = useCallback(() => {
-    if (interactiveStep === null) return;
-    // Шаг 2 → 3: остаёмся на «Сегодня» (следующий слайд — полоска «Добавить запись»)
-    if (interactiveStep === 2) {
-      setInteractiveStep(3);
-      return;
-    }
-    if (interactiveStep === stepConfig.length - 1) {
-      finishInteractive();
-    } else {
-      setInteractiveStep(interactiveStep + 1);
-    }
-  }, [interactiveStep, stepConfig.length, finishInteractive, setInteractiveStep, navigation]);
-
   return (
     <View ref={screenRootRef} style={{ flex: 1 }}>
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
@@ -766,7 +739,7 @@ export default function TodayScreen() {
           color={colors.textSecondary} 
         />
       </TouchableOpacity>
-      {(!presetsCollapsed || (interactiveStep !== null && interactiveStep <= 2)) && (() => {
+      {(!presetsCollapsed || (interactiveStep !== null && interactiveStep <= 3)) && (() => {
         const favoritesMaxHeight = Math.min(Dimensions.get('window').height * 0.36, 300);
         return (
         <View style={{ marginBottom: 12, maxHeight: favoritesMaxHeight }}>
@@ -929,8 +902,25 @@ export default function TodayScreen() {
           </>
         )}
       </View>
+      <View
+        ref={oneTimeEntryContainerRef}
+        collapsable={false}
+        style={styles.addOneTimeStripContainer}
+        onLayout={interactiveStep === 4 ? registerOneTimeEntryTarget : undefined}
+      >
+        <TouchableOpacity
+          ref={oneTimeEntryRef}
+          collapsable={false}
+          style={[styles.addOneTimeStripIcon, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
+          onPress={() => setOneTimeModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Entypo name="circle-with-plus" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
       <View style={{ flex: 1 }}>
       <FlatList
+        ref={todayListRef}
         data={todayList}
         keyExtractor={(item) => item.id}
         scrollEnabled={true}
@@ -954,17 +944,6 @@ export default function TodayScreen() {
           );
         }}
         ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
-        ListFooterComponent={
-          <TouchableOpacity
-            ref={oneTimeEntryRef}
-            style={[styles.addOneTimeStrip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
-            onPress={() => setOneTimeModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Entypo name="plus" size={22} color={colors.primary} />
-            <Text style={[styles.addOneTimeStripText, { color: colors.primary }]}>Добавить разовую запись</Text>
-          </TouchableOpacity>
-        }
         contentContainerStyle={{ paddingBottom: 24 }}
       />
       </View>
@@ -1039,8 +1018,6 @@ export default function TodayScreen() {
                         returnKeyType="search"
                         autoCapitalize="none"
                         autoCorrect={false}
-                        onFocus={() => console.log('[SEARCH] TextInput focused')}
-                        onBlur={() => console.log('[SEARCH] TextInput blurred')}
                       />
                     )}
                   
@@ -1603,18 +1580,6 @@ export default function TodayScreen() {
         onSave={saveOneTimeEntry}
       />
     </SafeAreaView>
-    {interactiveStep !== null && interactiveStep <= 2 && step && (
-      <View style={StyleSheet.absoluteFill} pointerEvents="auto">
-        <OnboardingOverlayContent
-          layout={targets[step.key]}
-          tooltip={step.tooltip}
-          isLast={interactiveStep === stepConfig.length - 1}
-          onNext={goNext}
-          hideSpotlight={false}
-          tightBottom={interactiveStep === 0}
-        />
-      </View>
-    )}
     </View>
   );
 }
@@ -2306,22 +2271,29 @@ shadowOpacity: 0.5,
     fontWeight: '600',
     color: defaultColors.text,
   },
-  addOneTimeStrip: {
-    flexDirection: 'row',
+  addOneTimeStripIcon: {
+    alignSelf: 'stretch',
+    width: '100%',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    gap: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: defaultColors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+      },
+      android: { elevation: 0 },
+    }),
   },
-  addOneTimeStripText: {
-    fontSize: 16,
-    fontWeight: '700',
+  addOneTimeStripContainer: {
+    marginBottom: 12,
   },
   qtyButton: {
     width: 32,

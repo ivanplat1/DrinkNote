@@ -3,49 +3,77 @@ import { View, Modal, StyleSheet } from 'react-native';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useTheme } from '../theme/ThemeContext';
 import OnboardingOverlayContent from './OnboardingOverlayContent';
+import type { SpotLayout } from '../context/OnboardingContext';
 
 type Props = { onComplete?: () => void };
+type VisualSnapshot = { stepIndex: number; hideSpotlight: boolean; layout: SpotLayout | null };
+const ONE_TIME_ENTRY_SPOT_MARGINS = { top: 10, right: 10, bottom: 10, left: 10 };
+const SPOTLIGHT_STEP_KEYS = new Set(['favorites', 'favoritesEdit', 'addButton', 'oneTimeEntry']);
 
-/** Оверлей для шагов 3–6 (Календарь, Статистика, Настройки, профиль). Непрозрачный фон — без «швов» при смене слайда. */
 export default function OnboardingOverlay({ onComplete }: Props) {
   const { colors } = useTheme();
   const { interactiveStep, setInteractiveStep, targets, stepConfig, finishInteractive } = useOnboarding();
   const overlayRef = useRef<View>(null);
   const [overlayOrigin, setOverlayOrigin] = useState({ x: 0, y: 0 });
+  const [snapshot, setSnapshot] = useState<VisualSnapshot | null>(null);
 
   useEffect(() => {
-    if (interactiveStep === null || interactiveStep < 3) return;
+    if (interactiveStep === null) return;
     const key = stepConfig[interactiveStep]?.key;
     if (key && targets[key]) {
-      const t = setTimeout(() => {
-        overlayRef.current?.measureInWindow((ox, oy) => setOverlayOrigin({ x: ox, y: oy }));
-      }, 50);
-      return () => clearTimeout(t);
+      const frame = requestAnimationFrame(() => {
+        overlayRef.current?.measureInWindow((ox, oy) => {
+          setOverlayOrigin((prev) => (prev.x === ox && prev.y === oy ? prev : { x: ox, y: oy }));
+        });
+      });
+      return () => cancelAnimationFrame(frame);
     }
   }, [interactiveStep, targets, stepConfig]);
 
-  if (interactiveStep === null) return null;
+  useEffect(() => {
+    if (interactiveStep === null) {
+      setSnapshot(null);
+      return;
+    }
+    const step = stepConfig[interactiveStep];
+    if (!step) return;
+    const target = targets[step.key];
+    const requiresSpotlight = SPOTLIGHT_STEP_KEYS.has(step.key);
+    if (requiresSpotlight && !target) return;
+    const hideSpotlight = step.key === 'welcome' || !target;
+    const layout = !hideSpotlight && target
+      ? { x: target.x - overlayOrigin.x, y: target.y - overlayOrigin.y, width: target.width, height: target.height }
+      : null;
+    const next: VisualSnapshot = { stepIndex: interactiveStep, hideSpotlight, layout };
+    setSnapshot((prev) => {
+      if (!prev) return next;
+      const sameMeta = prev.stepIndex === next.stepIndex && prev.hideSpotlight === next.hideSpotlight;
+      const sameLayout =
+        prev.layout === next.layout ||
+        (!!prev.layout &&
+          !!next.layout &&
+          prev.layout.x === next.layout.x &&
+          prev.layout.y === next.layout.y &&
+          prev.layout.width === next.layout.width &&
+          prev.layout.height === next.layout.height);
+      return sameMeta && sameLayout ? prev : next;
+    });
+  }, [interactiveStep, stepConfig, targets, overlayOrigin]);
 
-  const step = stepConfig[interactiveStep];
+  if (!snapshot) return null;
+  const step = stepConfig[snapshot.stepIndex];
   if (!step) return null;
 
-  const hideSpotlight = false;
-  const raw = !hideSpotlight && targets[step.key] ? targets[step.key] : null;
-  const layout = raw
-    ? { x: raw.x - overlayOrigin.x, y: raw.y - overlayOrigin.y, width: raw.width, height: raw.height }
-    : null;
-
-  const isLast = interactiveStep === stepConfig.length - 1;
+  const isLast = snapshot.stepIndex === stepConfig.length - 1;
   const goNext = () => {
     if (isLast) {
       finishInteractive();
       setTimeout(() => onComplete?.(), 0);
     } else {
-      setInteractiveStep(interactiveStep + 1);
+      setInteractiveStep(snapshot.stepIndex + 1);
     }
   };
 
-  // Прозрачный фон на шагах 3–6, чтобы были видны Календарь, Статистика и Настройки.
   const opaqueOverlay = false;
 
   return (
@@ -57,12 +85,15 @@ export default function OnboardingOverlay({ onComplete }: Props) {
         collapsable={false}
       >
         <OnboardingOverlayContent
-          layout={layout}
+          layout={snapshot.layout}
           tooltip={step.tooltip}
           isLast={isLast}
           onNext={goNext}
-          hideSpotlight={hideSpotlight}
-          footerOffset={72}
+          hideSpotlight={snapshot.hideSpotlight}
+          tightTop={step?.key === 'oneTimeEntry'}
+          footerOffset={0}
+          bottomReservedSpace={96}
+          spotMargins={step?.key === 'oneTimeEntry' ? ONE_TIME_ENTRY_SPOT_MARGINS : undefined}
         />
       </View>
     </Modal>

@@ -4,7 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "postinstall": "patch-package",
-    "start": "expo start",
+    "start": "CI=false expo start",
     "start:tunnel": "expo start --tunnel",
     "start:lan": "expo start --lan",
     "android": "expo run:android",

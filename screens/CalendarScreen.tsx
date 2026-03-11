@@ -2543,8 +2543,20 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
-                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>Выберите из избранного или добавьте свой</Text>
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <TouchableOpacity
+                        style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          openCustomModal();
+                        }}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <Entypo name="circle-with-plus" size={22} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>Выберите из избранного или нажмите + для своего напитка</Text>
                     <TouchableOpacity
                       style={[styles.addOneTimeButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
                       onPress={() => {
@@ -2627,16 +2639,6 @@ export default function CalendarScreen() {
                       ))}
                     </>
                   )}
-                  
-                  <TouchableOpacity
-                    style={[styles.addCustomButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      openCustomModal();
-                    }}
-                  >
-                    <Text style={[styles.addCustomButtonText, { color: colors.primaryLight }]}>+ Добавить свой напиток</Text>
-                  </TouchableOpacity>
                 </ScrollView>
                   </View>
                 </Animated.View>
@@ -3354,6 +3356,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingBottom: 0,
     flexWrap: 'wrap',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalHeaderPlusBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
   modalTitle: {
     fontSize: 20,
