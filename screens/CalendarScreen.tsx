@@ -29,8 +29,9 @@ import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useOnboarding } from '../context/OnboardingContext';
-import { getDemoDrinksForOnboarding } from '../utils/onboardingDemoData';
+import { getDemoDrinksForOnboarding, ONBOARDING_CALENDAR_ANCHOR } from '../utils/onboardingDemoData';
 import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
+import { getStartupSnapshot } from '../services/startupCache';
 
 const LABEL_COLOR_PRESETS = [
   '#6B9BD1', '#E07C7C', '#7EC87E', '#E8B84A', '#9B7EDE',
@@ -691,6 +692,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
 });
 
 export default function CalendarScreen() {
+  const startupSnapshot = getStartupSnapshot();
   const { colors, themeName } = useTheme();
   const { isOnboardingActive } = useOnboarding();
   const wasOnboardingRef = useRef(isOnboardingActive);
@@ -702,25 +704,25 @@ export default function CalendarScreen() {
     themeName === 'nord';
   const todayWeekdayIndex = useMemo(() => getWeekdayIndexMonFirst(new Date()), []);
   const { currency } = useCurrency();
-  const [all, setAll] = useState<Drink[]>([]);
+  const [all, setAll] = useState<Drink[]>(startupSnapshot?.allDrinks ?? []);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
-  const [dailyGoal, setDailyGoal] = useState<number | null>(null);
-  const [lethalDose, setLethalDose] = useState<number>(15);
-  const [appStartDate, setAppStartDate] = useState<string | null>(null);
-  const appStartDateRef = useRef<string | null>(null);
+  const [dailyGoal, setDailyGoal] = useState<number | null>(startupSnapshot?.dailyGoal ?? null);
+  const [lethalDose, setLethalDose] = useState<number>(startupSnapshot?.lethalDose ?? 15);
+  const [appStartDate, setAppStartDate] = useState<string | null>(startupSnapshot?.appStartDate ?? null);
+  const appStartDateRef = useRef<string | null>(startupSnapshot?.appStartDate ?? null);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
   const insets = useSafeAreaInsets();
-  const [headerHeight, setHeaderHeight] = useState<number>(0);
-  const [weekRowHeight, setWeekRowHeight] = useState<number>(0);
+  const [headerHeight, setHeaderHeight] = useState<number>(84);
+  const [weekRowHeight, setWeekRowHeight] = useState<number>(24);
   const [calendarAreaHeight, setCalendarAreaHeight] = useState<number | null>(null);
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'year'>('month');
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [isPremium, setIsPremium] = useState(false);
-  const [streakGoal, setStreakGoal] = useState<number | null>(null);
+  const [isPremium, setIsPremium] = useState(startupSnapshot?.isPremium ?? false);
+  const [streakGoal, setStreakGoal] = useState<number | null>(startupSnapshot?.streakGoal ?? null);
   const [dayLabelText, setDayLabelText] = useState('');
   const [dayLabelColor, setDayLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [dayLabels, setDayLabels] = useState<Array<{ text: string; color: string }>>([]);
@@ -730,9 +732,11 @@ export default function CalendarScreen() {
   const [labelText, setLabelText] = useState('');
   const [labelColor, setLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [labelDatePickerMode, setLabelDatePickerMode] = useState<'from' | 'to' | null>(null);
-  const [labelRanges, setLabelRanges] = useState<LabelRange[]>([]);
+  const [labelRanges, setLabelRanges] = useState<LabelRange[]>(startupSnapshot?.labelRanges ?? []);
   const [editingRange, setEditingRange] = useState<LabelRange | null>(null);
-  const [labelsMap, setLabelsMap] = useState<Record<string, { text: string; color: string }[]>>({});
+  const [labelsMap, setLabelsMap] = useState<Record<string, { text: string; color: string }[]>>(startupSnapshot?.labelsMap ?? {});
+  const demoDrinks = useMemo(() => getDemoDrinksForOnboarding(), []);
+  const calendarData = isOnboardingActive ? demoDrinks : all;
 
   // Автоматически выбираем текущий год при переключении на годовой режим
   useEffect(() => {
@@ -845,16 +849,18 @@ export default function CalendarScreen() {
   const totalsByDate = useMemo(() => {
     const startTime = performance.now();
     const map: Record<string, number> = {};
-    for (const d of all) {
+    for (const d of calendarData) {
       map[d.dateISO] = (map[d.dateISO] ?? 0) + d.standardUnits;
     }
     const endTime = performance.now();
     const duration = endTime - startTime;
-    if (duration > 1 || all.length > 0) {
-      console.log(`[PERF] totalsByDate computed in ${duration.toFixed(2)}ms, drinks: ${all.length}, dates: ${Object.keys(map).length}`);
+    if (duration > 1 || calendarData.length > 0) {
+      console.log(
+        `[PERF] totalsByDate computed in ${duration.toFixed(2)}ms, drinks: ${calendarData.length}, dates: ${Object.keys(map).length}`,
+      );
     }
     return map;
-  }, [all]);
+  }, [calendarData]);
 
   // Подсчет текущей серии дней без алкоголя и лучшей серии
   const sobrietyStats = useMemo(() => {
@@ -951,8 +957,9 @@ export default function CalendarScreen() {
   // Проверка и разблокировка достижений
   useEffect(() => {
     const checkAchievements = async () => {
+      if (isOnboardingActive) return;
       // Проверяем достижения только если есть записи о напитках
-      const hasAnyDrinks = all.length > 0;
+      const hasAnyDrinks = calendarData.length > 0;
       if (sobrietyStats.currentStreak > 0 && hasAnyDrinks) {
         const newAchievements = await checkAndUnlockAchievements(sobrietyStats.currentStreak, hasAnyDrinks);
         if (newAchievements.length > 0) {
@@ -967,7 +974,7 @@ export default function CalendarScreen() {
       }
     };
     checkAchievements();
-  }, [sobrietyStats.currentStreak, all.length]);
+  }, [sobrietyStats.currentStreak, calendarData.length, isOnboardingActive]);
 
   // Определяем серии дней без алкоголя для визуального выделения
   // Серии считаются ТОЛЬКО после первой записи о напитке
@@ -1097,14 +1104,33 @@ export default function CalendarScreen() {
     };
   }, [totalsByDate]);
 
-  // Подготовим список недель: от 12 месяцев назад до конца следующего месяца
+  // Подготовим список недель: от 12 месяцев назад до конца следующего месяца.
+  // В онбординге фиксируем якорь на феврале 2026, чтобы 6-й слайд всегда открывался на нужном периоде.
   const baseToday = useMemo(() => {
+    if (isOnboardingActive) {
+      const anchor = new Date(ONBOARDING_CALENDAR_ANCHOR);
+      anchor.setHours(0, 0, 0, 0);
+      return anchor;
+    }
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
-  }, []);
+  }, [isOnboardingActive]);
 
   const weeks: Date[] = useMemo(() => {
+    if (isOnboardingActive) {
+      // Для онбординга показываем только 6 недель вокруг февраля 2026 (матрица месяца),
+      // чтобы не было лишнего диапазона и начального «проскролла».
+      const matrix = buildMonthMatrix(ONBOARDING_CALENDAR_ANCHOR);
+      const result: Date[] = [];
+      for (let i = 0; i < matrix.length; i += 7) {
+        const d = new Date(matrix[i]);
+        d.setHours(0, 0, 0, 0);
+        result.push(d);
+      }
+      return result;
+    }
+
     // Верхняя граница: конец следующего месяца
     const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 2, 0);
     endMonth.setHours(0, 0, 0, 0);
@@ -1125,7 +1151,7 @@ export default function CalendarScreen() {
       cursor.setDate(cursor.getDate() + 7);
     }
     return result;
-  }, [baseToday]);
+  }, [baseToday, isOnboardingActive]);
   
   // Индекс недели, содержащей сегодняшний день
   const todayIndex = useMemo(() => {
@@ -1141,6 +1167,11 @@ export default function CalendarScreen() {
 
   // Стартовый фокус: на текущем месяце (центрируем середину месяца в видимой области).
   const initialMonthFocusIndex = useMemo(() => {
+    if (isOnboardingActive) {
+      // Для онбординга начинаем ровно с первой недели фиксированного месяца,
+      // чтобы FlatList не делал начальный «прыжок» к индексу > 0.
+      return 0;
+    }
     const middleDayOfMonth = new Date(baseToday.getFullYear(), baseToday.getMonth(), 15);
     const middleDayISO = formatISO(middleDayOfMonth);
     const middleWeekIndex = weeks.findIndex((weekStart) => {
@@ -1161,6 +1192,22 @@ export default function CalendarScreen() {
   const lastScrollIndexRef = useRef(initialMonthFocusIndex);
   const didInitialMonthFocusRef = useRef(false);
   const lastVisibleIndexUpdateMsRef = useRef(0);
+
+  // В онбординге всегда показываем фиксированный период — синхронизируем скролл при смене шага.
+  useEffect(() => {
+    if (isOnboardingActive) {
+      setVisibleIndex(0);
+      lastScrollIndexRef.current = 0;
+    }
+  }, [isOnboardingActive]);
+
+  // В онбординге всегда показываем февраль 2026 — синхронизируем скролл при смене baseToday.
+  useEffect(() => {
+    if (isOnboardingActive) {
+      setVisibleIndex(initialMonthFocusIndex);
+      lastScrollIndexRef.current = initialMonthFocusIndex;
+    }
+  }, [isOnboardingActive, initialMonthFocusIndex]);
   
   // Отдельное состояние для текста заголовка и его анимации
   const [monthLabel, setMonthLabel] = useState<string>('');
@@ -1232,12 +1279,11 @@ export default function CalendarScreen() {
     const startTime = performance.now();
     const iso = formatISO(date);
     setSelectedDate(iso);
-    // Используем локальное состояние all вместо загрузки из AsyncStorage
-    const list = all.filter((d) => d.dateISO === iso);
+    const list = calendarData.filter((d) => d.dateISO === iso);
     const endTime = performance.now();
     console.log(`[PERF] openDay completed in ${(endTime - startTime).toFixed(2)}ms, date: ${iso}, drinks: ${list.length}`);
     setDayList(list);
-  }, [all]);
+  }, [calendarData]);
 
   const handleYearDayPress = useCallback((dateISO: string) => {
     const date = new Date(dateISO);
@@ -1323,15 +1369,6 @@ export default function CalendarScreen() {
       setUserPresets(presets);
     });
     return unsubscribe;
-  }, []);
-
-  // Cleanup для throttle таймера
-  useEffect(() => {
-    return () => {
-      if (throttleTimerRef.current) {
-        clearTimeout(throttleTimerRef.current);
-      }
-    };
   }, []);
 
   // Сбрасываем позиции модалок при открытии

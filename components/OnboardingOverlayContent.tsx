@@ -106,14 +106,76 @@ export default function OnboardingOverlayContent({
   return (
     <>
       {hideSpotlight ? (
-        <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.5)', top: 0, left: 0, right: 0, bottom: 0 }]} />
+        <Animated.View
+          style={[
+            styles.shade,
+            {
+              opacity: shadeOpacity,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              top: 0,
+              left: 0,
+              right: 0,
+              // Не затемняем область под футером и таб-баром, как на остальных шагах.
+              bottom: bottomReservedSpace,
+            },
+          ]}
+        />
       ) : layout ? (
         <>
-          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, height: Math.max(0, y) }]} />
-          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: 0, width: Math.max(0, x), height: h }]} />
-          <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y, left: x + w, right: 0, height: h }]} />
+          <Animated.View
+            style={[
+              styles.shade,
+              {
+                opacity: shadeOpacity,
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: Math.max(0, y),
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.shade,
+              {
+                opacity: shadeOpacity,
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                top: y,
+                left: 0,
+                width: Math.max(0, x),
+                height: h,
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.shade,
+              {
+                opacity: shadeOpacity,
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                top: y,
+                left: x + w,
+                right: 0,
+                height: h,
+              },
+            ]}
+          />
           {!hideBottomShade && (
-            <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: y + h, left: 0, right: 0, bottom: bottomReservedSpace }]} />
+            <Animated.View
+              style={[
+                styles.shade,
+                {
+                  opacity: shadeOpacity,
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  top: y + h,
+                  left: 0,
+                  right: 0,
+                  // Затемняем до самого низа под футер (но не таб-бар).
+                  bottom: bottomReservedSpace,
+                },
+              ]}
+            />
           )}
           <Animated.View
             style={[
@@ -132,7 +194,19 @@ export default function OnboardingOverlayContent({
           />
         </>
       ) : (
-        <Animated.View style={[styles.shade, { opacity: shadeOpacity, backgroundColor: 'rgba(0,0,0,0.65)', top: 0, left: 0, right: 0, bottom: bottomReservedSpace }]} />
+        <Animated.View
+          style={[
+            styles.shade,
+            {
+              opacity: shadeOpacity,
+              backgroundColor: 'rgba(0,0,0,0.65)',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: bottomReservedSpace,
+            },
+          ]}
+        />
       )}
       <Animated.View
         style={[
@@ -146,7 +220,7 @@ export default function OnboardingOverlayContent({
         ]}
         pointerEvents="auto"
       >
-        <View style={[styles.footerSurface, { backgroundColor: colors.background }]} pointerEvents="none" />
+        <View style={[styles.footerSurface, { backgroundColor: 'transparent' }]} pointerEvents="none" />
         <View style={[styles.tooltipCard, { backgroundColor: colors.backgroundCard, borderColor: colors.primary }]}>
           <Text style={[styles.tooltip, { color: colors.text }]}>{tooltip}</Text>
         </View>

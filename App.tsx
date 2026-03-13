@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -23,6 +23,8 @@ import { updateAllWidgets } from './services/widget';
 import { setHasCompletedFirstLaunch, setHasSeenOnboarding } from './storage/settings';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
+import * as SplashScreen from 'expo-splash-screen';
+import { preloadStartupSnapshot } from './services/startupCache';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -55,6 +57,10 @@ const ANDROID_NAV_COLORS: Record<string, string> = {
   nord: '#d8dee9',
   darcula: '#2b2b2b',
 };
+
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // no-op: splash could already be controlled by platform/Expo runtime
+});
 
 function parsePresetIdFromUrl(url: string): string | null {
   try {
@@ -295,6 +301,33 @@ function AppContent() {
 }
 
 export default function App() {
+  const [startupReady, setStartupReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await Promise.all([
+          preloadStartupSnapshot(),
+          // Небольшая пауза, чтобы сплэш не мигал.
+          new Promise((resolve) => setTimeout(resolve, 250)),
+        ]);
+      } catch (error) {
+        console.log('Startup preload failed:', error);
+      } finally {
+        if (!cancelled) {
+          setStartupReady(true);
+          SplashScreen.hideAsync().catch(() => {});
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!startupReady) return null;
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
