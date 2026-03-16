@@ -87,17 +87,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [targets, setTargets] = useState<Record<string, SpotLayout>>({});
 
   useEffect(() => {
-    let cancelled = false;
-    getHasSeenOnboarding().then((seen) => {
-      if (!cancelled) {
-        setOnboardingSeen(seen);
-        if (!seen) {
-          setTargets({});
-          setInteractiveStep(0);
-        }
-      }
-    });
-    return () => { cancelled = true; };
+    // Для отладки: всегда показываем онбординг при запуске (и на эмуляторе, и на девайсе).
+    setOnboardingSeen(false);
+    setTargets({});
+    setInteractiveStep(0);
   }, []);
 
   const registerTarget = useCallback((name: string, layout: SpotLayout) => {
