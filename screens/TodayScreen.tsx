@@ -259,6 +259,7 @@ export default function TodayScreen() {
   const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
   const [isEditKeyboardVisible, setIsEditKeyboardVisible] = useState(false);
   const [isAddEntryKeyboardVisible, setIsAddEntryKeyboardVisible] = useState(false);
+  const [isCustomKeyboardVisible, setIsCustomKeyboardVisible] = useState(false);
   const editDrinkScrollRef = useRef<ScrollView>(null);
   const editPresetScrollRef = useRef<ScrollView>(null);
 
@@ -336,6 +337,21 @@ export default function TodayScreen() {
       hideSub.remove();
     };
   }, [addEntryModalVisible]);
+
+  useEffect(() => {
+    if (!customModalVisible) return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setIsCustomKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setIsCustomKeyboardVisible(false);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [customModalVisible]);
+
   useEffect(() => {
     if (!editModalVisible && !editPresetModalVisible) {
       setIsEditKeyboardVisible(false);
@@ -403,6 +419,8 @@ export default function TodayScreen() {
     setCustomModalVisible(true);
   };
   const closeCustomModal = () => {
+    Keyboard.dismiss();
+    setIsCustomKeyboardVisible(false);
     setCustomModalVisible(false);
     setEditingCatalogItem(null);
     setNewName('');
@@ -1398,7 +1416,9 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : (isEditKeyboardVisible ? 'padding' : undefined)}
+              behavior={
+                Platform.OS === 'ios' ? 'padding' : (isCustomKeyboardVisible ? 'padding' : undefined)
+              }
               keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
@@ -1439,9 +1459,11 @@ export default function TodayScreen() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 12 : 48 + insets.bottom }}
                   >
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {editingCatalogItem ? 'Редактировать напиток' : 'Новый напиток'}
+                  </Text>
                   <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
-                    Объём и крепость будут автоматически добавлены в название
+                    {editingCatalogItem ? 'Измените данные напитка' : 'Объём и крепость будут автоматически добавлены в название'}
                   </Text>
                   <TextInput
                     placeholder="Название (например, Джин-тоник)"

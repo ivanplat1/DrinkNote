@@ -1751,6 +1751,8 @@ export default function CalendarScreen() {
 
   // Делаем автопереход к текущему месяцу только один раз при первом открытии календаря.
   useEffect(() => {
+    // Во время онбординга показываем фиксированный демо-период — не "перескакиваем" на текущий месяц.
+    if (isOnboardingActive) return;
     if (didInitialMonthFocusRef.current) return;
     if (calendarViewMode !== 'month') return;
     if (!listHeight || listHeight <= 0) return;
@@ -1760,7 +1762,7 @@ export default function CalendarScreen() {
     requestAnimationFrame(() => {
       scrollToCurrentMonth();
     });
-  }, [calendarViewMode, listHeight, initialMonthFocusIndex, scrollToCurrentMonth]);
+  }, [calendarViewMode, listHeight, initialMonthFocusIndex, scrollToCurrentMonth, isOnboardingActive]);
 
   // Показываем кнопку «Сегодня», когда уехали в прошлое или в будущее (на 4+ недель от текущей)
   const showBackToToday = useMemo(() => {
