@@ -50,5 +50,12 @@
     "sharp": "^0.33.5",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "android": {
+        "exclude": ["expo-in-app-purchases"]
+      }
+    }
+  }
 }

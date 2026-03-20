@@ -27,7 +27,7 @@ const INTERACTIVE_STEPS: InteractiveStepConfig[] = [
   },
   {
     key: 'oneTimeEntry',
-    tooltip: 'Используйте «+» для единичного добавления — без лишних шагов и сохранения.',
+    tooltip: 'Вы также можете добавить запись с помощью этой кнопки: выберите напиток среди уже сохранённых или добавьте разовую запись без сохранения и без добавления в избранное.',
   },
   {
     key: 'calendar',
@@ -39,7 +39,7 @@ const INTERACTIVE_STEPS: InteractiveStepConfig[] = [
   },
   {
     key: 'settings',
-    tooltip: 'В настройках задаются пол, возраст и вес. Эти параметры нужны для расчёта условно-безопасной нормы — той, которую ВОЗ использовала в контексте минимального риска, а не полной безопасности для здоровья. По нынешней позиции ВОЗ безопасного уровня употребления алкоголя не существует. Свою условную норму вы можете задать по желанию.',
+    tooltip: 'В настройках задаются пол, возраст и вес. Эти параметры нужны для расчёта условно-безопасной нормы — той, которую ВОЗ использовала в контексте минимального риска, а не полной безопасности для здоровья. По нынешней позиции ВОЗ безопасного уровня употребления алкоголя не существует. Вы также можете задать свою норму по желанию.',
   },
   {
     key: 'fullVersionBenefits',
@@ -87,10 +87,18 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [targets, setTargets] = useState<Record<string, SpotLayout>>({});
 
   useEffect(() => {
-    // Для отладки: всегда показываем онбординг при запуске (и на эмуляторе, и на девайсе).
-    setOnboardingSeen(false);
-    setTargets({});
-    setInteractiveStep(0);
+    let cancelled = false;
+    getHasSeenOnboarding().then((seen) => {
+      if (cancelled) return;
+      setOnboardingSeen(seen);
+      if (!seen) {
+        setTargets({});
+        setInteractiveStep(0);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const registerTarget = useCallback((name: string, layout: SpotLayout) => {

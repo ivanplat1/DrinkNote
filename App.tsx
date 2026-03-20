@@ -305,16 +305,23 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    const STARTUP_TIMEOUT_MS = 8000;
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setStartupReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    }, STARTUP_TIMEOUT_MS);
     (async () => {
       try {
         await Promise.all([
           preloadStartupSnapshot(),
-          // Небольшая пауза, чтобы сплэш не мигал.
           new Promise((resolve) => setTimeout(resolve, 250)),
         ]);
       } catch (error) {
         console.log('Startup preload failed:', error);
       } finally {
+        clearTimeout(timeoutId);
         if (!cancelled) {
           setStartupReady(true);
           SplashScreen.hideAsync().catch(() => {});
@@ -323,6 +330,7 @@ export default function App() {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, []);
 

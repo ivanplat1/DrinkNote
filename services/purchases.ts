@@ -51,7 +51,7 @@ export async function initPurchases(): Promise<boolean> {
     }
 
     // Connect to store
-    const { responseCode, results } = await module.connectAsync();
+    const { responseCode } = await module.connectAsync();
     
     if (responseCode === module.IAPResponseCode.OK) {
       isInitialized = true;
@@ -80,7 +80,12 @@ export async function initPurchases(): Promise<boolean> {
       
       return true;
     } else {
-      console.error(`Failed to initialize purchases. Response code: ${responseCode}. Make sure the app is published in at least internal testing track.`);
+      purchasesAvailable = false;
+      console.error(
+        `Failed to initialize purchases. Response code: ${responseCode}. ` +
+          `On Android, in-app purchases usually require an app build installed from Google Play (internal testing is enough) ` +
+          `and a configured product ID: ${PREMIUM_PRODUCT_ID}.`
+      );
       return false;
     }
   } catch (error) {
@@ -103,7 +108,13 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
     if (!isInitialized) {
       const initialized = await initPurchases();
       if (!initialized) {
-        return { success: false, error: 'Failed to initialize purchases' };
+        return {
+          success: false,
+          error:
+            Platform.OS === 'android'
+              ? 'Покупки недоступны. Обычно нужно установить приложение из Google Play (достаточно internal testing) и настроить продукт в Play Console.'
+              : 'Failed to initialize purchases',
+        };
       }
     }
 

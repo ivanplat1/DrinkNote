@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState, Pressable } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { MaterialIcons, Ionicons, Entypo, FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import PresetButton from '../components/PresetButton';
-import { suggestedPresets, getUserPresets, addPreset, removePreset, updatePreset, presetsEventEmitter } from '../storage/presets';
+import { getUserPresets, addPreset, removePreset, updatePreset, presetsEventEmitter } from '../storage/presets';
+import { addDrinkToCatalog, getDrinkCatalog, removeCatalogDrink, updateCatalogDrink } from '../storage/drinkCatalog';
 import { PresetDrink } from '../types/preset';
 import { addDrink, addOrMergeDrink, getDrinksByDate, getAllDrinks, removeDrink, updateDrink } from '../storage/drinks';
 import { isPremiumUser } from '../storage/premium';
@@ -228,7 +229,9 @@ export default function TodayScreen() {
   const { colors } = useTheme();
   const { currency } = useCurrency();
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
+  const [catalog, setCatalog] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addEntryModalVisible, setAddEntryModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingDrink, setEditingDrink] = useState<Drink | null>(null);
@@ -247,24 +250,34 @@ export default function TodayScreen() {
   const [newVolume, setNewVolume] = useState('500');
   const [newAbv, setNewAbv] = useState('5');
   const [newPriceVal, setNewPriceVal] = useState('');
+  const [editingCatalogItem, setEditingCatalogItem] = useState<PresetDrink | null>(null);
 
   // Выбранная дата для добавления напитка
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<Date>(new Date());
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
+  const [isEditKeyboardVisible, setIsEditKeyboardVisible] = useState(false);
+  const [isAddEntryKeyboardVisible, setIsAddEntryKeyboardVisible] = useState(false);
+  const editDrinkScrollRef = useRef<ScrollView>(null);
+  const editPresetScrollRef = useRef<ScrollView>(null);
 
   // Анимация модалок - движение за пальцем
   const addModalTranslateY = useSharedValue(0);
+  const addEntryModalTranslateY = useSharedValue(0);
   const customModalTranslateY = useSharedValue(0);
   const editModalTranslateY = useSharedValue(0);
   const editPresetModalTranslateY = useSharedValue(0);
   const datePickerModalTranslateY = useSharedValue(0);
+  const EDIT_MODAL_SCROLL_Y_PRICE = Platform.OS === 'android' ? 320 : 240;
+  const EDIT_PRESET_MODAL_SCROLL_Y_PRICE = Platform.OS === 'android' ? 420 : 320;
 
   useEffect(() => {
     (async () => {
       const presets = await getUserPresets();
       setUserPresets(presets);
+      const cat = await getDrinkCatalog();
+      setCatalog(cat);
     })();
   }, []);
   useEffect(() => {
@@ -283,6 +296,9 @@ export default function TodayScreen() {
     if (addModalVisible) addModalTranslateY.value = 0;
   }, [addModalVisible]);
   useEffect(() => {
+    if (addEntryModalVisible) addEntryModalTranslateY.value = 0;
+  }, [addEntryModalVisible]);
+  useEffect(() => {
     if (customModalVisible) customModalTranslateY.value = 0;
   }, [customModalVisible]);
   useEffect(() => {
@@ -292,8 +308,52 @@ export default function TodayScreen() {
     if (editPresetModalVisible) editPresetModalTranslateY.value = 0;
   }, [editPresetModalVisible]);
   useEffect(() => {
+    if (!editModalVisible && !editPresetModalVisible) return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setIsEditKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setIsEditKeyboardVisible(false);
+      editDrinkScrollRef.current?.scrollTo({ y: 0, animated: true });
+      editPresetScrollRef.current?.scrollTo({ y: 0, animated: true });
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [editModalVisible, editPresetModalVisible]);
+
+  useEffect(() => {
+    if (!addEntryModalVisible) return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setIsAddEntryKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setIsAddEntryKeyboardVisible(false);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [addEntryModalVisible]);
+  useEffect(() => {
+    if (!editModalVisible && !editPresetModalVisible) {
+      setIsEditKeyboardVisible(false);
+    }
+  }, [editModalVisible, editPresetModalVisible]);
+  useEffect(() => {
     if (datePickerVisible) datePickerModalTranslateY.value = 0;
   }, [datePickerVisible]);
+
+  // Если закрыли модалку "разовой записи" во время открытой клавиатуры,
+  // нужно принудительно скрыть клавиатуру, иначе KeyboardAvoidingView у модалки "Добавить напиток"
+  // может остаться в "поднятом" состоянии (появляется пустота снизу).
+  useEffect(() => {
+    if (oneTimeModalVisible) return;
+    Keyboard.dismiss();
+    addEntryModalTranslateY.value = 0;
+    setIsAddEntryKeyboardVisible(false);
+  }, [oneTimeModalVisible]);
 
   // Подписываемся на события изменения пресетов для синхронизации между экранами
   useEffect(() => {
@@ -326,6 +386,17 @@ export default function TodayScreen() {
     setAddModalVisible(false);
     setSearchQuery(''); // Очищаем поисковый запрос при закрытии
   };
+
+  const openAddEntryModal = () => setAddEntryModalVisible(true);
+  const closeAddEntryModal = () => {
+    setAddEntryModalVisible(false);
+    setEntrySearchQuery('');
+  };
+
+  const addEntryFromPreset = async (preset: PresetDrink) => {
+    await handleQuickAdd(preset);
+    closeAddEntryModal();
+  };
   const openCustomModal = () => {
     setAddModalVisible(false);
     setSearchQuery(''); // Очищаем поисковый запрос при закрытии
@@ -333,6 +404,7 @@ export default function TodayScreen() {
   };
   const closeCustomModal = () => {
     setCustomModalVisible(false);
+    setEditingCatalogItem(null);
     setNewName('');
     setNewType('beer');
     setNewVolume('500');
@@ -351,16 +423,68 @@ export default function TodayScreen() {
     closeAddModal();
   };
 
-  // Фильтруем предложенные напитки - исключаем те, что уже в избранном
-  // Проверяем точное совпадение по объему, крепости и типу
-  // Также фильтруем по поисковому запросу
+  const openCatalogEditor = (item: PresetDrink) => {
+    Alert.alert(item.name, 'Что сделать с напитком в каталоге?', [
+      {
+        text: 'Редактировать',
+        onPress: () => {
+          setEditingCatalogItem(item);
+          setNewName(item.name);
+          setNewType(item.beverageType);
+          setNewVolume(String(item.volumeMl));
+          setNewAbv(String(item.abvPercent));
+          setNewPriceVal(item.defaultPrice != null ? String(item.defaultPrice) : '');
+          setAddModalVisible(false);
+          setCustomModalVisible(true);
+        },
+      },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: async () => {
+          const next = await removeCatalogDrink(item.id);
+          setCatalog(next);
+        },
+      },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
+  };
+
+  const openCatalogEdit = (item: PresetDrink) => {
+    setEditingCatalogItem(item);
+    setNewName(item.name);
+    setNewType(item.beverageType);
+    setNewVolume(String(item.volumeMl));
+    setNewAbv(String(item.abvPercent));
+    setNewPriceVal(item.defaultPrice != null ? String(item.defaultPrice) : '');
+    setAddModalVisible(false);
+    setCustomModalVisible(true);
+  };
+
+  const confirmCatalogDelete = (item: PresetDrink) => {
+    Alert.alert('Удалить напиток?', item.name, [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: async () => {
+          const next = await removeCatalogDrink(item.id);
+          setCatalog(next);
+        },
+      },
+    ]);
+  };
+
+  // Фильтруем каталог напитков - исключаем те, что уже в избранном (для модалки "добавить в избранное")
   const [searchQuery, setSearchQuery] = useState('');
-  const availableSuggestedPresets = useMemo(() => {
-    const filtered = suggestedPresets.filter((suggested) => {
-      return !userPresets.some((userPreset) => 
-        userPreset.volumeMl === suggested.volumeMl &&
-        userPreset.abvPercent === suggested.abvPercent &&
-        userPreset.beverageType === suggested.beverageType
+  const availableCatalogItems = useMemo(() => {
+    const filtered = catalog.filter((candidate) => {
+      return !userPresets.some(
+        (userPreset) =>
+          userPreset.volumeMl === candidate.volumeMl &&
+          userPreset.abvPercent === candidate.abvPercent &&
+          userPreset.beverageType === candidate.beverageType &&
+          userPreset.name === candidate.name
       );
     });
 
@@ -368,13 +492,28 @@ export default function TodayScreen() {
     let result = filtered;
     if (searchQuery && searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      result = filtered.filter((preset) => 
-        preset.name.toLowerCase().includes(query)
-      );
+      result = filtered.filter((preset) => preset.name.toLowerCase().includes(query));
     }
     
     return result;
-  }, [userPresets, searchQuery]);
+  }, [catalog, userPresets, searchQuery]);
+
+  // Поиск для модалки добавления записи (как в календаре на конкретный день)
+  const [entrySearchQuery, setEntrySearchQuery] = useState('');
+  const filteredEntryFavorites = useMemo(() => {
+    if (!entrySearchQuery.trim()) return userPresets;
+    const q = entrySearchQuery.toLowerCase().trim();
+    return userPresets.filter((p) => p.name.toLowerCase().includes(q));
+  }, [userPresets, entrySearchQuery]);
+
+  const entryCatalogItems = useMemo(() => {
+    let list = catalog;
+    if (entrySearchQuery.trim()) {
+      const q = entrySearchQuery.toLowerCase().trim();
+      list = list.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [catalog, entrySearchQuery]);
 
 
   const saveCustomPreset = async () => {
@@ -388,15 +527,19 @@ export default function TodayScreen() {
     }
     const priceNum = newPriceVal.trim() ? parseFloat(newPriceVal.replace(',', '.')) : undefined;
     const defaultPrice = isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0 ? Math.round(priceNum * 100) / 100 : undefined;
-    const updated = await addPreset({
+    const payload = {
       name: newName,
       beverageType: newType,
       volumeMl: volume,
       abvPercent: abv,
       ...(defaultPrice != null && { defaultPrice }),
-    });
-    setUserPresets(updated);
+    };
+    const updatedCatalog = editingCatalogItem
+      ? await updateCatalogDrink(editingCatalogItem.id, payload)
+      : await addDrinkToCatalog(payload);
+    setCatalog(updatedCatalog);
     closeCustomModal();
+    setAddModalVisible(true);
   };
 
   const [todayList, setTodayList] = useState<Drink[]>([]);
@@ -609,6 +752,9 @@ export default function TodayScreen() {
   // Анимированные стили для модалок - движение за пальцем
   const addModalAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: Math.max(0, addModalTranslateY.value) }],
+  }));
+  const addEntryModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: Math.max(0, addEntryModalTranslateY.value) }],
   }));
   const customModalAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: Math.max(0, customModalTranslateY.value) }],
@@ -912,7 +1058,13 @@ export default function TodayScreen() {
           ref={oneTimeEntryRef}
           collapsable={false}
           style={[styles.addOneTimeStripIcon, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
-          onPress={() => setOneTimeModalVisible(true)}
+          onPress={() => {
+            // Как в календаре на конкретный день: "+" добавляет запись из списка напитков,
+            // а разовую запись добавляем отдельной кнопкой внутри модалки.
+            setDeletingPresetId(null);
+            setEditingPresetId(null);
+            openAddEntryModal();
+          }}
           activeOpacity={0.7}
         >
           <Entypo name="circle-with-plus" size={22} color={colors.primary} />
@@ -955,43 +1107,41 @@ export default function TodayScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
           style={styles.kav}
         >
-          <TouchableWithoutFeedback onPress={closeAddModal}>
-            <View style={styles.modalBackdrop}>
-              <TouchableWithoutFeedback onPress={() => {}}>
-                <GestureDetector gesture={Gesture.Pan()
-                  .minDistance(5)
-                  .activeOffsetY([5, 100])
-                  .failOffsetX([-30, 30])
-                  .onUpdate((e) => {
-                    if (e.translationY > 0) {
-                      addModalTranslateY.value = e.translationY;
-                    }
-                  })
-                  .onEnd((e) => {
-                    // Свайп вниз закрывает модальное окно
-                    if (e.translationY > 50) {
-                      addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                        runOnJS(closeAddModal)();
-                        addModalTranslateY.value = 0;
-                      });
-                    } else {
-                      addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                    }
-                  })
-                }>
-                  <Animated.View style={[
-                    styles.modalCard,
-                    { backgroundColor: colors.backgroundCard },
-                    searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
-                    addModalAnimatedStyle
-                  ]}>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeAddModal}
-                      activeOpacity={1}
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeAddModal} />
+              <Animated.View
+                style={[
+                  styles.modalCard,
+                  { backgroundColor: colors.backgroundCard },
+                  searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
+                  addModalAnimatedStyle,
+                ]}
+              >
+                    <GestureDetector
+                      gesture={Gesture.Pan()
+                        .minDistance(5)
+                        .activeOffsetY([5, 100])
+                        .failOffsetX([-30, 30])
+                        .onUpdate((e) => {
+                          if (e.translationY > 0) {
+                            addModalTranslateY.value = e.translationY;
+                          }
+                        })
+                        .onEnd((e) => {
+                          if (e.translationY > 50) {
+                            addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
+                              runOnJS(closeAddModal)();
+                              addModalTranslateY.value = 0;
+                            });
+                          } else {
+                            addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+                          }
+                        })}
                     >
-                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                      <TouchableOpacity style={styles.modalDragHandle} onPress={closeAddModal} activeOpacity={1}>
+                        <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
+                      </TouchableOpacity>
+                    </GestureDetector>
                     <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
                       <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
@@ -1007,8 +1157,8 @@ export default function TodayScreen() {
                     </View>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из списка или нажмите + для своего напитка</Text>
                   
-                    {/* Строка поиска для предложенных пресетов */}
-                    {availableSuggestedPresets.length > 0 && (
+                    {/* Строка поиска: не прячем при пустом результате (иначе скрывается клавиатура) */}
+                    {catalog.length > 0 && (
                       <TextInput
                         placeholder="Поиск напитков..."
                         placeholderTextColor={colors.textTertiary}
@@ -1021,29 +1171,226 @@ export default function TodayScreen() {
                       />
                     )}
                   
-                    <ScrollView 
+                    <ScrollView
                       style={searchQuery && searchQuery.trim() ? {} : { maxHeight: 300 }} 
                       showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
                       contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}
                     >
-                      {availableSuggestedPresets.map((preset) => (
-                        <TouchableOpacity
-                          key={preset.id}
-                          style={[styles.suggestedItem, { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border }]}
-                          onPress={() => addSuggestedPreset(preset)}
-                        >
-                          <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
-                        </TouchableOpacity>
+                      {availableCatalogItems.map((preset) => (
+                        <View key={preset.id} style={[styles.suggestedItem, { position: 'relative', backgroundColor: colors.backgroundCard, borderBottomColor: colors.border }]}>
+                          <TouchableOpacity
+                            onPress={() => addSuggestedPreset(preset)}
+                            activeOpacity={0.7}
+                            style={{ paddingRight: 72 }}
+                          >
+                            <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
+                          </TouchableOpacity>
+
+                          <View style={{ position: 'absolute', right: 8, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity
+                              onPress={() => openCatalogEdit(preset)}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                              style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+                            >
+                              <Entypo name="pencil" size={18} color={colors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => confirmCatalogDelete(preset)}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                              style={{ paddingHorizontal: 8, paddingVertical: 6, marginLeft: 6 }}
+                            >
+                              <MaterialIcons name="delete-sweep" size={20} color={colors.error} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                       ))}
                     </ScrollView>
 
                     </View>
-                  </Animated.View>
-                </GestureDetector>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
+              </Animated.View>
+          </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Модалка добавления напитка (как в календаре по кнопке "+ Добавить напиток") */}
+      <Modal
+        visible={addEntryModalVisible && !customModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeAddEntryModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeAddEntryModal} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : (isAddEntryKeyboardVisible ? 'padding' : undefined)}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+              style={[
+                styles.kav,
+                entrySearchQuery && entrySearchQuery.trim() && { justifyContent: 'flex-start' },
+              ]}
+            >
+            <Animated.View
+              style={[
+                styles.modalCard,
+                { backgroundColor: colors.backgroundCard },
+                entrySearchQuery && entrySearchQuery.trim() && [
+                  styles.modalCardFullScreen,
+                  { paddingTop: 4 + insets.top },
+                ],
+                addEntryModalAnimatedStyle,
+              ]}
+            >
+                  <GestureDetector
+                    gesture={Gesture.Pan()
+                      .minDistance(5)
+                      .activeOffsetY([5, 100])
+                      .failOffsetX([-30, 30])
+                      .onUpdate((e) => {
+                        if (e.translationY > 0) {
+                          addEntryModalTranslateY.value = e.translationY;
+                        }
+                      })
+                      .onEnd((e) => {
+                        if (e.translationY > 50) {
+                          addEntryModalTranslateY.value = withSpring(
+                            1000,
+                            { damping: 20, stiffness: 300 },
+                            () => {
+                              runOnJS(closeAddEntryModal)();
+                              addEntryModalTranslateY.value = 0;
+                            }
+                          );
+                        } else {
+                          addEntryModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+                        }
+                      })}
+                  >
+                    <TouchableOpacity style={styles.modalDragHandle} onPress={closeAddEntryModal} activeOpacity={1}>
+                      <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
+                    </TouchableOpacity>
+                  </GestureDetector>
+
+                  <View style={entrySearchQuery && entrySearchQuery.trim() ? { flex: 1 } : {}}>
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <View ref={modalHeaderPlusRef} collapsable={false}>
+                        <TouchableOpacity
+                          style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            closeAddEntryModal();
+                            openCustomModal();
+                          }}
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
+                          <Entypo name="circle-with-plus" size={22} color={colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>
+                      Выберите из списка или нажмите + для своего напитка
+                    </Text>
+
+                    <TouchableOpacity
+                      style={[styles.addOneTimeButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setOneTimeModalVisible(true);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Entypo name="plus" size={18} color={colors.primary} />
+                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>Добавить разовую запись</Text>
+                    </TouchableOpacity>
+
+                    <TextInput
+                      placeholder="Поиск напитков..."
+                      placeholderTextColor={colors.textTertiary}
+                      value={entrySearchQuery}
+                      onChangeText={setEntrySearchQuery}
+                      style={[
+                        styles.searchInput,
+                        { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text },
+                      ]}
+                      returnKeyType="search"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+
+                    <ScrollView
+                      style={entrySearchQuery && entrySearchQuery.trim() ? { flex: 1 } : { maxHeight: 300 }}
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      contentContainerStyle={{ paddingBottom: 10 + insets.bottom }}
+                    >
+                      {filteredEntryFavorites.length > 0 && (
+                        <>
+                          <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Избранное</Text>
+                          {filteredEntryFavorites.map((preset) => (
+                            <Pressable
+                              key={preset.id}
+                              style={({ pressed }) => [
+                                styles.presetItem,
+                                { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
+                                pressed && { opacity: 0.7 },
+                              ]}
+                              onPressIn={() => {
+                                Keyboard.dismiss();
+                              }}
+                              onPress={() => addEntryFromPreset(preset)}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Text style={[styles.presetText, { color: colors.text }]}>{preset.name}</Text>
+                                <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </>
+                      )}
+
+                      {entryCatalogItems.length > 0 && (
+                        <>
+                          <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Каталог</Text>
+                          {entryCatalogItems.map((preset) => (
+                            <View
+                              key={preset.id}
+                              style={[
+                                styles.suggestedItem,
+                                {
+                                  backgroundColor: colors.backgroundCard,
+                                  borderBottomColor: colors.border,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                },
+                              ]}
+                            >
+                              <Pressable
+                                style={({ pressed }) => [
+                                  { flex: 1, paddingRight: 12 },
+                                  pressed && { opacity: 0.7 },
+                                ]}
+                                onPressIn={() => {
+                                  Keyboard.dismiss();
+                                }}
+                                onPress={() => addEntryFromPreset(preset)}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
+                                  <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                                </View>
+                              </Pressable>
+                            </View>
+                          ))}
+                        </>
+                      )}
+                    </ScrollView>
+                  </View>
+            </Animated.View>
+            </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Модалка добавления своего напитка */}
@@ -1051,7 +1398,7 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior={Platform.OS === 'ios' ? 'padding' : (isEditKeyboardVisible ? 'padding' : undefined)}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
@@ -1086,7 +1433,12 @@ export default function TodayScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
-                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    ref={editDrinkScrollRef}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 12 : 48 + insets.bottom }}
+                  >
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
                   <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                     Объём и крепость будут автоматически добавлены в название
@@ -1200,8 +1552,8 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={closeEditModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 20}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -1234,7 +1586,11 @@ export default function TodayScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
-                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+                  >
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Изменить количество</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       {editingDrink?.name} · {formatTotalVolume(editingDrink?.volumeMl || 0, 1)} · {editingDrink?.abvPercent}%
@@ -1286,11 +1642,22 @@ export default function TodayScreen() {
                           keyboardType="decimal-pad"
                           placeholder="Не указана"
                           placeholderTextColor={colors.textTertiary}
+                          onFocus={() => editDrinkScrollRef.current?.scrollTo({ y: EDIT_MODAL_SCROLL_Y_PRICE, animated: true })}
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         />
                       </View>
                     )}
-                    <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
+                    <View
+                      style={[
+                        styles.modalActions,
+                        {
+                          paddingBottom:
+                            Platform.OS === 'android'
+                              ? (isEditKeyboardVisible ? 0 : 16 + insets.bottom)
+                              : 20 + insets.bottom,
+                        },
+                      ]}
+                    >
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditModal}>
                         <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                       </TouchableOpacity>
@@ -1311,7 +1678,7 @@ export default function TodayScreen() {
         <TouchableWithoutFeedback onPress={closeEditPresetModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior={Platform.OS === 'ios' ? 'padding' : (isEditKeyboardVisible ? 'padding' : undefined)}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
               style={styles.kav}
             >
@@ -1345,7 +1712,12 @@ export default function TodayScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
-                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    ref={editPresetScrollRef}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 12 : 48 + insets.bottom }}
+                  >
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Редактировать напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Измените данные напитка
@@ -1424,6 +1796,7 @@ export default function TodayScreen() {
                           keyboardType="decimal-pad"
                           value={presetPrice}
                           onChangeText={(t) => setPresetPrice(t.replace(',', '.'))}
+                          onFocus={() => editPresetScrollRef.current?.scrollTo({ y: EDIT_PRESET_MODAL_SCROLL_Y_PRICE, animated: true })}
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                         />
                       ) : (
@@ -1436,7 +1809,17 @@ export default function TodayScreen() {
                         />
                       )}
                     </View>
-                    <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
+                    <View
+                      style={[
+                        styles.modalActions,
+                        {
+                          paddingBottom:
+                            Platform.OS === 'android'
+                              ? (isEditKeyboardVisible ? 0 : 16 + insets.bottom)
+                              : 20 + insets.bottom,
+                        },
+                      ]}
+                    >
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditPresetModal}>
                         <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
                       </TouchableOpacity>
@@ -1575,7 +1958,10 @@ export default function TodayScreen() {
 
       <AddOneTimeEntryModal
         visible={oneTimeModalVisible}
-        onClose={() => setOneTimeModalVisible(false)}
+        onClose={() => {
+          Keyboard.dismiss();
+          setOneTimeModalVisible(false);
+        }}
         isPremium={isPremium}
         onSave={saveOneTimeEntry}
       />
@@ -1704,19 +2090,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   presetText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: 16,
+    color: defaultColors.text,
+    fontWeight: '500',
+    flex: 1,
   },
   presetDetails: {
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: '400',
+    color: defaultColors.textSecondary,
+    marginLeft: 8,
   },
   addFavButtonRect: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    minWidth: 56,
-    minHeight: 56,
+    width: 56,
+    height: 56,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     marginRight: 8,
@@ -2083,6 +2472,31 @@ shadowOpacity: 0.5,
     fontWeight: '600',
     fontSize: 13,
   },
+  presetItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: defaultColors.border,
+    backgroundColor: defaultColors.backgroundCard,
+  },
+  addOneTimeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: defaultColors.backgroundSecondary,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: defaultColors.primary,
+    borderStyle: 'dashed',
+    gap: 6,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addOneTimeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   suggestedItem: {
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -2094,6 +2508,13 @@ shadowOpacity: 0.5,
     fontSize: 16,
     color: defaultColors.text,
     fontWeight: '500',
+    flex: 1,
+  },
+  suggestedDetails: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: defaultColors.textSecondary,
+    marginLeft: 8,
   },
   addCustomButton: {
     paddingVertical: 8,
