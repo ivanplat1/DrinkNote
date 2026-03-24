@@ -13,7 +13,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
 import { ThemeName } from '../theme/themes';
 import { CURRENCY_LIST } from '../utils/currency';
-import { isPremiumUser, enableDevPremium, disableDevPremium, enablePreviewPremium, disablePreviewPremium } from '../storage/premium';
+import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 
 export default function SettingsScreen() {
@@ -538,30 +538,6 @@ export default function SettingsScreen() {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.actionButtonText, { fontSize: 14, color: colors.text }]}>
                   {isPremium ? 'Отключить Premium (Dev)' : 'Включить Premium (Dev)'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          {/* Preview build premium activation (for APK for friends) */}
-          {!__DEV__ && (
-            <TouchableOpacity 
-              style={[styles.actionButton, { marginTop: 8, opacity: 0.7 }]} 
-              onPress={async () => {
-                if (isPremium) {
-                  await disablePreviewPremium();
-                  await checkPremiumStatus();
-                  Alert.alert('Preview Mode', 'Премиум отключен');
-                } else {
-                  await enablePreviewPremium();
-                  await checkPremiumStatus();
-                  Alert.alert('Preview Mode', 'Премиум активирован для тестирования');
-                }
-              }}
-            >
-              <MaterialCommunityIcons name="crown" size={24} color={colors.textSecondary} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.actionButtonText, { fontSize: 14, color: colors.text }]}>
-                  {isPremium ? 'Отключить Premium (Preview)' : 'Активировать Premium (Preview)'}
                 </Text>
               </View>
             </TouchableOpacity>
