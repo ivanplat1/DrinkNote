@@ -1173,25 +1173,14 @@ export default function CalendarScreen() {
       // чтобы FlatList не делал начальный «прыжок» к индексу > 0.
       return 0;
     }
-    const middleDayOfMonth = new Date(baseToday.getFullYear(), baseToday.getMonth(), 15);
-    const middleDayISO = formatISO(middleDayOfMonth);
-    const middleWeekIndex = weeks.findIndex((weekStart) => {
-      const start = new Date(weekStart);
-      const end = new Date(weekStart);
-      end.setDate(end.getDate() + 6);
-      return middleDayISO >= formatISO(start) && middleDayISO <= formatISO(end);
-    });
-
-    if (middleWeekIndex < 0) return todayIndex;
-
-    // В month-режиме видим 5 недель; center = top + 2.
-    const centeredTopIndex = middleWeekIndex - 2;
-    return Math.max(0, Math.min(centeredTopIndex, weeks.length - 1));
+    // Для разных размеров экрана/округлений точнее фокусироваться на недели с "сегодня",
+    // а не на середину месяца: так "сегодня" будет в верхней части сетки на старте.
+    return todayIndex;
   }, [weeks, baseToday, todayIndex]);
 
   const [visibleIndex, setVisibleIndex] = useState(initialMonthFocusIndex);
   const lastScrollIndexRef = useRef(initialMonthFocusIndex);
-  const didInitialMonthFocusRef = useRef(false);
+  const hasInitialMonthFocusAppliedRef = useRef(false);
   const lastVisibleIndexUpdateMsRef = useRef(0);
 
   // В онбординге всегда показываем фиксированный период — синхронизируем скролл при смене шага.
@@ -1727,42 +1716,59 @@ export default function CalendarScreen() {
 
   const scrollToCurrentMonth = useCallback(() => {
     if (listRef.current && listHeight && listHeight > 0) {
-      // На некоторых устройствах initialScrollIndex/scrollToIndex может давать дробный offset
-      // и в итоге "фокус" оказывается ниже. Ставим точный offset по сетке.
       try {
+        // Используем scrollToIndex, чтобы опираться на getItemLayout и избежать
+        // расхождений из-за округления пикселей/высоты на разных устройствах.
+        listRef.current.scrollToIndex({ index: initialMonthFocusIndex, animated: false });
+      } catch {
+        // Fallback на offset (на случай если scrollToIndex по какой-то причине упадёт).
         listRef.current.scrollToOffset({
           offset: initialMonthFocusIndex * cellHeight,
           animated: false,
         });
-      } catch (error) {
-        if (listRef.current) {
-          try {
-            listRef.current.scrollToIndex({
-              index: initialMonthFocusIndex,
-              animated: false,
-            });
-          } catch {
-            // ignore
-          }
-        }
       }
     }
   }, [listHeight, initialMonthFocusIndex, cellHeight]);
 
-  // Делаем автопереход к текущему месяцу только один раз при первом открытии календаря.
   useEffect(() => {
-    // Во время онбординга показываем фиксированный демо-период — не "перескакиваем" на текущий месяц.
-    if (isOnboardingActive) return;
-    if (didInitialMonthFocusRef.current) return;
+    // При переключении режимов — разрешаем повторить автопрокрутку при входе в month.
+    if (calendarViewMode === 'month') {
+      hasInitialMonthFocusAppliedRef.current = false;
+    }
+  }, [calendarViewMode]);
+
+  // Делаем автопереход к текущему месяцу только после измерения высоты области календаря,
+  // чтобы не показывать "пустой" первый рендер (когда cellHeight ещё не готов).
+  useEffect(() => {
+    if (isOnboardingActive) {
+      hasInitialMonthFocusAppliedRef.current = false;
+      return;
+    }
     if (calendarViewMode !== 'month') return;
     if (!listHeight || listHeight <= 0) return;
-    didInitialMonthFocusRef.current = true;
+    if (!weeks.length) return;
+    // Ждём, пока измерены header и строка недели — они влияют на расчёт `listHeight` и `cellHeight`.
+    if (!hasMeasuredHeaderRef.current || !hasMeasuredWeekRowRef.current) return;
+    if (calendarAreaHeight == null || calendarAreaHeight <= 0) return;
+    if (hasInitialMonthFocusAppliedRef.current) return;
+
+    hasInitialMonthFocusAppliedRef.current = true;
     lastScrollIndexRef.current = initialMonthFocusIndex;
     setVisibleIndex(initialMonthFocusIndex);
     requestAnimationFrame(() => {
       scrollToCurrentMonth();
     });
-  }, [calendarViewMode, listHeight, initialMonthFocusIndex, scrollToCurrentMonth, isOnboardingActive]);
+  }, [
+    calendarViewMode,
+    listHeight,
+    initialMonthFocusIndex,
+    scrollToCurrentMonth,
+    isOnboardingActive,
+    calendarAreaHeight,
+    weeks.length,
+    headerHeight,
+    weekRowHeight,
+  ]);
 
   // Показываем кнопку «Сегодня», когда уехали в прошлое или в будущее (на 4+ недель от текущей)
   const showBackToToday = useMemo(() => {

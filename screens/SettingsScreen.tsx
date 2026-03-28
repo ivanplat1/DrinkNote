@@ -719,14 +719,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Информация о приложении */}
-        <View style={styles.section}>
-          <View style={[styles.infoCard, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.infoTitle, { color: colors.text }]}>DrinkNote</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.0</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
-          </View>
-    </View>
         </Animated.ScrollView>
       </KeyboardAvoidingView>
 
@@ -1160,23 +1152,6 @@ const styles = StyleSheet.create({
   },
   dangerButtonText: {
     color: defaultColors.error,
-  },
-  infoCard: {
-    backgroundColor: defaultColors.backgroundSecondary,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  infoTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: defaultColors.text,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: defaultColors.textSecondary,
-    marginBottom: 4,
   },
   genderRow: {
     flexDirection: 'row',

@@ -2,8 +2,8 @@
 
 ## Текущая версия в проекте
 
-- **versionName:** `1.0.2`
-- **versionCode:** `3` (каждый новый загруз в Play Console должен иметь **больший** `versionCode`)
+- **versionName:** `1.0.5`
+- **versionCode:** `6` (каждый новый загруз в Play Console должен иметь **больший** `versionCode`)
 
 ## Где лежит AAB после локальной сборки
 
@@ -41,3 +41,5 @@ Google Play **не принимает** релиз, подписанный **deb
 ## Тестовые покупки
 
 Используйте **Internal / Closed testing** в Play Console, тестовые аккаунты в **License testing**, установку приложения **из Play** по ссылке трека (не через `adb install` обычного APK для полного цикла Billing).
+
+Пошаговая настройка товара (Product ID `premium_lifetime`, разовая покупка): [GOOGLE_PLAY_IAP_PRODUCT.md](./GOOGLE_PLAY_IAP_PRODUCT.md).

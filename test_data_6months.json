@@ -1351,6 +1351,246 @@
       "abvPercent": 12,
       "standardUnits": 7.11,
       "quantity": 3
+    },
+    {
+      "id": "drink_136",
+      "dateISO": "2026-01-03",
+      "name": "Вино",
+      "beverageType": "wine",
+      "volumeMl": 150,
+      "abvPercent": 12,
+      "standardUnits": 1.42,
+      "quantity": 1
+    },
+    {
+      "id": "drink_137",
+      "dateISO": "2026-01-05",
+      "name": "Пиво",
+      "beverageType": "beer",
+      "volumeMl": 500,
+      "abvPercent": 5,
+      "standardUnits": 1.97,
+      "quantity": 1
+    },
+    {
+      "id": "drink_138",
+      "dateISO": "2026-01-10",
+      "name": "Джин-тоник",
+      "beverageType": "cocktail",
+      "volumeMl": 250,
+      "abvPercent": 11,
+      "standardUnits": 2.17,
+      "quantity": 1
+    },
+    {
+      "id": "drink_139",
+      "dateISO": "2026-01-12",
+      "name": "Коньяк",
+      "beverageType": "spirit",
+      "volumeMl": 50,
+      "abvPercent": 40,
+      "standardUnits": 1.58,
+      "quantity": 1
+    },
+    {
+      "id": "drink_140",
+      "dateISO": "2026-01-17",
+      "name": "Сидр",
+      "beverageType": "beer",
+      "volumeMl": 330,
+      "abvPercent": 5,
+      "standardUnits": 1.3,
+      "quantity": 1
+    },
+    {
+      "id": "drink_141",
+      "dateISO": "2026-01-19",
+      "name": "Виски",
+      "beverageType": "spirit",
+      "volumeMl": 50,
+      "abvPercent": 43,
+      "standardUnits": 1.7,
+      "quantity": 1
+    },
+    {
+      "id": "drink_142",
+      "dateISO": "2026-01-23",
+      "name": "Маргарита",
+      "beverageType": "cocktail",
+      "volumeMl": 150,
+      "abvPercent": 20,
+      "standardUnits": 2.37,
+      "quantity": 1
+    },
+    {
+      "id": "drink_143",
+      "dateISO": "2026-01-25",
+      "name": "Просекко",
+      "beverageType": "wine",
+      "volumeMl": 150,
+      "abvPercent": 11,
+      "standardUnits": 1.3,
+      "quantity": 1
+    },
+    {
+      "id": "drink_144",
+      "dateISO": "2026-01-31",
+      "name": "Олд Фешн",
+      "beverageType": "cocktail",
+      "volumeMl": 150,
+      "abvPercent": 32,
+      "standardUnits": 3.79,
+      "quantity": 1
+    },
+    {
+      "id": "drink_145",
+      "dateISO": "2026-02-01",
+      "name": "Пиво",
+      "beverageType": "beer",
+      "volumeMl": 500,
+      "abvPercent": 5.5,
+      "standardUnits": 2.17,
+      "quantity": 1
+    },
+    {
+      "id": "drink_146",
+      "dateISO": "2026-02-06",
+      "name": "Мохито",
+      "beverageType": "cocktail",
+      "volumeMl": 250,
+      "abvPercent": 12,
+      "standardUnits": 2.37,
+      "quantity": 1
+    },
+    {
+      "id": "drink_147",
+      "dateISO": "2026-02-08",
+      "name": "Вино",
+      "beverageType": "wine",
+      "volumeMl": 200,
+      "abvPercent": 12,
+      "standardUnits": 1.89,
+      "quantity": 1
+    },
+    {
+      "id": "drink_148",
+      "dateISO": "2026-02-13",
+      "name": "Джин",
+      "beverageType": "spirit",
+      "volumeMl": 50,
+      "abvPercent": 47,
+      "standardUnits": 1.85,
+      "quantity": 1
+    },
+    {
+      "id": "drink_149",
+      "dateISO": "2026-02-14",
+      "name": "Негрони",
+      "beverageType": "cocktail",
+      "volumeMl": 150,
+      "abvPercent": 24,
+      "standardUnits": 2.84,
+      "quantity": 1
+    },
+    {
+      "id": "drink_150",
+      "dateISO": "2026-02-20",
+      "name": "Шампанское",
+      "beverageType": "wine",
+      "volumeMl": 150,
+      "abvPercent": 12,
+      "standardUnits": 1.42,
+      "quantity": 1
+    },
+    {
+      "id": "drink_151",
+      "dateISO": "2026-02-22",
+      "name": "Ром",
+      "beverageType": "spirit",
+      "volumeMl": 50,
+      "abvPercent": 40,
+      "standardUnits": 1.58,
+      "quantity": 1
+    },
+    {
+      "id": "drink_152",
+      "dateISO": "2026-02-28",
+      "name": "Сидр",
+      "beverageType": "beer",
+      "volumeMl": 330,
+      "abvPercent": 6,
+      "standardUnits": 1.56,
+      "quantity": 1
+    },
+    {
+      "id": "drink_153",
+      "dateISO": "2026-03-01",
+      "name": "Просекко",
+      "beverageType": "wine",
+      "volumeMl": 150,
+      "abvPercent": 11,
+      "standardUnits": 1.3,
+      "quantity": 1
+    },
+    {
+      "id": "drink_154",
+      "dateISO": "2026-03-06",
+      "name": "Кровавая Мэри",
+      "beverageType": "cocktail",
+      "volumeMl": 200,
+      "abvPercent": 15,
+      "standardUnits": 2.37,
+      "quantity": 1
+    },
+    {
+      "id": "drink_155",
+      "dateISO": "2026-03-08",
+      "name": "Пиво",
+      "beverageType": "beer",
+      "volumeMl": 500,
+      "abvPercent": 4.5,
+      "standardUnits": 1.78,
+      "quantity": 1
+    },
+    {
+      "id": "drink_156",
+      "dateISO": "2026-03-13",
+      "name": "Маргарита",
+      "beverageType": "cocktail",
+      "volumeMl": 150,
+      "abvPercent": 20,
+      "standardUnits": 2.37,
+      "quantity": 1
+    },
+    {
+      "id": "drink_157",
+      "dateISO": "2026-03-15",
+      "name": "Виски",
+      "beverageType": "spirit",
+      "volumeMl": 50,
+      "abvPercent": 43,
+      "standardUnits": 1.7,
+      "quantity": 1
+    },
+    {
+      "id": "drink_158",
+      "dateISO": "2026-03-20",
+      "name": "Вино",
+      "beverageType": "wine",
+      "volumeMl": 150,
+      "abvPercent": 12,
+      "standardUnits": 1.42,
+      "quantity": 1
+    },
+    {
+      "id": "drink_159",
+      "dateISO": "2026-03-23",
+      "name": "Джин-тоник",
+      "beverageType": "cocktail",
+      "volumeMl": 250,
+      "abvPercent": 11,
+      "standardUnits": 2.17,
+      "quantity": 1
     }
   ],
   "settings": {

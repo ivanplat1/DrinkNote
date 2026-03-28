@@ -49,6 +49,99 @@ function isPremiumPurchase(productId: string | undefined | null) {
   return productId === PREMIUM_PRODUCT_ID_ANDROID || productId === PREMIUM_PRODUCT_ID_IOS;
 }
 
+function hasRequestedSku(products: any[] | null | undefined, sku: string) {
+  if (!products || products.length === 0) return false;
+  return products.some((p: any) => {
+    if (!p) return false;
+    if (p.productId === sku || p.id === sku) return true;
+    if (Array.isArray(p.ids) && p.ids.includes(sku)) return true;
+    return false;
+  });
+}
+
+function androidSkuHelpText(): string {
+  return [
+    `Ожидаемый ID товара в коде: "${PREMIUM_PRODUCT_ID_ANDROID}" — он должен совпасть с Product ID в Play Console.`,
+    '1) Monetize → Products: тип «Разовая покупка» (In-app), а не «Подписка», если в приложении покупка lifetime.',
+    '2) Статус товара — Active; цена и страны заполнены.',
+    '3) Приложение установлено с Google Play (Internal / Closed testing), не из APK с компьютера.',
+    '4) Тот же Google-аккаунт на устройстве, что в License testing (Settings → License testing).',
+    '5) Сборка с тем же applicationId, что в консоли (сейчас в проекте: com.drinknote.app).',
+    '6) После создания товара иногда нужны несколько часов, пока он появится в биллинге.',
+  ].join('\n');
+}
+
+type AndroidPremiumPrefetch = {
+  ok: boolean;
+  error?: string;
+  /** Billing Library 7+ often needs the default one-time offer token for launchBillingFlow */
+  androidOfferToken?: string;
+};
+
+function extractAndroidOneTimeOfferToken(product: any): string | undefined {
+  const details = product?.oneTimePurchaseOfferDetailsAndroid;
+  if (!Array.isArray(details) || details.length === 0) return undefined;
+  const token = details[0]?.offerToken ?? details[0]?.offerTokenAndroid;
+  return typeof token === 'string' && token.length > 0 ? token : undefined;
+}
+
+/**
+ * Prefetch in-app product on Android.
+ * Important: expo-iap Android native maps fetch results only for in-app OR subs — not for type "all",
+ * so "all" can resolve to an empty list and falsely look like «товар не найден».
+ */
+async function prefetchPremiumProductAndroid(mod: any): Promise<AndroidPremiumPrefetch> {
+  try {
+    const inAppProducts = await mod.fetchProducts({
+      type: 'in-app',
+      skus: [PREMIUM_PRODUCT_ID_ANDROID],
+    });
+
+    if (hasRequestedSku(inAppProducts, PREMIUM_PRODUCT_ID_ANDROID)) {
+      const match = (inAppProducts ?? []).find((p: any) => {
+        if (!p) return false;
+        if (p.productId === PREMIUM_PRODUCT_ID_ANDROID || p.id === PREMIUM_PRODUCT_ID_ANDROID) return true;
+        if (Array.isArray(p.ids) && p.ids.includes(PREMIUM_PRODUCT_ID_ANDROID)) return true;
+        return false;
+      });
+      const androidOfferToken = extractAndroidOneTimeOfferToken(match);
+      return { ok: true, androidOfferToken };
+    }
+
+    // Helpful branch: SKU exists only as subscription → in-app query is empty
+    let subProducts: any[] | null = null;
+    try {
+      subProducts = await mod.fetchProducts({
+        type: 'subs',
+        skus: [PREMIUM_PRODUCT_ID_ANDROID],
+      });
+    } catch {
+      subProducts = null;
+    }
+
+    if (hasRequestedSku(subProducts, PREMIUM_PRODUCT_ID_ANDROID)) {
+      return {
+        ok: false,
+        error:
+          `Товар "${PREMIUM_PRODUCT_ID_ANDROID}" в консоли заведён как подписка, а приложение запрашивает разовую покупку (in-app).\n\n` +
+          'Создайте в Play Console продукт типа «Разовая покупка» с этим ID (или смените ID в коде под существующий managed product).',
+      };
+    }
+
+    return {
+      ok: false,
+      error: `Товар не найден в Google Play для этого аккаунта и сборки.\n\n${androidSkuHelpText()}`,
+    };
+  } catch (e: any) {
+    const code = e?.code != null ? ` (${String(e.code)})` : '';
+    const msg = e?.message || String(e);
+    return {
+      ok: false,
+      error: `Не удалось получить товар из Google Play${code}: ${msg}\n\n${androidSkuHelpText()}`,
+    };
+  }
+}
+
 async function grantPremiumFromPurchase(purchase: any) {
   if (!purchase || purchase.purchaseState !== 'purchased') return;
   if (!isPremiumPurchase(purchase.productId)) return;
@@ -138,11 +231,24 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
       }
     }
 
+    // Pre-flight: in-app query (avoid native type "all" → empty list) + offer token for Billing 7+.
+    let androidOfferToken: string | undefined;
+    if (Platform.OS === 'android') {
+      const prefetch = await prefetchPremiumProductAndroid(mod);
+      if (!prefetch.ok) {
+        return { success: false, error: prefetch.error };
+      }
+      androidOfferToken = prefetch.androidOfferToken;
+    }
+
     await mod.requestPurchase({
       type: 'in-app',
       request: {
         apple: { sku: PREMIUM_PRODUCT_ID_IOS },
-        google: { skus: [PREMIUM_PRODUCT_ID_ANDROID] },
+        google: {
+          skus: [PREMIUM_PRODUCT_ID_ANDROID],
+          ...(androidOfferToken ? { offerToken: androidOfferToken } : {}),
+        },
       },
     });
 
@@ -154,9 +260,12 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error purchasing premium:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    const code = error?.code != null ? `[${String(error.code)}] ` : '';
+    const msg =
+      error instanceof Error ? error.message : typeof error?.message === 'string' ? error.message : 'Unknown error';
+    return { success: false, error: `${code}${msg}`.trim() };
   }
 }
 
@@ -209,3 +318,5 @@ export async function disconnectPurchases(): Promise<void> {
     purchasesAvailable = false;
   }
 }
+
+
