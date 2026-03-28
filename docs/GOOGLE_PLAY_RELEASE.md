@@ -2,8 +2,12 @@
 
 ## Текущая версия в проекте
 
-- **versionName:** `1.0.5`
-- **versionCode:** `6` (каждый новый загруз в Play Console должен иметь **больший** `versionCode`)
+- **versionName:** `1.0.6`
+- **versionCode:** `7` (каждый новый загруз в Play Console должен иметь **больший** `versionCode`)
+
+### «0 поддерживаемых устройств» в отчёте о релизе
+
+Часто это **артефакт сравнения черновика** с прошлым выпуском или **слишком новый `targetSdk`** в сгенерированном манифесте. В проекте через `expo-build-properties` зафиксированы **`compileSdkVersion` / `targetSdkVersion`: 35** (стабильнее для каталога Play, чем 36). Если предупреждение останется: откройте **App bundle explorer** → убедитесь, что есть сплиты по ABI; при ошибках **16 KB page size** обновите зависимости / NDK по [документации Google](https://developer.android.com/guide/practices/page-sizes).
 
 ## Где лежит AAB после локальной сборки
 

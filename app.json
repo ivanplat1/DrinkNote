@@ -3,7 +3,7 @@
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.drinknote.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -49,6 +49,15 @@
       "baseUrl": "/DrinkNote"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
+        }
+      ],
       "expo-localization",
       [
         "expo-navigation-bar",
