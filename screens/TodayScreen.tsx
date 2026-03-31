@@ -438,9 +438,9 @@ export default function TodayScreen() {
   };
 
   const openCatalogEditor = (item: PresetDrink) => {
-    Alert.alert(item.name, 'Что сделать с напитком в каталоге?', [
+    Alert.alert(item.name, tt('today.catalogAction'), [
       {
-        text: 'Редактировать',
+        text: tt('common.edit'),
         onPress: () => {
           setEditingCatalogItem(item);
           setNewName(item.name);
@@ -453,14 +453,14 @@ export default function TodayScreen() {
         },
       },
       {
-        text: 'Удалить',
+        text: tt('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const next = await removeCatalogDrink(item.id);
           setCatalog(next);
         },
       },
-      { text: 'Отмена', style: 'cancel' },
+      { text: tt('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -476,10 +476,10 @@ export default function TodayScreen() {
   };
 
   const confirmCatalogDelete = (item: PresetDrink) => {
-    Alert.alert('Удалить напиток?', item.name, [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(tt('today.deleteDrinkTitle'), item.name, [
+      { text: tt('common.cancel'), style: 'cancel' },
       {
-        text: 'Удалить',
+        text: tt('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const next = await removeCatalogDrink(item.id);
@@ -536,7 +536,7 @@ export default function TodayScreen() {
     const volume = parseFloat(normalizedVolume);
     const abv = parseFloat(normalizedAbv);
     if (!newName || isNaN(volume) || isNaN(abv)) {
-      Alert.alert('Ошибка', 'Заполните название, объём и крепость');
+      Alert.alert(tt('common.error'), tt('today.fillRequired'));
       return;
     }
     const priceNum = newPriceVal.trim() ? parseFloat(newPriceVal.replace(',', '.')) : undefined;
@@ -667,7 +667,7 @@ export default function TodayScreen() {
     const quantity = Math.max(1, Math.floor(Number(newQuantity.replace(',', '.')) || 1));
     
     if (isNaN(quantity) || quantity < 1) {
-      Alert.alert('Ошибка', 'Введите корректное количество');
+      Alert.alert(tt('common.error'), tt('today.invalidQuantity'));
       return;
     }
 
@@ -717,7 +717,7 @@ export default function TodayScreen() {
     const abv = parseFloat(normalizedAbv);
     
     if (!presetName || isNaN(volume) || isNaN(abv)) {
-      Alert.alert('Ошибка', 'Заполните название, объём и крепость');
+      Alert.alert(tt('common.error'), tt('today.fillRequired'));
       return;
     }
 
@@ -982,7 +982,7 @@ export default function TodayScreen() {
                 setEditingPresetId(null);
                 openAddModal();
               }}
-              accessibilityLabel="Добавить напиток"
+              accessibilityLabel={tt('today.addDrinkA11y')}
             >
               <Entypo name="circle-with-plus" size={22} color={colors.primary} />
             </TouchableOpacity>
@@ -1174,7 +1174,7 @@ export default function TodayScreen() {
                     {/* Строка поиска: не прячем при пустом результате (иначе скрывается клавиатура) */}
                     {catalog.length > 0 && (
                       <TextInput
-                        placeholder="Поиск напитков..."
+                        placeholder={tt('today.searchDrinks')}
                         placeholderTextColor={colors.textTertiary}
                         value={searchQuery}
                         onChangeText={handleSearchChange}
@@ -1320,7 +1320,7 @@ export default function TodayScreen() {
                     </TouchableOpacity>
 
                     <TextInput
-                      placeholder="Поиск напитков..."
+                      placeholder={tt('today.searchDrinks')}
                       placeholderTextColor={colors.textTertiary}
                       value={entrySearchQuery}
                       onChangeText={setEntrySearchQuery}
@@ -1462,7 +1462,7 @@ export default function TodayScreen() {
                     {editingCatalogItem ? 'Измените данные напитка' : 'Объём и крепость будут автоматически добавлены в название'}
                   </Text>
                   <TextInput
-                    placeholder="Название (например, Джин-тоник)"
+                    placeholder={tt('today.namePlaceholderExample')}
                     placeholderTextColor={colors.textTertiary}
                     value={newName}
                     onChangeText={setNewName}
@@ -1496,7 +1496,7 @@ export default function TodayScreen() {
                     <View style={{ flex: 1, marginRight: 8 }}>
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
                       <TextInput
-                        placeholder="мл"
+                        placeholder={tt('today.ml')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newVolume}
@@ -1513,7 +1513,7 @@ export default function TodayScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
                       <TextInput
-                        placeholder="%"
+                        placeholder={tt('today.percent')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newAbv}
@@ -1532,7 +1532,7 @@ export default function TodayScreen() {
                     <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
                     {isPremium ? (
                       <TextInput
-                        placeholder="Не указана"
+                        placeholder={tt('today.notSpecified')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newPriceVal}
@@ -1541,7 +1541,7 @@ export default function TodayScreen() {
                       />
                     ) : (
                       <TextInput
-                        placeholder="Доступно в полной версии"
+                        placeholder={tt('today.premiumOnly')}
                         placeholderTextColor={colors.textTertiary}
                         editable={false}
                         value=""
@@ -1627,7 +1627,7 @@ export default function TodayScreen() {
                         <Entypo name="circle-with-minus" size={28} color={colors.primary} />
                       </TouchableOpacity>
                       <TextInput
-                        placeholder="Количество"
+                        placeholder={tt('today.quantity')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="number-pad"
                         value={newQuantity}
@@ -1658,7 +1658,7 @@ export default function TodayScreen() {
                           value={editPriceVal}
                           onChangeText={setEditPriceVal}
                           keyboardType="decimal-pad"
-                          placeholder="Не указана"
+                          placeholder={tt('today.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           onFocus={() => editDrinkScrollRef.current?.scrollTo({ y: EDIT_MODAL_SCROLL_Y_PRICE, animated: true })}
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -1741,7 +1741,7 @@ export default function TodayScreen() {
                       Измените данные напитка
                     </Text>
                     <TextInput
-                      placeholder="Название"
+                      placeholder={tt('today.name')}
                       placeholderTextColor={colors.textTertiary}
                       value={presetName}
                       onChangeText={setPresetName}
@@ -1773,7 +1773,7 @@ export default function TodayScreen() {
                       <View style={{ flex: 1, marginRight: 8 }}>
                         <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
                         <TextInput
-                          placeholder="мл"
+                          placeholder={tt('today.ml')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetVolume}
@@ -1790,7 +1790,7 @@ export default function TodayScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
                         <TextInput
-                          placeholder="%"
+                          placeholder={tt('today.percent')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetAbv}
@@ -1809,7 +1809,7 @@ export default function TodayScreen() {
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Цена</Text>
                       {isPremium ? (
                         <TextInput
-                          placeholder="Не указана"
+                          placeholder={tt('today.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetPrice}
@@ -1819,7 +1819,7 @@ export default function TodayScreen() {
                         />
                       ) : (
                         <TextInput
-                          placeholder="Доступно в полной версии"
+                          placeholder={tt('today.premiumOnly')}
                           placeholderTextColor={colors.textTertiary}
                           editable={false}
                           value={presetPrice}
