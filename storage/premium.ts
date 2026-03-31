@@ -3,10 +3,16 @@ import { Platform } from 'react-native';
 
 const PREMIUM_KEY = 'premium_status_v1';
 const DEV_MODE_KEY = 'dev_premium_enabled';
+const PREVIEW_PREMIUM_KEY = 'preview_premium_enabled';
 
 // Development mode: set to true to enable premium without purchases (for testing)
 // Set this via AsyncStorage: AsyncStorage.setItem('dev_premium_enabled', 'true')
 const DEV_MODE_ENABLED = __DEV__; // Only in development builds
+
+// Preview builds: allow premium activation via AsyncStorage for friends/testers
+// Set via: AsyncStorage.setItem('preview_premium_enabled', 'true')
+// Or use: AsyncStorage.setItem('premium_status_v1', 'true') directly
+const ALLOW_PREVIEW_PREMIUM = true; // Allow in preview/release builds for testing
 
 /**
  * Check if user has premium status
@@ -21,7 +27,15 @@ export async function isPremiumUser(): Promise<boolean> {
       }
     }
     
-    // Check actual premium status
+    // Check preview premium mode (for APK builds for friends/testers)
+    if (ALLOW_PREVIEW_PREMIUM) {
+      const previewPremium = await AsyncStorage.getItem(PREVIEW_PREMIUM_KEY);
+      if (previewPremium === 'true') {
+        return true;
+      }
+    }
+    
+    // Check actual premium status (from purchase or direct set)
     const value = await AsyncStorage.getItem(PREMIUM_KEY);
     return value === 'true';
   } catch {
@@ -68,6 +82,9 @@ export async function clearPremiumStatus(): Promise<void> {
     if (DEV_MODE_ENABLED) {
       await AsyncStorage.removeItem(DEV_MODE_KEY);
     }
+    if (ALLOW_PREVIEW_PREMIUM) {
+      await AsyncStorage.removeItem(PREVIEW_PREMIUM_KEY);
+    }
     premiumCache = null;
   } catch (error) {
     console.error('Failed to clear premium status:', error);
@@ -100,5 +117,34 @@ export async function disableDevPremium(): Promise<void> {
     } catch (error) {
       console.error('Failed to disable dev premium:', error);
     }
+  }
+}
+
+/**
+ * Enable premium for preview builds (for friends/testers)
+ * Works in any build, not just dev
+ */
+export async function enablePreviewPremium(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PREVIEW_PREMIUM_KEY, 'true');
+    await AsyncStorage.setItem(PREMIUM_KEY, 'true'); // Also set main key for consistency
+    premiumCache = true;
+  } catch (error) {
+    console.error('Failed to enable preview premium:', error);
+  }
+}
+
+/**
+ * Disable preview premium mode
+ */
+export async function disablePreviewPremium(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(PREVIEW_PREMIUM_KEY);
+    // In preview toggle flow we explicitly turn premium off for testing.
+    // If user really owns premium purchase, they can restore it from Premium screen.
+    await AsyncStorage.removeItem(PREMIUM_KEY);
+    premiumCache = false;
+  } catch (error) {
+    console.error('Failed to disable preview premium:', error);
   }
 }

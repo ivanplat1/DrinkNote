@@ -35,19 +35,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadTheme = async () => {
+    const hideSplash = () => requestAnimationFrame(() => { SplashScreen.hideAsync().catch(() => {}); });
+    const timeout = setTimeout(() => {
+      setState((prev) => (prev.isThemeLoaded ? prev : { ...prev, isThemeLoaded: true }));
+      hideSplash();
+    }, 2500);
     try {
       const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
       const name: ThemeName = (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'sepia' || savedTheme === 'highContrast' || savedTheme === 'violet' || savedTheme === 'sand' || savedTheme === 'nord' || savedTheme === 'darcula')
         ? savedTheme
         : 'dark';
+      clearTimeout(timeout);
       setState({ themeName: name, isThemeLoaded: true });
-      requestAnimationFrame(() => {
-        SplashScreen.hideAsync().catch(() => {});
-      });
+      hideSplash();
     } catch (error) {
       console.error('Error loading theme:', error);
+      clearTimeout(timeout);
       setState((prev) => ({ ...prev, isThemeLoaded: true }));
-      SplashScreen.hideAsync().catch(() => {});
+      hideSplash();
     }
   };
 

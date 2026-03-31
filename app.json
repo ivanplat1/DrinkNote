@@ -1,23 +1,31 @@
 {
-    "expo": {
+  "expo": {
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
-    "version": "1.0.0",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "autolinking": {
+      "android": {
+        "exclude": ["expo-in-app-purchases"]
+      }
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#050525"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drinknote.app"
     },
     "android": {
       "package": "com.drinknote.app",
+      "versionCode": 7,
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -41,7 +49,23 @@
       "baseUrl": "/DrinkNote"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
+        }
+      ],
       "expo-localization",
+      [
+        "expo-navigation-bar",
+        {
+          "backgroundColor": "#00000000",
+          "position": "absolute"
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -73,11 +97,16 @@
             }
           ]
         }
-      ]
+      ],
+      "expo-iap"
     ],
     "extra": {
       "eas": {
         "projectId": "1f026970-5d72-4828-915f-6b0955bbcaf1"
+      },
+      "expo-navigation-bar": {
+        "backgroundColor": "#00000000",
+        "position": "absolute"
       }
     }
   }

@@ -1,12 +1,14 @@
 import 'react-native-gesture-handler';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform, AppState, Linking } from 'react-native';
+import Constants from 'expo-constants';
+import { View, Platform, AppState, Linking } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import TodayScreen from './screens/TodayScreen';
@@ -17,10 +19,12 @@ import PremiumScreen from './screens/PremiumScreen';
 import AddFromWidgetScreen from './screens/AddFromWidgetScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { CurrencyProvider } from './theme/CurrencyContext';
-import { generateTestDrinks, generateTestPresets } from './utils/testData';
-import { getAllDrinks, setAllDrinks } from './storage/drinks';
-import { getUserPresets, setUserPresets } from './storage/presets';
 import { updateAllWidgets } from './services/widget';
+import { setHasCompletedFirstLaunch, setHasSeenOnboarding } from './storage/settings';
+import OnboardingOverlay from './components/OnboardingOverlay';
+import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
+import * as SplashScreen from 'expo-splash-screen';
+import { preloadStartupSnapshot } from './services/startupCache';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -43,6 +47,20 @@ const SettingsIcon = ({ color, size }: { color: string; size: number }) => (
 );
 
 const ADD_DRINK_PATH = 'add-drink';
+const ANDROID_NAV_COLORS: Record<string, string> = {
+  dark: '#0f172a',
+  light: '#e8eaed',
+  sepia: '#1c1917',
+  highContrast: '#fce7f3',
+  violet: '#ede9fe',
+  sand: '#f5f5f4',
+  nord: '#d8dee9',
+  darcula: '#2b2b2b',
+};
+
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // no-op: splash could already be controlled by platform/Expo runtime
+});
 
 function parsePresetIdFromUrl(url: string): string | null {
   try {
@@ -61,6 +79,8 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const { colors, themeName } = useTheme();
   const navigationRef = useNavigationContainerRef();
+  const [initialTab] = React.useState<'Сегодня' | 'Настройки'>('Сегодня');
+  const { onboardingSeen, setOnboardingSeen, interactiveStep } = useOnboarding();
 
   // Deep link: drinknote://add-drink/PRESET_ID — открыть экран добавления из виджета (один раз за 3 с по одному presetId)
   useEffect(() => {
@@ -132,46 +152,25 @@ function AppContent() {
   // Определяем стиль статус-бара в зависимости от темы
   const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
   const statusBarStyle = isLightTheme ? 'dark' : 'light';
-  
-  // TODO: Удалить перед релизом - загрузка тестовых данных
-  // Установите FORCE_LOAD_TEST_DATA = true для принудительной загрузки
-  const FORCE_LOAD_TEST_DATA = true; // Изменить на false перед релизом
-  
-  React.useEffect(() => {
-    const loadTestData = async () => {
+  const isEdgeToEdgeEnabled = Boolean((Constants as any)?.expoConfig?.android?.edgeToEdgeEnabled);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || isEdgeToEdgeEnabled) return;
+    const applyAndroidNavBar = async () => {
       try {
-        const existingDrinks = await getAllDrinks();
-        const existingPresets = await getUserPresets();
-        
-        console.log(`📊 Существующие записи: ${existingDrinks.length}, пресеты: ${existingPresets.length}`);
-        
-        // Загружаем тестовые данные если их нет или если включена принудительная загрузка
-        if (existingDrinks.length === 0 || FORCE_LOAD_TEST_DATA) {
-          const testDrinks = generateTestDrinks();
-          console.log(`🔄 Генерирую ${testDrinks.length} тестовых записей...`);
-          await setAllDrinks(testDrinks);
-          console.log(`✅ Загружено ${testDrinks.length} тестовых записей о напитках`);
-          
-          // Проверяем, что данные сохранились
-          const verify = await getAllDrinks();
-          console.log(`✓ Проверка: сохранено ${verify.length} записей`);
-        } else {
-          console.log(`⏭️ Пропускаю загрузку тестовых данных (уже есть ${existingDrinks.length} записей)`);
-        }
-        
-        if (existingPresets.length === 0 || FORCE_LOAD_TEST_DATA) {
-          const testPresets = generateTestPresets();
-          await setUserPresets(testPresets);
-          console.log(`✅ Загружено ${testPresets.length} тестовых пресетов`);
-        }
+        const navColor = ANDROID_NAV_COLORS[themeName] ?? colors.background;
+        // На ряде оболочек (MIUI/HyperOS) кастомный цвет игнорируется в absolute edge-to-edge.
+        // Переводим панель в relative, чтобы цвет применялся стабильно в 3-кнопочной навигации.
+        await NavigationBar.setPositionAsync('relative');
+        await NavigationBar.setBackgroundColorAsync(navColor);
+        await NavigationBar.setButtonStyleAsync(isLightTheme ? 'dark' : 'light');
       } catch (error) {
-        console.error('❌ Ошибка загрузки тестовых данных:', error);
+        console.log('Failed to set Android navigation bar style:', error);
       }
     };
-    
-    loadTestData();
-  }, []);
-
+    applyAndroidNavBar();
+  }, [themeName, colors.background, isLightTheme, isEdgeToEdgeEnabled]);
+  
   // Update home screen widgets when app opens or returns to foreground (Android)
   React.useEffect(() => {
     updateAllWidgets();
@@ -181,6 +180,36 @@ function AppContent() {
     return () => sub.remove();
   }, []);
 
+  // Навигация по вкладкам: шаг 4 — «Сегодня» (полоска разовой записи), 5 — Календарь, 6 — Статистика, 7–9 — Настройки.
+  useLayoutEffect(() => {
+    if (interactiveStep === null) return;
+    if (!navigationRef.isReady()) return;
+    if (interactiveStep === 4) navigationRef.navigate('MainTabs' as never, { screen: 'Сегодня' } as never);
+    if (interactiveStep === 5) navigationRef.navigate('MainTabs' as never, { screen: 'Календарь' } as never);
+    if (interactiveStep === 6) navigationRef.navigate('MainTabs' as never, { screen: 'Статистика' } as never);
+    if (interactiveStep === 7 || interactiveStep === 8 || interactiveStep === 9) navigationRef.navigate('MainTabs' as never, { screen: 'Настройки' } as never);
+  }, [interactiveStep]);
+
+  const completeOnboarding = async () => {
+    try {
+      await setHasSeenOnboarding();
+      await setHasCompletedFirstLaunch();
+      setOnboardingSeen(true);
+    } catch (e) {
+      setOnboardingSeen(true);
+    }
+  };
+
+  // Ожидание загрузки флага онбординга
+  if (onboardingSeen === null) {
+    return (
+      <NavigationContainer ref={navigationRef}>
+        <StatusBar style={statusBarStyle} />
+        <View style={{ flex: 1, backgroundColor: colors.background }} />
+      </NavigationContainer>
+    );
+  }
+
   return (
     <NavigationContainer ref={navigationRef}>
         <StatusBar style={statusBarStyle} />
@@ -188,6 +217,7 @@ function AppContent() {
           <Stack.Screen name="MainTabs">
             {() => (
         <Tab.Navigator
+          initialRouteName={initialTab}
           screenOptions={{
             headerShown: true,
             headerStyle: {
@@ -202,10 +232,10 @@ function AppContent() {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
               borderTopWidth: 1,
-              paddingBottom: isIOS ? Math.max(8, insets.bottom) : 8, // Минимальный отступ от Home индикатора
-              paddingTop: 8, // Padding сверху
-              height: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Фиксированная высота с учетом padding
-              minHeight: isIOS ? 60 + Math.max(8, insets.bottom) : 70, // Минимальная высота
+              paddingBottom: isIOS ? Math.max(8, insets.bottom) : Math.max(8, insets.bottom),
+              paddingTop: 8,
+              height: isIOS ? 60 + Math.max(8, insets.bottom) : 70 + Math.max(0, insets.bottom),
+              minHeight: isIOS ? 60 + Math.max(8, insets.bottom) : 70 + Math.max(0, insets.bottom),
               elevation: 8, // Тень для Android (фиксирует поверх контента)
               shadowColor: '#000', // Тень для iOS
               shadowOffset: { width: 0, height: -2 },
@@ -264,18 +294,57 @@ function AppContent() {
           />
           <Stack.Screen name="AddFromWidget" component={AddFromWidgetScreen} />
         </Stack.Navigator>
+      {/* Глобальный оверлей онбординга для всех интерактивных шагов. */}
+      {!onboardingSeen && interactiveStep !== null && <OnboardingOverlay onComplete={completeOnboarding} />}
       </NavigationContainer>
   );
 }
 
 export default function App() {
+  const [startupReady, setStartupReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const STARTUP_TIMEOUT_MS = 8000;
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setStartupReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    }, STARTUP_TIMEOUT_MS);
+    (async () => {
+      try {
+        await Promise.all([
+          preloadStartupSnapshot(),
+          new Promise((resolve) => setTimeout(resolve, 250)),
+        ]);
+      } catch (error) {
+        console.log('Startup preload failed:', error);
+      } finally {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          setStartupReady(true);
+          SplashScreen.hideAsync().catch(() => {});
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  if (!startupReady) return null;
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <CurrencyProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <AppContent />
-          </GestureHandlerRootView>
+          <OnboardingProvider>
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+              <AppContent />
+            </GestureHandlerRootView>
+          </OnboardingProvider>
         </CurrencyProvider>
       </ThemeProvider>
     </SafeAreaProvider>

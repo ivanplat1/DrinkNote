@@ -1,27 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { colors as defaultColors } from '../theme/colors';
 import { isPremiumUser } from '../storage/premium';
 import { initPurchases, purchasePremium, restorePurchases } from '../services/purchases';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 export default function PremiumScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
-    checkPremiumStatus();
     // Initialize purchases only when Premium screen is opened
-    // This avoids loading the native module on app startup
     initializePurchases();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPremiumStatus();
+    }, [])
+  );
 
   const checkPremiumStatus = async () => {
     const premium = await isPremiumUser();
@@ -120,7 +125,7 @@ export default function PremiumScreen() {
 
   if (isPremium) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -140,7 +145,7 @@ export default function PremiumScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -149,7 +154,13 @@ export default function PremiumScreen() {
         <View style={styles.backButton} />
       </View>
 
-      <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false} directionalLockEnabled scrollEventThrottle={32}>
+      <Animated.ScrollView
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
+        contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+        directionalLockEnabled
+        scrollEventThrottle={32}
+      >
         <View style={styles.content}>
           {/* Hero Section */}
           <View style={styles.heroSection}>

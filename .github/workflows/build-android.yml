@@ -2,8 +2,13 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'feature/**']
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -12,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,8 +35,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify icon assets exist
+        run: |
+          ls -la assets/icon.png assets/adaptive-icon.png
+
       - name: Prebuild Android
-        run: npx expo prebuild --platform android --no-install
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Restore app icon (prebuild may skip it in CI)
+        run: |
+          RES="android/app/src/main/res"
+          BACKUP=".github/android-res-icons"
+          for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi mipmap-anydpi-v26; do
+            if [ -d "$BACKUP/$dir" ]; then
+              rm -rf "$RES/$dir"
+              cp -r "$BACKUP/$dir" "$RES/"
+              echo "Restored $dir"
+            fi
+          done
+          ls -la "$RES"/mipmap-*/
 
       - name: Export and embed JavaScript bundle
         run: |

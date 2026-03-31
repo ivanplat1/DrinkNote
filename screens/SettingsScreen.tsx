@@ -1,13 +1,13 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
-import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getAppStartDate, setAppStartDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
+import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
 import { colors as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
@@ -18,6 +18,7 @@ import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
@@ -29,11 +30,8 @@ export default function SettingsScreen() {
   const [birthDate, setBirthDateValue] = useState<string>('');
   const [age, setAge] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
-  const [appStartDate, setAppStartDateValue] = useState<string>('');
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
-  const [tempStartDate, setTempStartDate] = useState<Date>(new Date());
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [importText, setImportText] = useState('');
@@ -107,18 +105,6 @@ export default function SettingsScreen() {
     
     const lethal = await getLethalDose();
     setLethalDose(lethal);
-    
-    let startDate = await getAppStartDate();
-    
-    // Если дата не установлена, устанавливаем сегодняшнюю как дату первого запуска
-    if (!startDate) {
-      const today = new Date();
-      const todayISO = today.toISOString().split('T')[0]; // ГГГГ-ММ-ДД
-      await setAppStartDate(todayISO);
-      startDate = todayISO;
-    }
-    
-    setAppStartDateValue(startDate);
     
     // Загружаем рекомендацию
     await updateRecommendation();
@@ -249,7 +235,7 @@ export default function SettingsScreen() {
         // Для веба используем скрытый input file
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,application/json';
+        input.accept = '.json,.txt,application/json,text/plain';
         input.onchange = async (e) => {
           const file = (e.target as HTMLInputElement).files?.[0];
           if (file) {
@@ -261,7 +247,8 @@ export default function SettingsScreen() {
       } else {
         // Для мобильных используем expo-document-picker
         const result = await DocumentPicker.getDocumentAsync({
-          type: ['application/json'],
+          // Google Drive и некоторые файловые менеджеры часто отдают JSON как text/plain/.txt.
+          type: ['application/json', 'text/plain', 'application/octet-stream'],
           copyToCacheDirectory: true,
         });
         
@@ -312,12 +299,14 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
-      <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <Animated.ScrollView keyboardShouldPersistTaps="handled" style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }, { paddingBottom: 280 }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, marginTop: 4 }]}>Условная единица (ед.) = 10 г чистого этанола.</Text>
           <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Левая часть - Своё значение */}
             <View style={styles.goalColumn}>
@@ -331,7 +320,7 @@ export default function SettingsScreen() {
                       const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
                       setDailyGoalValue(normalized);
                     }}
-                    placeholder="0.00"
+                    placeholder={`${recommendedLimit.toFixed(1)} ед.`}
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
@@ -347,8 +336,8 @@ export default function SettingsScreen() {
                   onPress={() => setIsEditingGoal(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.goalValue, { color: colors.text }]}>
-                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : 'Не установлена'}
+                  <Text style={[styles.goalValue, { color: dailyGoal ? colors.text : colors.textTertiary }]}>
+                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : `${recommendedLimit.toFixed(1)} ед.`}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -367,7 +356,8 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     Alert.alert(
-                      'Как рассчитывается условная норма',
+                      '',
+                      '📐 Условная единица (ед.) = 10 г чистого этанола.\n\n' +
                       '📊 Базовая норма:\n' +
                       '• Мужчины: 2.5 ед. (25г спирта)\n' +
                       '• Женщины: 1.5 ед. (15г спирта)\n\n' +
@@ -395,7 +385,7 @@ export default function SettingsScreen() {
         {/* Параметры профиля */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Параметры профиля</Text>
-          
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Настройте профиль для определения условной нормы</Text>
           <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Вес */}
             <View style={styles.profileRow}>
@@ -462,7 +452,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('female')}
                 >
-                  <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? colors.text : colors.textSecondary} />
+                  <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -475,7 +465,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('male')}
                 >
-                  <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? colors.text : colors.textSecondary} />
+                  <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -488,7 +478,7 @@ export default function SettingsScreen() {
                   ]}
                   onPress={() => handleSaveGender('genderless')}
                 >
-                  <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? colors.text : colors.textSecondary} />
+                  <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? '#fff' : colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -509,29 +499,6 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
 
-          </View>
-        </View>
-
-        {/* Дата начала отсчета */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дата начала отсчета</Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Рекорды будут считаться с этой даты</Text>
-          
-          <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
-            <View style={styles.profileRow}>
-              <Text style={[styles.profileLabel, { color: colors.text }]}>Дата отсчета:</Text>
-              <TouchableOpacity
-                style={{ flex: 1, alignItems: 'flex-end' }}
-                onPress={() => {
-                  setTempStartDate(appStartDate ? new Date(appStartDate) : new Date());
-                  setShowStartDatePicker(true);
-                }}
-              >
-                <Text style={[styles.profileValue, !appStartDate && styles.valuePlaceholder, { color: appStartDate ? colors.textSecondary : colors.textTertiary }]}>
-                  {appStartDate ? new Date(appStartDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
 
@@ -577,10 +544,10 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Цель по серии (только для премиум) */}
-        {isPremium && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+        {/* Цель по серии: премиум — активна, базовая — показать заблокированной */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+          {isPremium ? (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
               onPress={() => {
@@ -599,17 +566,27 @@ export default function SettingsScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
             </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <View style={[styles.actionButton, { backgroundColor: colors.backgroundCard, opacity: 0.8 }]}>
+              <MaterialCommunityIcons name="target" size={24} color={colors.textTertiary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Доступно в полной версии</Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textTertiary }]}>
+                  Отслеживание прогресса в статистике и календаре
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
 
-        {/* Модалка: своя цель по серии */}
+        {/* Модалка: своя цель по серии — по центру экрана */}
         <Modal visible={showStreakGoalModal} transparent animationType="fade">
           <TouchableOpacity
             activeOpacity={1}
-            style={styles.modalOverlay}
+            style={styles.modalOverlayCenter}
             onPress={() => setShowStreakGoalModal(false)}
           >
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalContentWrap}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40} style={styles.modalContentWrap}>
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.modalContent, { backgroundColor: colors.backgroundCard }]}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Цель: дней без алкоголя</Text>
                 <TextInput
@@ -742,15 +719,8 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Информация о приложении */}
-        <View style={styles.section}>
-          <View style={[styles.infoCard, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.infoTitle, { color: colors.text }]}>DrinkNote</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.0</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
-          </View>
-    </View>
-      </Animated.ScrollView>
+        </Animated.ScrollView>
+      </KeyboardAvoidingView>
 
       {/* DateTimePicker для даты рождения */}
       {Platform.OS === 'ios' ? (
@@ -912,7 +882,7 @@ export default function SettingsScreen() {
                   scrollEventThrottle={32}
                 >
                   <Text style={[styles.importHint, { color: colors.textSecondary }]}>
-                    Выберите файл или вставьте JSON данные из экспортированного файла
+                    Выберите файл (.json или .txt) или вставьте JSON данные из экспортированного файла
                   </Text>
                   
                   <TouchableOpacity
@@ -934,7 +904,19 @@ export default function SettingsScreen() {
                   />
                 </Animated.ScrollView>
                 
-                <View style={[styles.importButtonsContainer, { backgroundColor: colors.backgroundCard, borderTopColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.importButtonsContainer,
+                    {
+                      backgroundColor: colors.backgroundCard,
+                      borderTopColor: colors.border,
+                      paddingBottom: Math.max(
+                        Platform.OS === 'ios' ? 34 : 20,
+                        insets.bottom + (Platform.OS === 'android' ? 12 : 0)
+                      ),
+                    },
+                  ]}
+                >
                   <TouchableOpacity
                     style={[styles.importButton, styles.importButtonReplace, { backgroundColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
                     onPress={() => handleImport(false)}
@@ -957,79 +939,6 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* DateTimePicker для даты начала отсчета */}
-      {Platform.OS === 'ios' ? (
-        <Modal
-          visible={showStartDatePicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowStartDatePicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={styles.modalBackdrop}
-              activeOpacity={1}
-              onPress={() => setShowStartDatePicker(false)}
-            />
-            <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
-              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity
-                  onPress={() => setShowStartDatePicker(false)}
-                  style={styles.datePickerButton}
-                >
-                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
-                </TouchableOpacity>
-                <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата начала отсчета</Text>
-                <TouchableOpacity
-                  onPress={async () => {
-                    const dateISO = tempStartDate.toISOString().split('T')[0];
-                    setAppStartDateValue(dateISO);
-                    await setAppStartDate(dateISO);
-                    setShowStartDatePicker(false);
-                  }}
-                  style={styles.datePickerButton}
-                >
-                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={tempStartDate}
-                mode="date"
-                display="spinner"
-                maximumDate={new Date()}
-                minimumDate={new Date(2000, 0, 1)}
-                themeVariant="dark"
-                locale="ru-RU"
-                onChange={(event, selectedDate) => {
-                  if (selectedDate) {
-                    setTempStartDate(selectedDate);
-                  }
-                }}
-              />
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        showStartDatePicker && (
-          <DateTimePicker
-            value={tempStartDate}
-            mode="date"
-            display="default"
-            maximumDate={new Date()}
-            minimumDate={new Date(2000, 0, 1)}
-            onChange={(event, selectedDate) => {
-              setShowStartDatePicker(false);
-              if (event.type === 'set' && selectedDate) {
-                const dateISO = selectedDate.toISOString().split('T')[0];
-                setAppStartDateValue(dateISO);
-                setAppStartDate(dateISO);
-                setTempStartDate(selectedDate);
-              }
-            }}
-          />
-        )
-      )}
-
       {/* Выпадающий список валют */}
       <Modal
         visible={showCurrencyPicker}
@@ -1043,7 +952,7 @@ export default function SettingsScreen() {
             activeOpacity={1}
             onPress={() => setShowCurrencyPicker(false)}
           />
-          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard }]}>
+          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard, paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom) }]}>
             <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>Выберите валюту</Text>
               <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} style={styles.currencyPickerClose}>
@@ -1052,6 +961,7 @@ export default function SettingsScreen() {
             </View>
             <Animated.ScrollView
               style={styles.currencyPickerScroll}
+              contentContainerStyle={{ paddingBottom: insets.bottom }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={true}
               directionalLockEnabled
@@ -1243,23 +1153,6 @@ const styles = StyleSheet.create({
   dangerButtonText: {
     color: defaultColors.error,
   },
-  infoCard: {
-    backgroundColor: defaultColors.backgroundSecondary,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  infoTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: defaultColors.text,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: defaultColors.textSecondary,
-    marginBottom: 4,
-  },
   genderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1420,6 +1313,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalOverlayCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContentWrap: {

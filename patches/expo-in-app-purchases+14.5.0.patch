@@ -1,0 +1,14 @@
+diff --git a/node_modules/expo-in-app-purchases/android/src/main/java/expo/modules/inapppurchases/BillingManager.java b/node_modules/expo-in-app-purchases/android/src/main/java/expo/modules/inapppurchases/BillingManager.java
+index d5d6d45..fcd564d 100644
+--- a/node_modules/expo-in-app-purchases/android/src/main/java/expo/modules/inapppurchases/BillingManager.java
++++ b/node_modules/expo-in-app-purchases/android/src/main/java/expo/modules/inapppurchases/BillingManager.java
+@@ -173,8 +173,7 @@ public class BillingManager implements PurchasesUpdatedListener {
+           }
+         }
+ 
+-        // false will be the default, unless true is passed
+-        purchaseParams.setVrPurchaseFlow(isVrPurchaseFlow);
++        // setVrPurchaseFlow removed in Play Billing 5.x/6.x (required for Google Play / Android 14)
+ 
+         mBillingClient.launchBillingFlow(mActivity, purchaseParams.build());
+       }

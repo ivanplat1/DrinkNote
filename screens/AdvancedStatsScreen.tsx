@@ -67,7 +67,7 @@ export default function AdvancedStatsScreen() {
 
   if (!isPremium) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View style={styles.lockedContainer}>
           <MaterialCommunityIcons name="lock" size={64} color={colors.textSecondary} />
           <Text style={[styles.lockedTitle, { color: colors.text }]}>Расширенная статистика</Text>
@@ -87,7 +87,7 @@ export default function AdvancedStatsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <Animated.ScrollView style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]} directionalLockEnabled scrollEventThrottle={32}>
         {/* Переключатель периода тренда */}
         <View style={[styles.periodSelector, { backgroundColor: colors.backgroundSecondary }]}>

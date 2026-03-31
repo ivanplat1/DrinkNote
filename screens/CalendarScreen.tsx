@@ -4,12 +4,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
-import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons, Entypo } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
-import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from '../storage/presets';
+import { getUserPresets, addPreset, presetsEventEmitter } from '../storage/presets';
+import { addDrinkToCatalog, getDrinkCatalog, removeCatalogDrink, updateCatalogDrink } from '../storage/drinkCatalog';
 import { getCalendarLabels, setCalendarLabel, setCalendarLabelRange, getCalendarLabelRanges, deleteCalendarLabelRange, updateCalendarLabelRange, DEFAULT_LABEL_COLOR, type LabelRange } from '../storage/calendarLabels';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 
@@ -28,6 +29,10 @@ import { getDailyGoal, getLethalDose, checkAndUnlockAchievements, Achievement, g
 import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useOnboarding } from '../context/OnboardingContext';
+import { getDemoDrinksForOnboarding, ONBOARDING_CALENDAR_ANCHOR } from '../utils/onboardingDemoData';
+import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
+import { getStartupSnapshot } from '../services/startupCache';
 
 const LABEL_COLOR_PRESETS = [
   '#6B9BD1', '#E07C7C', '#7EC87E', '#E8B84A', '#9B7EDE',
@@ -48,96 +53,39 @@ const VISIBLE_WEEKS = 5;
 
 // Компонент диагонального градиента для плоских металлических слитков
 function MetalGradient({ type }: { type: 'bronze' | 'silver' | 'gold' }) {
-  const glowAnim = useSharedValue(0);
-  
-  React.useEffect(() => {
-    // Бесконечная анимация от 0 до 360 (градусы круга) - более плавная и менее ресурсоемкая
-    glowAnim.value = withRepeat(
-      withTiming(360, { duration: 6000, easing: Easing.linear }),
-      -1,
-      false
-    );
-  }, []);
-  
-  // Выраженные диагональные градиенты (перевернутые - темное сверху)
+  // Static diagonal gradients: keep ingot look without animated shine.
   const gradients = {
     bronze: {
       colors: ['#7d4d2f', '#a66841', '#c08850', '#e8c4a0'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#c08850',
     },
     silver: {
       colors: ['#505050', '#808080', '#b0b0b0', '#e0e0e0'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#b0b0b0',
     },
     gold: {
       colors: ['#a07d1a', '#c9a029', '#f4c430', '#ffe680'] as const,
       locations: [0, 0.3, 0.7, 1] as const,
-      border: '#f4c430',
     },
   };
   
   const gradient = gradients[type];
   
-  const animatedBorderStyle = useAnimatedStyle(() => {
-    'worklet';
-    const angle = glowAnim.value % 360; // 0-360 градусов, циклически
-    
-    // Функция для расчета яркости стороны в зависимости от угла света
-    const getBrightness = (sideAngle: number) => {
-      // Расстояние между текущим углом света и углом стороны
-      let diff = Math.abs(angle - sideAngle);
-      // Нормализуем разницу (кратчайший путь по кругу)
-      if (diff > 180) diff = 360 - diff;
-      
-      // Чем ближе свет, тем ярче (от 0.2 до 0.8)
-      // diff от 0 (прямо на стороне) до 180 (противоположная сторона)
-      const brightness = 0.2 + (1 - diff / 180) * 0.6;
-      return brightness;
-    };
-    
-    const topBrightness = getBrightness(0);     // Верх = 0°
-    const rightBrightness = getBrightness(90);  // Право = 90°
-    const bottomBrightness = getBrightness(180); // Низ = 180°
-    const leftBrightness = getBrightness(270);   // Лево = 270°
-    
-    return {
-      position: 'absolute',
-      top: -4,
-      left: -4,
-      right: -4,
-      bottom: -4,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderTopColor: `rgba(255, 255, 255, ${topBrightness})`,
-      borderRightColor: `rgba(255, 255, 255, ${rightBrightness})`,
-      borderBottomColor: `rgba(255, 255, 255, ${bottomBrightness})`,
-      borderLeftColor: `rgba(255, 255, 255, ${leftBrightness})`,
-    };
-  });
-  
   return (
-    <>
-      {/* Диагональный градиент внутри рамки */}
-      <LinearGradient
-        colors={gradient.colors}
-        locations={gradient.locations}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          position: 'absolute',
-          top: -3,
-          left: -3,
-          right: -3,
-          bottom: -3,
-          borderRadius: 9,
-        }}
-      />
-      
-      {/* Анимированная светящаяся рамка */}
-      <Animated.View style={animatedBorderStyle} pointerEvents="none" />
-    </>
+    <LinearGradient
+      colors={gradient.colors}
+      locations={gradient.locations}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        position: 'absolute',
+        top: -3,
+        left: -3,
+        right: -3,
+        bottom: -3,
+        borderRadius: 9,
+      }}
+    />
   );
 }
 
@@ -166,19 +114,33 @@ function MonthHeader({
   const currentStreak = sobrietyStats?.currentStreak ?? 0;
   const showGoalProgress = streakGoal != null && streakGoal > 0;
   const goalReached = showGoalProgress && currentStreak >= streakGoal;
+  const hasBestStreak = !!sobrietyStats && sobrietyStats.bestStreak > 0;
+  const metaTextStyle = { color: colors.textSecondary, fontSize: 11, fontWeight: '600' } as const;
 
   return (
     <Animated.View style={[headerStyle, animatedStyle]}>
-      <View style={{ flex: 1 }}>
-        <Text style={monthStyle}>{label}</Text>
-        {sobrietyStats && sobrietyStats.currentStreak > 0 && (
-          <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
-            🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
-          </Text>
-        )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, minWidth: 0, paddingRight: rightAction != null ? 8 : 0 }}>
+            <Text style={[monthStyle, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+              {label}
+            </Text>
+            {sobrietyStats && sobrietyStats.currentStreak > 0 && (
+              <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
+                🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
+              </Text>
+            )}
+          </View>
+          {rightAction != null ? (
+            <View style={{ alignSelf: 'flex-start' }}>
+              {rightAction}
+            </View>
+          ) : null}
+        </View>
+
         {showGoalProgress && (
-          <View style={{ marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <View style={{ marginTop: 6, width: '100%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ flex: 1, height: 6, backgroundColor: colors.backgroundTertiary, borderRadius: 3, overflow: 'hidden' }}>
                 <View
                   style={{
@@ -189,24 +151,27 @@ function MonthHeader({
                   }}
                 />
               </View>
-              <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginLeft: 8 }}>
-                {currentStreak} / {streakGoal}
-              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 4 }}>
+              <Text style={metaTextStyle}>{currentStreak} / {streakGoal}</Text>
+              {hasBestStreak && sobrietyStats ? (
+                <Text style={metaTextStyle}>Рекорд: {sobrietyStats.bestStreak}</Text>
+              ) : (
+                <Text style={metaTextStyle} />
+              )}
             </View>
             {goalReached && (
-              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }}>Цель достигнута!</Text>
+              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600', marginTop: 2 }}>Цель достигнута!</Text>
             )}
           </View>
         )}
-      </View>
-      {sobrietyStats && sobrietyStats.bestStreak > 0 && (
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
+
+        {!showGoalProgress && hasBestStreak && sobrietyStats && (
+          <Text style={[metaTextStyle, { marginTop: 4 }]}>
             Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
           </Text>
-        </View>
-      )}
-      {rightAction != null ? <View style={{ marginLeft: 8 }}>{rightAction}</View> : null}
+        )}
+      </View>
     </Animated.View>
   );
 }
@@ -231,8 +196,10 @@ const SwipeableListItem = React.memo(function SwipeableListItem({ item, onRemove
   const startX = useSharedValue(0);
   
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
+    // In modal list users often move finger slightly diagonally; allow more vertical tolerance
+    // so horizontal delete swipe can still activate reliably.
+    .activeOffsetX([-8, 8])
+    .failOffsetY([-40, 40])
     .onStart(() => {
       startX.value = translateX.value;
       isFirstGesture.value = Math.abs(translateX.value) < 1;
@@ -397,7 +364,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
 }) {
   const isLightTheme = themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord') || themeName === 'violet' || themeName === 'sand';
   const todayISO = useMemo(() => formatISO(new Date()), []);
-  const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
+  const { bestStreakDays, bestCompletedStreak } = streakMaps;
   
   const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
   const monthNamesShort = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -576,22 +543,12 @@ const YearCalendarView = React.memo(function YearCalendarView({
             const iso = formatISO(date);
             const total = totalsByDate[iso] ?? 0;
             const isToday = iso === todayISO;
-            const streakDayNumber = currentStreakDays.get(iso);
-            const isInCurrentStreak = streakDayNumber !== undefined;
             const bestStreakDayNumber = bestStreakDays.get(iso);
             const isInBestStreak = bestStreakDayNumber !== undefined;
             
-            // Определяем тип серии для металлического эффекта
+            // В годовом режиме подсвечиваем только лучшую завершенную серию.
             let streakType: 'bronze' | 'silver' | 'gold' | null = null;
-            let streakLength = 0;
-            
-            if (isInBestStreak && bestCompletedStreak) {
-              streakLength = bestCompletedStreak.length;
-            } else if (isInCurrentStreak && streakDayNumber) {
-              // Для текущей серии используем общее количество дней
-              streakLength = streakDayNumber;
-            }
-            
+            const streakLength = isInBestStreak && bestCompletedStreak ? bestCompletedStreak.length : 0;
             if (streakLength >= 30) {
               streakType = 'gold';
             } else if (streakLength >= 14) {
@@ -616,8 +573,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
             };
             
             // Цветовая градация по количеству алкоголя
-            if (isInCurrentStreak || isInBestStreak) {
-              // Серии воздержания - металлические цвета с обводкой
+            if (isInBestStreak) {
+              // Лучшая завершенная серия - металлические цвета
               if (streakType === 'gold') {
                 cellStyle.backgroundColor = '#f4c430'; // Золото
                 cellStyle.borderWidth = 1.5;
@@ -630,13 +587,6 @@ const YearCalendarView = React.memo(function YearCalendarView({
                 cellStyle.backgroundColor = '#c08850'; // Бронза
                 cellStyle.borderWidth = 1.5;
                 cellStyle.borderColor = '#e8c4a0';
-              } else {
-                // Для коротких серий (менее 7 дней): на светлой теме — изумрудный, на тёмной — зелёный
-                const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
-                const streakBorder = isLightTheme ? STREAK_GREEN_LIGHT : '#34d399';
-                cellStyle.backgroundColor = streakGreen;
-                cellStyle.borderWidth = 1.5;
-                cellStyle.borderColor = streakBorder;
               }
               cellStyle.opacity = 1;
             } else if (total > 0) {
@@ -645,7 +595,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
               // Градация по количеству алкоголя
               if (dailyGoal !== null && dailyGoal > 0) {
                 if (total <= dailyGoal * 0.5) {
-                  cellStyle.backgroundColor = '#22c55e'; // Светло-зеленый (низкое количество)
+                  cellStyle.backgroundColor = '#10b981'; // Зеленый (низкое количество)
                 } else if (total <= dailyGoal) {
                   cellStyle.backgroundColor = '#84cc16'; // Желто-зеленый (умеренное)
                 } else if (total <= dailyGoal * 1.5) {
@@ -656,26 +606,28 @@ const YearCalendarView = React.memo(function YearCalendarView({
                   cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
                 }
               } else {
-                // Если цель не установлена
+                // Если цель не установлена, используем абсолютные пороги (как в месячном календаре)
                 if (total >= lethalDose) {
                   cellStyle.backgroundColor = '#991b1b'; // Темно-красный (критическое)
+                } else if (total >= 15) {
+                  cellStyle.backgroundColor = '#ef4444'; // Красный
+                } else if (total >= 10) {
+                  cellStyle.backgroundColor = '#f97316'; // Оранжево-красный
+                } else if (total >= 7) {
+                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый
+                } else if (total >= 5) {
+                  cellStyle.backgroundColor = '#fbbf24'; // Янтарный
+                } else if (total >= 3) {
+                  cellStyle.backgroundColor = '#84cc16'; // Желто-зеленый
+                } else if (total >= 1.5) {
+                  cellStyle.backgroundColor = '#22c55e'; // Светло-зеленый
+                } else if (total >= 0.5) {
+                  cellStyle.backgroundColor = '#10b981'; // Зеленый
                 } else {
-                  cellStyle.backgroundColor = '#f59e0b'; // Оранжевый (по умолчанию)
+                  cellStyle.backgroundColor = '#34d399'; // Очень низкое количество
                 }
               }
               cellStyle.opacity = 1;
-            }
-            
-            // Проверяем наличие меток на этот день (включая дни в серии)
-            const rangesOnDay = labelRanges.filter((r) => r.fromISO <= iso && r.toISO >= iso);
-            
-            // Если день в зелёной серии И есть метка - убираем зелёный фон, оставляем только тонкую зелёную обводку
-            if ((isInCurrentStreak || isInBestStreak) && rangesOnDay.length > 0 && streakType === null) {
-              // Возвращаем базовый фон, но добавляем зелёную обводку для индикации серии
-              cellStyle.backgroundColor = cellBg;
-              const streakGreen = isLightTheme ? STREAK_GREEN_LIGHT : '#10b981';
-              cellStyle.borderWidth = 1.5;
-              cellStyle.borderColor = streakGreen;
             }
             
             if (isToday) {
@@ -691,8 +643,8 @@ const YearCalendarView = React.memo(function YearCalendarView({
               >
                 <Text style={{ 
                   fontSize: 8,
-                  color: (isInCurrentStreak || isInBestStreak) 
-                    ? (streakType === 'gold' || streakType === 'bronze' ? '#ffffff' : '#000000')
+                  color: isInBestStreak
+                    ? (streakType === 'silver' ? '#000000' : '#ffffff')
                     : (total > 0 && total >= lethalDose 
                         ? '#ffffff' 
                         : (total > 0 
@@ -708,7 +660,7 @@ const YearCalendarView = React.memo(function YearCalendarView({
         </View>
       </View>
     );
-  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, currentStreakDays, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors, labelsMap, isLightTheme, themeName]);
+  }, [year, monthWidth, daySize, monthMarginBottom, gapBetweenMonths, gapBetweenDays, totalsByDate, bestStreakDays, bestCompletedStreak, todayISO, onDayPress, dailyGoal, lethalDose, colors, labelsMap, isLightTheme, themeName]);
   
   const months = useMemo(() => {
     return monthNames.map((_, index) => index);
@@ -741,26 +693,37 @@ const YearCalendarView = React.memo(function YearCalendarView({
 });
 
 export default function CalendarScreen() {
+  const startupSnapshot = getStartupSnapshot();
   const { colors, themeName } = useTheme();
+  const { isOnboardingActive } = useOnboarding();
+  const wasOnboardingRef = useRef(isOnboardingActive);
+  const isLightCalendarTheme =
+    themeName === 'light' ||
+    themeName === 'highContrast' ||
+    themeName === 'violet' ||
+    themeName === 'sand' ||
+    themeName === 'nord';
+  const todayWeekdayIndex = useMemo(() => getWeekdayIndexMonFirst(new Date()), []);
   const { currency } = useCurrency();
-  const [all, setAll] = useState<Drink[]>([]);
+  const [all, setAll] = useState<Drink[]>(startupSnapshot?.allDrinks ?? []);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayList, setDayList] = useState<Drink[]>([]);
-  const [dailyGoal, setDailyGoal] = useState<number | null>(null);
-  const [lethalDose, setLethalDose] = useState<number>(15);
-  const [appStartDate, setAppStartDate] = useState<string | null>(null);
-  const appStartDateRef = useRef<string | null>(null);
+  const [dailyGoal, setDailyGoal] = useState<number | null>(startupSnapshot?.dailyGoal ?? null);
+  const [lethalDose, setLethalDose] = useState<number>(startupSnapshot?.lethalDose ?? 15);
+  const [appStartDate, setAppStartDate] = useState<string | null>(startupSnapshot?.appStartDate ?? null);
+  const appStartDateRef = useRef<string | null>(startupSnapshot?.appStartDate ?? null);
   const listRef = useRef<FlatList<Date>>(null);
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
   const insets = useSafeAreaInsets();
-  const [headerHeight, setHeaderHeight] = useState<number>(0);
-  const [weekRowHeight, setWeekRowHeight] = useState<number>(0);
+  const [headerHeight, setHeaderHeight] = useState<number>(84);
+  const [weekRowHeight, setWeekRowHeight] = useState<number>(24);
+  const [calendarAreaHeight, setCalendarAreaHeight] = useState<number | null>(null);
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'year'>('month');
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [isPremium, setIsPremium] = useState(false);
-  const [streakGoal, setStreakGoal] = useState<number | null>(null);
+  const [isPremium, setIsPremium] = useState(startupSnapshot?.isPremium ?? false);
+  const [streakGoal, setStreakGoal] = useState<number | null>(startupSnapshot?.streakGoal ?? null);
   const [dayLabelText, setDayLabelText] = useState('');
   const [dayLabelColor, setDayLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [dayLabels, setDayLabels] = useState<Array<{ text: string; color: string }>>([]);
@@ -770,9 +733,11 @@ export default function CalendarScreen() {
   const [labelText, setLabelText] = useState('');
   const [labelColor, setLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [labelDatePickerMode, setLabelDatePickerMode] = useState<'from' | 'to' | null>(null);
-  const [labelRanges, setLabelRanges] = useState<LabelRange[]>([]);
+  const [labelRanges, setLabelRanges] = useState<LabelRange[]>(startupSnapshot?.labelRanges ?? []);
   const [editingRange, setEditingRange] = useState<LabelRange | null>(null);
-  const [labelsMap, setLabelsMap] = useState<Record<string, { text: string; color: string }[]>>({});
+  const [labelsMap, setLabelsMap] = useState<Record<string, { text: string; color: string }[]>>(startupSnapshot?.labelsMap ?? {});
+  const demoDrinks = useMemo(() => getDemoDrinksForOnboarding(), []);
+  const calendarData = isOnboardingActive ? demoDrinks : all;
 
   // Автоматически выбираем текущий год при переключении на годовой режим
   useEffect(() => {
@@ -783,21 +748,25 @@ export default function CalendarScreen() {
   const hasMeasuredHeaderRef = useRef<boolean>(false);
   const hasMeasuredWeekRowRef = useRef<boolean>(false);
   
+  // Высота таб-бара должна совпадать с App.tsx, чтобы календарь не уезжал под него
+  const tabBarHeight = useMemo(() => {
+    if (Platform.OS === 'android') return 70 + Math.max(0, insets.bottom);
+    return 60 + Math.max(8, insets.bottom);
+  }, [insets.bottom]);
+
   // Вычисляем высоту списка на основе измеренных высот header и weekRow
   const listHeight = useMemo(() => {
     if (headerHeight === 0 || weekRowHeight === 0) {
       return null;
     }
-    // Высота = экран - SafeArea insets - paddingTop (12px) - переключатель режимов (44px) - marginBottom (8px) - header - marginBottom (8px) - weekRow - marginBottom (6px) - таб-бар (49px)
     const paddingTop = 12;
-    const switcherHeight = 44; // Высота переключателя режимов
+    const switcherHeight = 44;
     const marginAfterSwitcher = 8;
     const marginAfterHeader = 8;
     const marginAfterWeekRow = 6;
-    const tabBarHeight = 49; // Стандартная высота таб-бара React Navigation
     const calculatedHeight = screenHeight - insets.top - insets.bottom - paddingTop - switcherHeight - marginAfterSwitcher - headerHeight - marginAfterHeader - weekRowHeight - marginAfterWeekRow - tabBarHeight;
     return Math.max(300, calculatedHeight);
-  }, [screenHeight, insets.top, insets.bottom, headerHeight, weekRowHeight]);
+  }, [screenHeight, insets.top, insets.bottom, headerHeight, weekRowHeight, tabBarHeight]);
 
   const loadAll = useCallback(async () => {
     const startTime = performance.now();
@@ -829,16 +798,47 @@ export default function CalendarScreen() {
     isPremiumUser().then(setIsPremium);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      // Загружаем данные при фокусе на экран
+  // При завершении онбординга сразу сбрасываем демо-данные и грузим реальные, чтобы не мелькали при открытии календаря
+  useEffect(() => {
+    if (wasOnboardingRef.current === true && isOnboardingActive === false) {
+      setAll([]);
+      setDayList([]);
       loadAll();
       loadDailyGoal();
+      isPremiumUser().then(setIsPremium);
+      getCalendarLabels().then(setLabelsMap);
+      getCalendarLabelRanges().then(setLabelRanges);
+      getStreakGoal().then(setStreakGoal);
+    }
+    wasOnboardingRef.current = isOnboardingActive;
+  }, [isOnboardingActive, loadAll, loadDailyGoal]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Во время онбординга показываем только демо-данные (не пишем в память)
+      if (isOnboardingActive) {
+        setAll(getDemoDrinksForOnboarding());
+        setDailyGoal(3);
+        setLethalDose(15);
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        const startIso = formatISO(d);
+        appStartDateRef.current = startIso;
+        setAppStartDate(startIso);
+        isPremiumUser().then(setIsPremium);
+        getCalendarLabels().then(setLabelsMap);
+        getCalendarLabelRanges().then(setLabelRanges);
+        getStreakGoal().then(setStreakGoal);
+        return () => {};
+      }
+      loadAll();
+      loadDailyGoal();
+      isPremiumUser().then(setIsPremium);
       getCalendarLabels().then(setLabelsMap);
       getCalendarLabelRanges().then(setLabelRanges);
       getStreakGoal().then(setStreakGoal);
       return () => {};
-    }, [loadAll, loadDailyGoal])
+    }, [loadAll, loadDailyGoal, isOnboardingActive])
   );
 
   useEffect(() => {
@@ -850,16 +850,18 @@ export default function CalendarScreen() {
   const totalsByDate = useMemo(() => {
     const startTime = performance.now();
     const map: Record<string, number> = {};
-    for (const d of all) {
+    for (const d of calendarData) {
       map[d.dateISO] = (map[d.dateISO] ?? 0) + d.standardUnits;
     }
     const endTime = performance.now();
     const duration = endTime - startTime;
-    if (duration > 1 || all.length > 0) {
-      console.log(`[PERF] totalsByDate computed in ${duration.toFixed(2)}ms, drinks: ${all.length}, dates: ${Object.keys(map).length}`);
+    if (duration > 1 || calendarData.length > 0) {
+      console.log(
+        `[PERF] totalsByDate computed in ${duration.toFixed(2)}ms, drinks: ${calendarData.length}, dates: ${Object.keys(map).length}`,
+      );
     }
     return map;
-  }, [all]);
+  }, [calendarData]);
 
   // Подсчет текущей серии дней без алкоголя и лучшей серии
   const sobrietyStats = useMemo(() => {
@@ -956,8 +958,9 @@ export default function CalendarScreen() {
   // Проверка и разблокировка достижений
   useEffect(() => {
     const checkAchievements = async () => {
+      if (isOnboardingActive) return;
       // Проверяем достижения только если есть записи о напитках
-      const hasAnyDrinks = all.length > 0;
+      const hasAnyDrinks = calendarData.length > 0;
       if (sobrietyStats.currentStreak > 0 && hasAnyDrinks) {
         const newAchievements = await checkAndUnlockAchievements(sobrietyStats.currentStreak, hasAnyDrinks);
         if (newAchievements.length > 0) {
@@ -972,7 +975,7 @@ export default function CalendarScreen() {
       }
     };
     checkAchievements();
-  }, [sobrietyStats.currentStreak, all.length]);
+  }, [sobrietyStats.currentStreak, calendarData.length, isOnboardingActive]);
 
   // Определяем серии дней без алкоголя для визуального выделения
   // Серии считаются ТОЛЬКО после первой записи о напитке
@@ -1102,20 +1105,39 @@ export default function CalendarScreen() {
     };
   }, [totalsByDate]);
 
-  // Подготовим список недель: 3 года назад до конца текущего месяца
+  // Подготовим список недель: от 12 месяцев назад до конца следующего месяца.
+  // В онбординге фиксируем якорь на феврале 2026, чтобы 6-й слайд всегда открывался на нужном периоде.
   const baseToday = useMemo(() => {
+    if (isOnboardingActive) {
+      const anchor = new Date(ONBOARDING_CALENDAR_ANCHOR);
+      anchor.setHours(0, 0, 0, 0);
+      return anchor;
+    }
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
-  }, []);
+  }, [isOnboardingActive]);
 
   const weeks: Date[] = useMemo(() => {
-    // Верхняя граница: конец месяца через 2 месяца от сегодня
-    const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 3, 0);
+    if (isOnboardingActive) {
+      // Для онбординга показываем только 6 недель вокруг февраля 2026 (матрица месяца),
+      // чтобы не было лишнего диапазона и начального «проскролла».
+      const matrix = buildMonthMatrix(ONBOARDING_CALENDAR_ANCHOR);
+      const result: Date[] = [];
+      for (let i = 0; i < matrix.length; i += 7) {
+        const d = new Date(matrix[i]);
+        d.setHours(0, 0, 0, 0);
+        result.push(d);
+      }
+      return result;
+    }
+
+    // Верхняя граница: конец следующего месяца
+    const endMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() + 2, 0);
     endMonth.setHours(0, 0, 0, 0);
 
-    // Нижняя граница: начало месяца 2 года назад
-    const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 24, 1);
+    // Нижняя граница: начало месяца 12 месяцев назад
+    const startMonth = new Date(baseToday.getFullYear(), baseToday.getMonth() - 12, 1);
     startMonth.setHours(0, 0, 0, 0);
 
     // Выравниваем к понедельнику (0 = понедельник в getWeekdayIndexMonFirst)
@@ -1130,10 +1152,10 @@ export default function CalendarScreen() {
       cursor.setDate(cursor.getDate() + 7);
     }
     return result;
-  }, [baseToday]);
+  }, [baseToday, isOnboardingActive]);
   
   // Индекс недели, содержащей сегодняшний день
-  const initialIndex = useMemo(() => {
+  const todayIndex = useMemo(() => {
     const todayISO = formatISO(baseToday);
     const idx = weeks.findIndex((weekStart) => {
       const start = new Date(weekStart);
@@ -1143,25 +1165,43 @@ export default function CalendarScreen() {
     });
     return idx >= 0 ? idx : weeks.length - 1;
   }, [weeks, baseToday]);
-  const [visibleIndex, setVisibleIndex] = useState(initialIndex);
-  const lastScrollIndexRef = useRef(initialIndex);
-  const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Стартовый фокус: на текущем месяце (центрируем середину месяца в видимой области).
+  const initialMonthFocusIndex = useMemo(() => {
+    if (isOnboardingActive) {
+      // Для онбординга начинаем ровно с первой недели фиксированного месяца,
+      // чтобы FlatList не делал начальный «прыжок» к индексу > 0.
+      return 0;
+    }
+    // Для разных размеров экрана/округлений точнее фокусироваться на недели с "сегодня",
+    // а не на середину месяца: так "сегодня" будет в верхней части сетки на старте.
+    return todayIndex;
+  }, [weeks, baseToday, todayIndex]);
+
+  const [visibleIndex, setVisibleIndex] = useState(initialMonthFocusIndex);
+  const lastScrollIndexRef = useRef(initialMonthFocusIndex);
+  const hasInitialMonthFocusAppliedRef = useRef(false);
+  const lastVisibleIndexUpdateMsRef = useRef(0);
+
+  // В онбординге всегда показываем фиксированный период — синхронизируем скролл при смене шага.
+  useEffect(() => {
+    if (isOnboardingActive) {
+      setVisibleIndex(0);
+      lastScrollIndexRef.current = 0;
+    }
+  }, [isOnboardingActive]);
+
+  // В онбординге всегда показываем февраль 2026 — синхронизируем скролл при смене baseToday.
+  useEffect(() => {
+    if (isOnboardingActive) {
+      setVisibleIndex(initialMonthFocusIndex);
+      lastScrollIndexRef.current = initialMonthFocusIndex;
+    }
+  }, [isOnboardingActive, initialMonthFocusIndex]);
   
   // Отдельное состояние для текста заголовка и его анимации
   const [monthLabel, setMonthLabel] = useState<string>('');
-  const monthHeaderFade = useSharedValue(1);
   const backToTodayFade = useSharedValue(0);
-  
-  // Throttle для обновления visibleIndex (короткий, чтобы кнопка «Сегодня» реагировала без задержки)
-  const updateVisibleIndexThrottled = useCallback((idx: number) => {
-    if (throttleTimerRef.current) {
-      return;
-    }
-    throttleTimerRef.current = setTimeout(() => {
-      setVisibleIndex(idx);
-      throttleTimerRef.current = null;
-    }, 50);
-  }, []);
   
   // Анимация модалок - движение за пальцем
   const dayModalTranslateY = useSharedValue(0);
@@ -1197,15 +1237,11 @@ export default function CalendarScreen() {
     setMonthLabel(dateFormatter.format(dominantMonth.date));
   }, [dominantMonth, dateFormatter]);
 
-  // Анимация появления заголовка при смене месяца
+  // Держим заголовок месяца стабильным без reset-анимации, чтобы не было "скачков" шапки.
   const monthHeaderAnimatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: monthHeaderFade.value,
-      transform: [
-        {
-          translateY: (1 - monthHeaderFade.value) * 8, // лёгкий сдвиг вверх при появлении
-        },
-      ],
+      opacity: 1,
+      transform: [{ translateY: 0 }],
     };
   });
 
@@ -1220,13 +1256,7 @@ export default function CalendarScreen() {
     };
   });
 
-  useEffect(() => {
-    if (!dominantMonth) return;
-    monthHeaderFade.value = 0;
-    monthHeaderFade.value = withTiming(1, { duration: 220 });
-  }, [dominantMonth?.year, dominantMonth?.month]);
-
-  // initialScrollIndex делает начальный скролл, не нужен useEffect
+  // Начальный скролл делаем вручную (см. эффект ниже), чтобы избежать плавающего offset на некоторых устройствах.
 
   const onMomentumEndHorizontal = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -1239,12 +1269,11 @@ export default function CalendarScreen() {
     const startTime = performance.now();
     const iso = formatISO(date);
     setSelectedDate(iso);
-    // Используем локальное состояние all вместо загрузки из AsyncStorage
-    const list = all.filter((d) => d.dateISO === iso);
+    const list = calendarData.filter((d) => d.dateISO === iso);
     const endTime = performance.now();
     console.log(`[PERF] openDay completed in ${(endTime - startTime).toFixed(2)}ms, date: ${iso}, drinks: ${list.length}`);
     setDayList(list);
-  }, [all]);
+  }, [calendarData]);
 
   const handleYearDayPress = useCallback((dateISO: string) => {
     const date = new Date(dateISO);
@@ -1303,7 +1332,10 @@ export default function CalendarScreen() {
   // Состояния для добавления напитков
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
+  const [catalog, setCatalog] = useState<PresetDrink[]>([]);
+  const [editingCatalogItem, setEditingCatalogItem] = useState<PresetDrink | null>(null);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
   const [newVolume, setNewVolume] = useState('500');
@@ -1317,6 +1349,8 @@ export default function CalendarScreen() {
       try {
         const presets = await getUserPresets();
         setUserPresets(presets);
+        const cat = await getDrinkCatalog();
+        setCatalog(cat);
       } catch (error) {
         console.error('[CalendarScreen] Error loading presets:', error);
       }
@@ -1329,15 +1363,6 @@ export default function CalendarScreen() {
       setUserPresets(presets);
     });
     return unsubscribe;
-  }, []);
-
-  // Cleanup для throttle таймера
-  useEffect(() => {
-    return () => {
-      if (throttleTimerRef.current) {
-        clearTimeout(throttleTimerRef.current);
-      }
-    };
   }, []);
 
   // Сбрасываем позиции модалок при открытии
@@ -1357,6 +1382,11 @@ export default function CalendarScreen() {
       other: 'Другое',
     };
     return labels[type] || labels.other;
+  };
+
+  const getBeverageColors = (type: PresetDrink['beverageType']) => {
+    const c = (colors as Record<string, { main: string; light: string; text: string }>)[type] ?? (colors as Record<string, { main: string; light: string; text: string }>).other;
+    return { main: c.main, light: c.light, text: c.text };
   };
 
   // Функции для работы с модальными окнами
@@ -1384,6 +1414,7 @@ export default function CalendarScreen() {
   const closeCustomModal = () => {
     setNewPriceVal('');
     setCustomModalVisible(false);
+    setEditingCatalogItem(null);
     setNewName('');
     setNewType('beer');
     setNewVolume('500');
@@ -1394,6 +1425,9 @@ export default function CalendarScreen() {
       setDayList(list);
     }
   };
+
+  // Управление каталогом (редактирование/удаление) делаем в отдельной модалке избранного,
+  // в модалке добавления записи оставляем только выбор напитка.
 
   // Добавление напитка сразу с количеством 1
   const addDrinkFromPreset = async (preset: PresetDrink) => {
@@ -1431,6 +1465,25 @@ export default function CalendarScreen() {
       console.error('[CalendarScreen] Error in addDrinkFromPreset:', error);
     }
   };
+
+  const saveOneTimeEntry = useCallback(async (data: OneTimeEntryData) => {
+    if (!selectedDate) return;
+    const units = calculateStandardUnits(data.volumeMl, data.abvPercent);
+    const entry: Drink = {
+      id: `drink_${Date.now()}`,
+      dateISO: selectedDate,
+      name: data.name,
+      beverageType: data.beverageType,
+      volumeMl: data.volumeMl,
+      abvPercent: data.abvPercent,
+      standardUnits: units,
+      quantity: 1,
+      ...(data.price != null && { price: data.price }),
+    };
+    const updated = await addOrMergeDrink(entry);
+    const list = updated.filter((d) => d.dateISO === selectedDate);
+    setDayList(list);
+  }, [selectedDate]);
 
   // Изменение количества записи
   const changeQuantity = async (id: string, delta: number) => {
@@ -1534,16 +1587,17 @@ export default function CalendarScreen() {
     return filtered;
   }, [userPresets, searchQuery]);
 
-  // Фильтруем предложенные напитки - исключаем те, что уже в избранном
-  // Проверяем точное совпадение по объему, крепости и типу
+  // Фильтруем каталог напитков - исключаем те, что уже в избранном
   // Также фильтруем по поисковому запросу
-  const availableSuggestedPresets = useMemo(() => {
+  const availableCatalogItems = useMemo(() => {
     const startTime = performance.now();
-    const filtered = suggestedPresets.filter((suggested) => {
-      return !userPresets.some((userPreset) => 
-        userPreset.volumeMl === suggested.volumeMl &&
-        userPreset.abvPercent === suggested.abvPercent &&
-        userPreset.beverageType === suggested.beverageType
+    const filtered = catalog.filter((candidate) => {
+      return !userPresets.some(
+        (userPreset) =>
+          userPreset.volumeMl === candidate.volumeMl &&
+          userPreset.abvPercent === candidate.abvPercent &&
+          userPreset.beverageType === candidate.beverageType &&
+          userPreset.name === candidate.name
       );
     });
     
@@ -1557,12 +1611,12 @@ export default function CalendarScreen() {
     }
     const endTime = performance.now();
     if (endTime - startTime > 1) {
-      console.log(`[PERF] availableSuggestedPresets computed in ${(endTime - startTime).toFixed(2)}ms, result: ${result.length}/${suggestedPresets.length}`);
+      console.log(`[PERF] availableCatalogItems computed in ${(endTime - startTime).toFixed(2)}ms, result: ${result.length}/${catalog.length}`);
     }
     return result;
-  }, [userPresets, searchQuery]);
+  }, [catalog, userPresets, searchQuery]);
 
-  // Сохранение кастомного напитка
+  // Сохранение кастомного напитка (добавляем в каталог и сразу добавляем запись на выбранный день)
   const saveCustomPreset = async () => {
     if (!selectedDate) return;
     const volume = parseFloat(newVolume);
@@ -1587,6 +1641,18 @@ export default function CalendarScreen() {
     };
     
     closeCustomModal();
+
+    const payload = {
+      name: newName,
+      beverageType: newType,
+      volumeMl: volume,
+      abvPercent: abv,
+      ...(price != null && { defaultPrice: price }),
+    };
+    const updatedCatalog = editingCatalogItem
+      ? await updateCatalogDrink(editingCatalogItem.id, payload)
+      : await addDrinkToCatalog(payload);
+    setCatalog(updatedCatalog);
     
     const updated = await addOrMergeDrink(entry);
     
@@ -1607,26 +1673,108 @@ export default function CalendarScreen() {
     if (listRef.current && listHeight && listHeight > 0) {
       try {
         listRef.current.scrollToIndex({ 
-          index: initialIndex, 
+          index: todayIndex, 
           animated: true,
         });
       } catch (error) {
         // Если не удалось, пробуем через offset
         if (listRef.current) {
           listRef.current.scrollToOffset({ 
-            offset: initialIndex * cellHeight, 
+            offset: todayIndex * cellHeight, 
             animated: true,
           });
         }
       }
     }
-  }, [listHeight, initialIndex]);
+  }, [listHeight, todayIndex, cellHeight]);
+
+  // Предвычисляем попадание range-меток по дням, чтобы не делать filter в каждой ячейке во время скролла.
+  const labelRangesByDate = useMemo(() => {
+    const map: Record<string, LabelRange[]> = {};
+    if (!labelRanges.length || !weeks.length) return map;
+
+    const viewStartISO = formatISO(weeks[0]);
+    const viewEndDate = new Date(weeks[weeks.length - 1]);
+    viewEndDate.setDate(viewEndDate.getDate() + 6);
+    const viewEndISO = formatISO(viewEndDate);
+
+    for (const range of labelRanges) {
+      const startISO = range.fromISO > viewStartISO ? range.fromISO : viewStartISO;
+      const endISO = range.toISO < viewEndISO ? range.toISO : viewEndISO;
+      if (startISO > endISO) continue;
+
+      let cursorISO = startISO;
+      while (cursorISO <= endISO) {
+        if (!map[cursorISO]) map[cursorISO] = [];
+        map[cursorISO].push(range);
+        cursorISO = addDaysISO(cursorISO, 1);
+      }
+    }
+
+    return map;
+  }, [labelRanges, weeks]);
+
+  const scrollToCurrentMonth = useCallback(() => {
+    if (listRef.current && listHeight && listHeight > 0) {
+      try {
+        // Используем scrollToIndex, чтобы опираться на getItemLayout и избежать
+        // расхождений из-за округления пикселей/высоты на разных устройствах.
+        listRef.current.scrollToIndex({ index: initialMonthFocusIndex, animated: false });
+      } catch {
+        // Fallback на offset (на случай если scrollToIndex по какой-то причине упадёт).
+        listRef.current.scrollToOffset({
+          offset: initialMonthFocusIndex * cellHeight,
+          animated: false,
+        });
+      }
+    }
+  }, [listHeight, initialMonthFocusIndex, cellHeight]);
+
+  useEffect(() => {
+    // При переключении режимов — разрешаем повторить автопрокрутку при входе в month.
+    if (calendarViewMode === 'month') {
+      hasInitialMonthFocusAppliedRef.current = false;
+    }
+  }, [calendarViewMode]);
+
+  // Делаем автопереход к текущему месяцу только после измерения высоты области календаря,
+  // чтобы не показывать "пустой" первый рендер (когда cellHeight ещё не готов).
+  useEffect(() => {
+    if (isOnboardingActive) {
+      hasInitialMonthFocusAppliedRef.current = false;
+      return;
+    }
+    if (calendarViewMode !== 'month') return;
+    if (!listHeight || listHeight <= 0) return;
+    if (!weeks.length) return;
+    // Ждём, пока измерены header и строка недели — они влияют на расчёт `listHeight` и `cellHeight`.
+    if (!hasMeasuredHeaderRef.current || !hasMeasuredWeekRowRef.current) return;
+    if (calendarAreaHeight == null || calendarAreaHeight <= 0) return;
+    if (hasInitialMonthFocusAppliedRef.current) return;
+
+    hasInitialMonthFocusAppliedRef.current = true;
+    lastScrollIndexRef.current = initialMonthFocusIndex;
+    setVisibleIndex(initialMonthFocusIndex);
+    requestAnimationFrame(() => {
+      scrollToCurrentMonth();
+    });
+  }, [
+    calendarViewMode,
+    listHeight,
+    initialMonthFocusIndex,
+    scrollToCurrentMonth,
+    isOnboardingActive,
+    calendarAreaHeight,
+    weeks.length,
+    headerHeight,
+    weekRowHeight,
+  ]);
 
   // Показываем кнопку «Сегодня», когда уехали в прошлое или в будущее (на 4+ недель от текущей)
   const showBackToToday = useMemo(() => {
     if (!weeks.length) return false;
-    return visibleIndex <= initialIndex - 4 || visibleIndex >= initialIndex + 4;
-  }, [visibleIndex, initialIndex, weeks.length]);
+    return visibleIndex <= todayIndex - 4 || visibleIndex >= todayIndex + 4;
+  }, [visibleIndex, todayIndex, weeks.length]);
 
   // Анимируем появление/исчезновение стрелки вниз
   useEffect(() => {
@@ -1639,7 +1787,8 @@ export default function CalendarScreen() {
   // Мемоизируем renderItem для оптимизации производительности
   // Высота ячейки подбирается так, чтобы на экране помещалось примерно 5 недель
   const VISIBLE_WEEKS = 5;
-  const cellHeight = listHeight ? Math.floor(listHeight / VISIBLE_WEEKS) : 0;
+  const effectiveListHeight = calendarAreaHeight ?? listHeight ?? 0;
+  const cellHeight = effectiveListHeight > 0 ? Math.floor(effectiveListHeight / VISIBLE_WEEKS) : 0;
   const actualMonthHeight = cellHeight * VISIBLE_WEEKS;
   
   // Горизонтальные отступы календаря (как у заголовка и строки дней недели)
@@ -1671,6 +1820,29 @@ export default function CalendarScreen() {
     
     // Используем предвычисленные Maps вместо пересчета на каждой неделе
     const { currentStreakDays, bestStreakDays, bestCompletedStreak } = streakMaps;
+    const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
+    const cellBgBase = isLightCalendarTheme
+      ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT)
+      : colors.backgroundCard;
+    const badgeSizeStyle = {
+      width: Math.max(28, Math.min(Math.floor(cellWidth * 0.76), 48)),
+      minHeight: Math.min(Math.floor(cellHeight * 0.55), 48),
+      maxHeight: Math.min(Math.floor(cellHeight * 0.7), 56),
+      ...(cellHeight < 44 || cellWidth < 32
+        ? { paddingHorizontal: 2, paddingVertical: 2, borderRadius: 6, minHeight: 28 }
+        : {}),
+    } as const;
+    const lightBadgeStyle = Platform.OS === 'ios'
+      ? {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 } as const,
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+        }
+      : { backgroundColor: 'rgba(255, 255, 255, 0.9)' };
+    const badgeMainTextColor = isLightCalendarTheme ? colors.text : '#ffffff';
+    const badgeSubTextColor = isLightCalendarTheme ? colors.textSecondary : 'rgba(255,255,255,0.9)';
     
     const cells = weekDays.map((d, idx) => {
       const iso = formatISO(d);
@@ -1689,21 +1861,20 @@ export default function CalendarScreen() {
          d.getMonth() === dominantMonthNum) ||
         isInCurrentStreak;
       const isToday = iso === todayISO;
-      const isLastCol = (idx % 7) === 6;
-      const isLastRow = Math.floor(idx / 7) === 5;
-      
       // Определяем стиль свечения в зависимости от длины серии (детальная прогрессия)
       let glowStyle = null;
       
       // Сначала проверяем лучшую серию (стили дублируют стандартные, градиент поверх)
       if (isInBestStreak && bestStreakDayNumber && bestCompletedStreak) {
+        // Keep bronze/silver/gold colors for the best streak,
+        // but avoid heavy animated MetalGradient to preserve scroll performance.
         const bestLength = bestCompletedStreak.length;
         if (bestLength >= 30) {
-          glowStyle = styles.cellGoldStrong; // 30+ дней - золото
+          glowStyle = styles.cellGoldStrong;
         } else if (bestLength >= 14) {
-          glowStyle = styles.cellGoldMedium; // 14-29 дней - серебро
+          glowStyle = styles.cellGoldMedium;
         } else {
-          glowStyle = styles.cellGoldLight; // 7-13 дней - медь
+          glowStyle = styles.cellGoldLight;
         }
       } else if (isInCurrentStreak && streakDayNumber) {
         if (streakDayNumber >= 30) {
@@ -1781,10 +1952,8 @@ export default function CalendarScreen() {
         }
       }
       
-      const isLightTheme = themeName === 'light' || themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord';
       const hasData = total > 0 || total >= lethalDose;
-      const useTintedBg = themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand';
-      const cellBg = isLightTheme ? (useTintedBg ? colors.backgroundSecondary : CALENDAR_CELL_BG_LIGHT) : colors.backgroundCard;
+      const cellBg = cellBgBase;
 
       // Рамки меток теперь рендерятся отдельным слоем поверх сетки
 
@@ -1795,7 +1964,7 @@ export default function CalendarScreen() {
             styles.cell,
             { width: cellWidth, height: cellHeight - 4, margin: 0 },
             // Для дней с данными на светлых темах убираем тени и затемненные границы
-            isLightTheme && hasData && {
+            isLightCalendarTheme && hasData && {
               shadowColor: 'transparent',
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0,
@@ -1808,11 +1977,11 @@ export default function CalendarScreen() {
             },
             // Для дней в серии не применяем cellCurrent/cellAdjacent, чтобы зеленый фон был виден
             // Для дней с данными на светлых темах тоже не применяем cellCurrent/cellAdjacent, чтобы цветной фон был виден
-            !glowStyle && !(cellColorStyle && isLightTheme) && (isCurrentMonth 
+            !glowStyle && !(cellColorStyle && isLightCalendarTheme) && (isCurrentMonth 
               ? [styles.cellCurrent, { backgroundColor: cellBg }] 
               : [styles.cellAdjacent, { backgroundColor: cellBg }]),
             glowStyle, // glowStyle применяется после, чтобы перекрыть фон
-            isLightTheme && glowStyle && isInCurrentStreak && {
+            isLightCalendarTheme && glowStyle && isInCurrentStreak && {
               backgroundColor: STREAK_GREEN_LIGHT,
               borderColor: STREAK_GREEN_LIGHT,
               shadowColor: STREAK_GREEN_LIGHT,
@@ -1830,22 +1999,28 @@ export default function CalendarScreen() {
                      bestCompletedStreak.length >= 14 ? 'silver' : 'bronze'} 
               />
             )}
-            <Text style={[
-              styles.dayNum, 
-              !isCurrentMonth && styles.dayNumMuted,
-              { 
-                color: !isCurrentMonth 
-                  ? colors.textTertiary 
-                  : (glowStyle 
-                      ? '#ffffff' 
-                      : (total >= lethalDose 
-                          ? '#ffffff' 
-                          : (cellColorStyle && total > 0 
-                              ? colors.text 
-                              : colors.text)))
-              }
-            ]}>{d.getDate()}</Text>
-            {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) && (
+            {/* Верхняя виртуальная половина ячейки — число */}
+            <View style={styles.cellTopBlock}>
+              <Text style={[
+                styles.dayNum, 
+                !isCurrentMonth && styles.dayNumMuted,
+                { 
+                  // При glow-фоне (бронза/серебро/золото и streak) всегда даём контрастный белый текст.
+                  color: glowStyle
+                    ? '#ffffff'
+                    : (!isCurrentMonth 
+                        ? colors.textTertiary 
+                        : (total >= lethalDose 
+                            ? '#ffffff' 
+                            : (cellColorStyle && total > 0 
+                                ? colors.text 
+                                : colors.text)))
+                }
+              ]}>{d.getDate()}</Text>
+            </View>
+            {/* Нижняя виртуальная половина — бейдж по центру */}
+            <View style={styles.cellBottomBlock}>
+            {(total >= lethalDose || total > 0 || (isInBestStreak && bestCompletedStreak)) ? (
               <View style={styles.badgeContainer}>
                 {total >= lethalDose ? (
                   <View style={styles.deadIconContainer}>
@@ -1853,30 +2028,15 @@ export default function CalendarScreen() {
                   </View>
                 ) : total > 0 ? (
                   <View style={[
-                    styles.badge, 
+                    styles.badge,
+                    badgeSizeStyle,
                     (themeName === 'light' || (themeName === 'highContrast' || themeName === 'violet' || themeName === 'sand' || themeName === 'nord'))
-                      ? { 
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                          borderRadius: 8,
-                          paddingHorizontal: 4,
-                          paddingVertical: 3,
-                          minWidth: 40,
-                          minHeight: 44,
-                          ...Platform.select({
-                            ios: {
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: 1 },
-                              shadowOpacity: 0.2,
-                              shadowRadius: 2,
-                            },
-                            android: { elevation: 2 },
-                          }),
-                        } 
+                      ? lightBadgeStyle
                       : { backgroundColor: colors.primaryLight }
                   ]}>
-                    <MaterialCommunityIcons name="cup" size={14} color="#f59e0b" />
-                    <Text style={[styles.badgeUnits, { color: colors.text }]}>{total.toFixed(1)}</Text>
-                    <Text style={[styles.badgeAlcohol, { color: colors.textSecondary }]}>{(total * 10).toFixed(0)}г</Text>
+                    <MaterialCommunityIcons name="cup" size={12} color="#f59e0b" />
+                    <Text style={[styles.badgeUnits, { color: badgeMainTextColor, fontSize: 11 }]} numberOfLines={1}>{total.toFixed(1)}</Text>
+                    <Text style={[styles.badgeAlcohol, { color: badgeSubTextColor, fontSize: 9 }]} numberOfLines={1}>{(total * 10).toFixed(0)}г</Text>
                   </View>
                 ) : isInBestStreak && bestCompletedStreak ? (
                   <Text style={styles.awardEmoji}>
@@ -1885,19 +2045,19 @@ export default function CalendarScreen() {
                   </Text>
                 ) : null}
               </View>
-            )}
+            ) : null}
+            </View>
           </View>
         </TouchableOpacity>
       );
     });
     
-    // Кружки меток: размер от ячейки, 4 в ряд, до 2 рядов (макс. 8 на календаре), в модалке дня — все метки
+    // Кружки меток: один ряд до 4 штук, чтобы не конфликтовать с новым размером бейджа.
     const DOTS_PER_ROW = 4;
-    const MAX_DOTS_ON_CALENDAR = 8;
+    const MAX_DOTS_ON_CALENDAR = 4;
     const dotRight = Math.max(6, Math.floor(cellWidth * 0.08));
-    const dotBottomOffset = Math.max(6, Math.floor(cellHeight * 0.08));
+    const dotBottomOffset = Math.max(4, Math.floor(cellHeight * 0.05));
     const dotGap = Math.max(2, Math.floor(cellWidth * 0.02));
-    const rowGap = Math.max(2, dotGap);
     // В ряд помещается 4 кружка: 4*dotSize + 3*dotGap <= cellWidth - 2*dotRight
     const availableWidth = cellWidth - 2 * dotRight;
     const dotSize = Math.max(4, Math.min(12, Math.floor((availableWidth - 3 * dotGap) / DOTS_PER_ROW)));
@@ -1918,46 +2078,15 @@ export default function CalendarScreen() {
       >
         {weekDays.map((d, idx) => {
           const iso = formatISO(d);
-          const rangesOnDay = labelRanges
-            .filter(r => r.fromISO <= iso && iso <= r.toISO)
-            .slice(0, MAX_DOTS_ON_CALENDAR);
+          const rangesOnDay = (labelRangesByDate[iso] ?? []).slice(0, MAX_DOTS_ON_CALENDAR);
           if (rangesOnDay.length === 0) return null;
           const row0 = rangesOnDay.slice(0, DOTS_PER_ROW);
-          const row1 = rangesOnDay.slice(DOTS_PER_ROW, MAX_DOTS_ON_CALENDAR);
-          const hasTwoRows = row1.length > 0;
-          const blockLeft = idx * cellWidth + cellWidth - dotRight - blockWidth;
+          const blockLeft = idx * cellWidth + (cellWidth - blockWidth) / 2;
           const bottomRowTop = cellContentBottom - dotBottomOffset - dotSize;
-          const topRowTop = hasTwoRows ? bottomRowTop - dotSize - rowGap : bottomRowTop;
           
           return (
             <View key={idx} pointerEvents="none" style={{ position: 'absolute', left: blockLeft, top: 0, width: blockWidth, height: cellContentBottom }}>
-              {/* Второй ряд (сверху): индексы 4–7 */}
-              {hasTwoRows && (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: topRowTop,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: dotGap,
-                  }}
-                >
-                  {row1.map(r => (
-                    <View
-                      key={r.id}
-                      style={{
-                        width: dotSize,
-                        height: dotSize,
-                        borderRadius: dotSize / 2,
-                        backgroundColor: r.color,
-                      }}
-                    />
-                  ))}
-                </View>
-              )}
-              {/* Первый ряд (нижний): индексы 0–3 */}
+              {/* Один ряд: индексы 0–3 */}
               <View
                 pointerEvents="none"
                 style={{
@@ -1966,10 +2095,9 @@ export default function CalendarScreen() {
                   top: bottomRowTop,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: dotGap,
                 }}
               >
-                {row0.map(r => (
+                {row0.map((r, dotIdx) => (
                   <View
                     key={r.id}
                     style={{
@@ -1977,6 +2105,7 @@ export default function CalendarScreen() {
                       height: dotSize,
                       borderRadius: dotSize / 2,
                       backgroundColor: r.color,
+                      marginRight: dotIdx < row0.length - 1 ? dotGap : 0,
                     }}
                   />
                 ))}
@@ -1997,7 +2126,7 @@ export default function CalendarScreen() {
         {labelDotsOverlay}
       </View>
     );
-  }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, streaksByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelsMap, labelRanges, themeName, CALENDAR_PADDING_H]);
+  }, [cellHeight, listHeight, cellWidth, weekWidth, screenWidth, todayISO, totalsByDate, dailyGoal, lethalDose, openDay, dominantYear, dominantMonthNum, streakMaps, labelRanges, labelRangesByDate, themeName, CALENDAR_PADDING_H]);
 
 
   
@@ -2010,15 +2139,15 @@ export default function CalendarScreen() {
     const totalContentHeight = weekRowHeight * weeks.length;
     
     return (
-      <View style={{ height: actualMonthHeight, width: screenWidth, overflow: 'visible' }}>
+      <View style={{ flex: 1, minHeight: actualMonthHeight, width: screenWidth, overflow: 'visible' }}>
         <FlatList
           ref={listRef}
           data={weeks}
           horizontal={false}
           decelerationRate="normal"
           showsVerticalScrollIndicator={false}
-          style={{ height: actualMonthHeight, width: screenWidth }}
-          contentContainerStyle={{ paddingBottom: 20, overflow: 'visible' }}
+          style={{ flex: 1, minHeight: actualMonthHeight, width: screenWidth }}
+          contentContainerStyle={{ paddingBottom: 0, overflow: 'visible' }}
           getItemLayout={(_, index) => {
             return { 
               length: weekRowHeight, 
@@ -2027,7 +2156,7 @@ export default function CalendarScreen() {
             };
           }}
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
-          initialScrollIndex={initialIndex}
+          initialScrollIndex={0}
           removeClippedSubviews={Platform.OS === 'android'}
           windowSize={3}
           maxToRenderPerBatch={2}
@@ -2048,14 +2177,26 @@ export default function CalendarScreen() {
             const idx = Math.round(y / weekRowHeight);
             if (idx !== lastScrollIndexRef.current && idx >= 0 && idx < weeks.length) {
               lastScrollIndexRef.current = idx;
-              updateVisibleIndexThrottled(idx);
+              // Обновляем выделение месяца во время скролла, но не на каждый пиксель,
+              // чтобы сохранить плавность на слабых устройствах.
+              const now = Date.now();
+              if (idx !== visibleIndex && now - lastVisibleIndexUpdateMsRef.current >= 40) {
+                lastVisibleIndexUpdateMsRef.current = now;
+                setVisibleIndex(idx);
+              }
+            }
+          }}
+          onScrollEndDrag={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            const idx = Math.round(y / weekRowHeight);
+            if (idx >= 0 && idx < weeks.length && idx !== visibleIndex) {
+              setVisibleIndex(idx);
             }
           }}
           onMomentumScrollEnd={(e) => {
             const y = e.nativeEvent.contentOffset.y;
             const idx = Math.round(y / weekRowHeight);
-            const currentIdx = lastScrollIndexRef.current;
-            if (idx !== currentIdx) {
+            if (idx >= 0 && idx < weeks.length && idx !== visibleIndex) {
               setVisibleIndex(idx);
             }
           }}
@@ -2063,7 +2204,7 @@ export default function CalendarScreen() {
         />
       </View>
     );
-  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight, updateVisibleIndexThrottled]);
+  }, [actualMonthHeight, listHeight, screenWidth, weeks, renderWeekItem, listRef, cellHeight]);
   
 
   // Пока не измерили высоту, показываем только структуру для измерения
@@ -2081,7 +2222,7 @@ export default function CalendarScreen() {
   }));
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Переключатель режима календаря */}
       <View style={[styles.viewModeSwitcher, { backgroundColor: colors.backgroundSecondary }]}>
         <TouchableOpacity
@@ -2089,7 +2230,7 @@ export default function CalendarScreen() {
           onPress={() => setCalendarViewMode('month')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? colors.text : colors.textSecondary }]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
             Месяц
           </Text>
         </TouchableOpacity>
@@ -2098,7 +2239,7 @@ export default function CalendarScreen() {
           onPress={() => setCalendarViewMode('year')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? colors.text : colors.textSecondary }]}>
+          <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
             Год
           </Text>
         </TouchableOpacity>
@@ -2155,13 +2296,43 @@ export default function CalendarScreen() {
               }
             }}
           >
-            {WEEKDAY_SHORT_RU.map((w) => (
-              <Text key={w} style={[styles.weekCell, { color: colors.textSecondary }]}>{w}</Text>
-            ))}
+            {WEEKDAY_SHORT_RU.map((w, idx) => {
+              const isTodayWeekday = idx === todayWeekdayIndex;
+              return (
+                <Text
+                  key={w}
+                  style={[
+                    styles.weekCell,
+                    {
+                      color: isTodayWeekday ? colors.primary : colors.textSecondary,
+                      fontWeight: isTodayWeekday ? '700' : '600',
+                    },
+                  ]}
+                >
+                  {w}
+                </Text>
+              );
+            })}
           </View>
+          <View
+            style={[
+              styles.weekRowDivider,
+              { backgroundColor: isLightCalendarTheme ? colors.borderLight : colors.border },
+            ]}
+          />
 
-          {/* Календарь - мемоизирован, не перерендеривается при изменении dayList */}
-          {!needsMeasurement && calendarView}
+          {/* Область календаря с flex: 1 — тянется до низа; onLayout даёт реальную высоту для сетки */}
+          {!needsMeasurement && (
+            <View
+              style={{ flex: 1, minHeight: listHeight ?? 0 }}
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0) setCalendarAreaHeight(h);
+              }}
+            >
+              {calendarView}
+            </View>
+          )}
           
           {/* Спиннер пока измеряется высота */}
           {needsMeasurement && (
@@ -2169,7 +2340,7 @@ export default function CalendarScreen() {
               flex: 1,
               justifyContent: 'center', 
               alignItems: 'center',
-              backgroundColor: defaultColors.background
+              backgroundColor: colors.background
             }}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
@@ -2238,7 +2409,7 @@ export default function CalendarScreen() {
 
       {/* Кнопка возврата к текущей неделе: стрелка вниз (выше) или вверх (ниже) */}
       {calendarViewMode === 'month' && (() => {
-        const isAboveToday = weeks.length > 0 && visibleIndex <= initialIndex - 4;
+        const isAboveToday = weeks.length > 0 && visibleIndex <= todayIndex - 4;
         const arrowUp = !isAboveToday;
         return (
           <Animated.View
@@ -2344,7 +2515,7 @@ export default function CalendarScreen() {
                     {dayLabels.length > 0 ? (
                       <View style={styles.dayLabelsList}>
                         {dayLabels.map((entry, i) => (
-                          <View key={`${entry.text}-${entry.color}-${i}`} style={[styles.dayLabelChip, { borderColor: colors.border }]}>
+                          <View key={`${entry.text}-${entry.color}-${i}`} style={[styles.dayLabelChip, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}>
                             <View style={[styles.dayLabelColorDot, { backgroundColor: entry.color }]} />
                             <Text style={[styles.dayLabelChipText, { color: colors.text }]} numberOfLines={1}>{entry.text || '—'}</Text>
                           </View>
@@ -2402,8 +2573,8 @@ export default function CalendarScreen() {
         <TouchableWithoutFeedback onPress={closeAddModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 20}
               style={[
                 styles.kav,
                 searchQuery && searchQuery.trim() && { justifyContent: 'flex-start' }
@@ -2445,9 +2616,31 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
-                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из избранного или добавьте свой</Text>
-                  
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <TouchableOpacity
+                        style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          openCustomModal();
+                        }}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <Entypo name="circle-with-plus" size={22} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>Выберите из списка или нажмите + для своего напитка</Text>
+                    <TouchableOpacity
+                      style={[styles.addOneTimeButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setOneTimeModalVisible(true);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Entypo name="plus" size={18} color={colors.primary} />
+                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>Добавить разовую запись</Text>
+                    </TouchableOpacity>
                     {/* Строка поиска для предложенных пресетов */}
                     <TextInput
                       placeholder="Поиск напитков..."
@@ -2493,42 +2686,41 @@ export default function CalendarScreen() {
                     </>
                   )}
                   
-                  {availableSuggestedPresets.length > 0 && (
+                  {availableCatalogItems.length > 0 && (
                     <>
-                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Предложенные</Text>
-                      {availableSuggestedPresets.map((preset) => (
-                        <Pressable
+                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Каталог</Text>
+                      {availableCatalogItems.map((preset) => (
+                        <View
                           key={preset.id}
-                          style={({ pressed }) => [
+                          style={[
                             styles.suggestedItem,
-                            { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
-                            pressed && { opacity: 0.7 }
+                            {
+                              backgroundColor: colors.backgroundCard,
+                              borderBottomColor: colors.border,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            },
                           ]}
-                          onPressIn={() => {
-                            Keyboard.dismiss();
-                          }}
-                          onPress={() => {
-                            addSuggestedPreset(preset);
-                          }}
                         >
+                          <Pressable
+                            style={({ pressed }) => [{ flex: 1, paddingRight: 12 }, pressed && { opacity: 0.7 }]}
+                            onPressIn={() => {
+                              Keyboard.dismiss();
+                            }}
+                            onPress={() => {
+                              addSuggestedPreset(preset);
+                            }}
+                          >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                             <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
-                        </Pressable>
+                          </Pressable>
+                        </View>
                       ))}
                     </>
                   )}
-                  
-                  <TouchableOpacity
-                    style={[styles.addCustomButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary, shadowColor: colors.primary }]}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      openCustomModal();
-                    }}
-                  >
-                    <Text style={[styles.addCustomButtonText, { color: colors.primaryLight }]}>+ Добавить свой напиток</Text>
-                  </TouchableOpacity>
                 </ScrollView>
                   </View>
                 </Animated.View>
@@ -2543,8 +2735,8 @@ export default function CalendarScreen() {
         <TouchableWithoutFeedback onPress={closeCustomModal}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}
               style={styles.kav}
             >
               <TouchableWithoutFeedback onPress={() => {}}>
@@ -2577,7 +2769,7 @@ export default function CalendarScreen() {
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                     </TouchableOpacity>
                   </GestureDetector>
-                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                     <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Объём и крепость будут автоматически добавлены в название
@@ -2595,19 +2787,22 @@ export default function CalendarScreen() {
                     <View style={styles.row}>
                       <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
                       <View style={styles.typeRow}>
-                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
-                          <TouchableOpacity
-                            key={t}
-                            style={[
-                              styles.typeChip, 
-                              { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                              newType === t && [styles.typeChipActive, { backgroundColor: colors.primaryDark, borderColor: colors.primary }]
-                            ]}
-                            onPress={() => setNewType(t)}
-                          >
-                            <Text style={[styles.typeChipText, { color: colors.text }]}>{getBeverageTypeLabel(t)}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
+                          const bc = getBeverageColors(t);
+                          const isSelected = newType === t;
+                          return (
+                            <TouchableOpacity
+                              key={t}
+                              style={[
+                                styles.typeChip,
+                                { backgroundColor: isSelected ? bc.main : bc.light, borderColor: bc.main },
+                              ]}
+                              onPress={() => setNewType(t)}
+                            >
+                              <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </View>
                     <View style={styles.row}>
@@ -2660,12 +2855,21 @@ export default function CalendarScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Модалка меток на период (премиум) */}
+      <AddOneTimeEntryModal
+        visible={oneTimeModalVisible}
+        onClose={() => setOneTimeModalVisible(false)}
+        isPremium={isPremium}
+        onSave={saveOneTimeEntry}
+      />
+
+      {/* Модалка меток на период (премиум) — по центру экрана */}
       <Modal visible={labelsModalVisible} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setLabelsModalVisible(false)} />
-          <ScrollView style={styles.labelsModalScroll} contentContainerStyle={styles.labelsModalScrollContent} keyboardShouldPersistTaps="handled">
-            <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
+        <View style={styles.labelsModalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLabelsModalVisible(false)} />
+          <View style={[styles.labelsModalBackdropCenter, StyleSheet.absoluteFillObject]} pointerEvents="box-none">
+            <View style={styles.labelsModalCardWrap}>
+              <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
+              <ScrollView style={styles.labelsModalScroll} contentContainerStyle={[styles.labelsModalScrollContent, { paddingBottom: 16 }]} keyboardShouldPersistTaps="handled">
               <Text style={[styles.labelsModalTitle, { color: colors.text }]}>{editingRange ? 'Редактировать метку' : 'Метка на период'}</Text>
               <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>Период от и до включительно. Один день — выберите одинаковые даты.</Text>
 
@@ -2774,7 +2978,8 @@ export default function CalendarScreen() {
                   ))}
                 </View>
               </View>
-              <View style={styles.labelsModalActions}>
+              </ScrollView>
+              <View style={[styles.labelsModalActions, styles.labelsModalActionsFixed, { borderTopColor: colors.border }]}>
                 <TouchableOpacity
                   style={[styles.labelsModalButton, { backgroundColor: colors.primary }]}
                   onPress={async () => {
@@ -2805,12 +3010,10 @@ export default function CalendarScreen() {
                 >
                   <Text style={[styles.labelsModalButtonText, { color: '#fff' }]}>{editingRange ? 'Сохранить' : 'Установить'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.labelsModalButton, { borderWidth: 1, borderColor: colors.border }]} onPress={() => setLabelsModalVisible(false)}>
-                  <Text style={[styles.labelsModalButtonText, { color: colors.textSecondary }]}>Закрыть</Text>
-                </TouchableOpacity>
+              </View>
               </View>
             </View>
-          </ScrollView>
+          </View>
         </View>
         {labelDatePickerMode !== null && (
           <DateTimePicker
@@ -2860,16 +3063,22 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 6,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
+  },
+  weekRowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 12,
+    marginBottom: 0,
   },
   weekCell: {
     flex: 1,
     textAlign: 'center',
     color: defaultColors.textSecondary,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 12,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   grid: {
     flexDirection: 'row',
@@ -2891,13 +3100,29 @@ const styles = StyleSheet.create({
     borderLeftColor: 'rgba(0, 0, 0, 0.3)',
   },
   cellContent: {
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     width: '100%',
     height: '100%',
     paddingTop: 2,
     paddingBottom: 2,
     position: 'relative',
+  },
+  cellTopBlock: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 0,
+    width: '100%',
+  },
+  cellBottomBlock: {
+    flex: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 0,
+    width: '100%',
   },
   cellLabelDot: {
     position: 'absolute',
@@ -2910,9 +3135,8 @@ const styles = StyleSheet.create({
   badgeContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
     zIndex: 10,
-    minHeight: 20,
+    overflow: 'visible',
   },
   cellEmpty: {
     padding: 8,
@@ -2922,7 +3146,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     color: defaultColors.text,
-    marginTop: 2,
+    marginTop: 0,
     zIndex: 10,
   },
   dayNumMuted: {
@@ -2941,16 +3165,22 @@ const styles = StyleSheet.create({
   },
   // Металлические стили (прозрачная рамка, анимированная рамка поверх)
   cellGoldLight: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Bronze (static lightweight fallback without MetalGradient)
+    backgroundColor: 'rgba(176, 106, 70, 0.28)',
+    borderColor: 'rgba(205, 127, 50, 0.92)',
+    borderWidth: 1.5,
   },
   cellGoldMedium: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Silver
+    backgroundColor: 'rgba(170, 178, 190, 0.28)',
+    borderColor: 'rgba(192, 192, 192, 0.95)',
+    borderWidth: 1.5,
   },
   cellGoldStrong: {
-    backgroundColor: defaultColors.backgroundCard || defaultColors.backgroundSecondary,
-    borderColor: 'transparent',
+    // Gold
+    backgroundColor: 'rgba(223, 179, 59, 0.30)',
+    borderColor: 'rgba(255, 215, 0, 0.95)',
+    borderWidth: 1.5,
   },
   cellToday: {
     borderWidth: 2,
@@ -3090,10 +3320,10 @@ const styles = StyleSheet.create({
   },
   // Тепловая карта: от зеленого к красному (больше оттенков)
   cellVeryLowAmount: {
-    backgroundColor: '#22c55e70', // Светло-зеленый - минимальное количество (70% непрозрачности)
+    backgroundColor: '#10b98170', // Зеленый - минимальное количество (70% непрозрачности)
   },
   cellLowAmount: {
-    backgroundColor: '#22c55e75', // Светло-зеленый - небольшое количество (75% непрозрачности)
+    backgroundColor: '#10b98175', // Зеленый - небольшое количество (75% непрозрачности)
   },
   cellLowModerateAmount: {
     backgroundColor: '#84cc1675', // Желто-зеленый - низко-умеренное (75% непрозрачности)
@@ -3123,8 +3353,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 40,
-    minHeight: 44,
+    minWidth: 28,
+    minHeight: 32,
   },
   badgeUnits: {
     color: defaultColors.text,
@@ -3139,14 +3369,31 @@ const styles = StyleSheet.create({
   deadIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    overflow: 'visible',
   },
   deadEmoji: {
-    fontSize: 36,
+    fontSize: 26,
+    textAlign: 'center',
   },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
+  },
+  labelsModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+  },
+  labelsModalBackdropCenter: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  labelsModalCardWrap: {
+    width: '92%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
   modalSpacer: {
     height: 40,
@@ -3191,6 +3438,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingBottom: 0,
     flexWrap: 'wrap',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalHeaderPlusBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
   modalTitle: {
     fontSize: 20,
@@ -3262,9 +3523,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 24,
+    width: '100%',
+    maxHeight: '85%',
+    overflow: 'hidden',
   },
   labelsModalTitle: {
     fontSize: 18,
@@ -3308,6 +3569,13 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 16,
   },
+  labelsModalActionsFixed: {
+    marginTop: 0,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   labelsModalButton: {
     paddingVertical: 14,
     borderRadius: 12,
@@ -3319,12 +3587,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   labelsModalScroll: {
-    flex: 1,
+    width: '100%',
+    maxHeight: '100%',
+    flexGrow: 0,
   },
   labelsModalScrollContent: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    width: '100%',
+    paddingTop: 20,
+    paddingHorizontal: 20,
   },
   labelsModalSection: {
     marginBottom: 12,
@@ -3541,20 +3811,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   addCustomButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     backgroundColor: defaultColors.backgroundSecondary,
-    borderRadius: 12,
+    borderRadius: 10,
     marginTop: 8,
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: defaultColors.border,
   },
   addCustomButtonText: {
     color: defaultColors.primaryLight || defaultColors.primary,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addOneTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    gap: 6,
+  },
+  addOneTimeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   addButton: {
     flexDirection: 'row',
@@ -3722,9 +4008,6 @@ const styles = StyleSheet.create({
   },
   yearCalendarContainer: {
     flex: 1,
-    // Чуть сдвигаем вниз, чтобы визуально убрать остаточную полоску снизу,
-    // как во вкладке месяца (табар перекрывает нижнюю часть)
-    marginBottom: -10,
   },
 });
 

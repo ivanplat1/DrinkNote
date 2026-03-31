@@ -2,6 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAllDrinks } from './drinks';
 import { setAllDrinks } from './drinks';
 import { Drink } from '../types/drink';
+import { PresetDrink } from '../types/preset';
+import { getUserPresets, setUserPresets } from './presets';
+import { getCalendarLabelRanges, setCalendarLabelRanges, LabelRange } from './calendarLabels';
 
 const SETTINGS_KEY = 'app_settings_v1';
 const DAILY_GOAL_KEY = 'daily_goal_units';
@@ -11,6 +14,8 @@ const USER_BIRTH_YEAR_KEY = 'user_birth_year';
 const USER_BIRTH_DATE_KEY = 'user_birth_date';
 const APP_START_DATE_KEY = 'app_start_date';
 const CURRENCY_KEY = 'app_currency_v1';
+const FIRST_LAUNCH_DONE_KEY = 'first_launch_done';
+const ONBOARDING_SEEN_KEY = 'onboarding_seen';
 
 export type CurrencyCode =
   | 'RUB'  // Россия
@@ -61,6 +66,8 @@ export async function setDailyGoal(units: number | null): Promise<void> {
 
 export async function exportData(): Promise<string> {
   const drinks = await getAllDrinks();
+  const favorites = await getUserPresets();
+  const labels = await getCalendarLabelRanges();
   const settings = await getDailyGoal();
   const weight = await getUserWeight();
   const gender = await getUserGender();
@@ -71,6 +78,8 @@ export async function exportData(): Promise<string> {
     version: '1.0',
     exportDate: new Date().toISOString(),
     drinks,
+    favorites,
+    labels,
     settings: {
       dailyGoalUnits: settings,
       weight: weight,
@@ -87,6 +96,8 @@ export interface ImportData {
   version?: string;
   exportDate?: string;
   drinks?: Drink[];
+  favorites?: PresetDrink[];
+  labels?: LabelRange[];
   settings?: {
     dailyGoalUnits?: number | null;
     weight?: number | null;
@@ -119,6 +130,50 @@ export async function importData(jsonString: string, merge: boolean = false): Pr
       } else {
         // Заменяем все
         await setAllDrinks(parsed.drinks);
+      }
+    }
+
+    // Импорт избранных напитков (presets)
+    if (parsed.favorites && Array.isArray(parsed.favorites)) {
+      if (merge) {
+        const existingPresets = await getUserPresets();
+        const hasSamePreset = (left: PresetDrink, right: PresetDrink) =>
+          left.name.trim().toLowerCase() === right.name.trim().toLowerCase() &&
+          left.volumeMl === right.volumeMl &&
+          left.abvPercent === right.abvPercent &&
+          left.beverageType === right.beverageType;
+
+        const mergedPresets = [...existingPresets];
+        for (const incoming of parsed.favorites) {
+          if (!mergedPresets.some((preset) => hasSamePreset(preset, incoming))) {
+            mergedPresets.push(incoming);
+          }
+        }
+        await setUserPresets(mergedPresets);
+      } else {
+        await setUserPresets(parsed.favorites);
+      }
+    }
+
+    // Импорт меток календаря (периоды)
+    if (parsed.labels && Array.isArray(parsed.labels)) {
+      if (merge) {
+        const existingRanges = await getCalendarLabelRanges();
+        const hasSameRange = (left: LabelRange, right: LabelRange) =>
+          left.fromISO === right.fromISO &&
+          left.toISO === right.toISO &&
+          left.text.trim().toLowerCase() === right.text.trim().toLowerCase() &&
+          (left.color || '').toLowerCase() === (right.color || '').toLowerCase();
+
+        const mergedRanges = [...existingRanges];
+        for (const incoming of parsed.labels) {
+          if (!mergedRanges.some((range) => hasSameRange(range, incoming))) {
+            mergedRanges.push(incoming);
+          }
+        }
+        await setCalendarLabelRanges(mergedRanges);
+      } else {
+        await setCalendarLabelRanges(parsed.labels);
       }
     }
     
@@ -275,6 +330,25 @@ export async function getCurrency(): Promise<CurrencyCode> {
 
 export async function setCurrency(currency: CurrencyCode): Promise<void> {
   await AsyncStorage.setItem(CURRENCY_KEY, currency);
+}
+
+/** Первый запуск: при true показываем «Сегодня», при false — открываем вкладку «Настройки» как превью возможностей */
+export async function getHasCompletedFirstLaunch(): Promise<boolean> {
+  const raw = await AsyncStorage.getItem(FIRST_LAUNCH_DONE_KEY);
+  return raw === 'true';
+}
+
+export async function setHasCompletedFirstLaunch(): Promise<void> {
+  await AsyncStorage.setItem(FIRST_LAUNCH_DONE_KEY, 'true');
+}
+
+export async function getHasSeenOnboarding(): Promise<boolean> {
+  const raw = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
+  return raw === 'true';
+}
+
+export async function setHasSeenOnboarding(): Promise<void> {
+  await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, 'true');
 }
 
 // Рассчитывает смертельную дозу в единицах на основе веса и пола

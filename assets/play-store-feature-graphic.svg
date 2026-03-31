@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a1a"/>
+      <stop offset="100%" style="stop-color:#1a1a3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <!-- Notepad -->
+  <rect x="120" y="80" width="200" height="260" rx="8" fill="#fff" stroke="#5a7aaa" stroke-width="2"/>
+  <line x1="140" y1="110" x2="300" y2="110" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="140" y1="150" x2="280" y2="150" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="140" y1="190" x2="290" y2="190" stroke="#e0e0e0" stroke-width="1"/>
+  <circle cx="160" cy="95" r="6" fill="#5a7aaa"/>
+  <circle cx="200" cy="95" r="6" fill="#5a7aaa"/>
+  <circle cx="240" cy="95" r="6" fill="#5a7aaa"/>
+  <rect x="120" y="75" width="24" height="14" fill="#e8c547" rx="2"/>
+  <!-- Glass -->
+  <path d="M180 200 L220 200 L235 320 L165 320 Z" fill="none" stroke="#fff" stroke-width="3" opacity="0.9"/>
+  <path d="M172 318 L228 318 L225 325 L175 325 Z" fill="#8B6914" opacity="0.6"/>
+  <ellipse cx="200" cy="198" rx="20" ry="6" fill="none" stroke="#fff" stroke-width="2" opacity="0.8"/>
+  <circle cx="195" cy="260" r="12" fill="#E8D5B7" opacity="0.9"/>
+  <circle cx="205" cy="255" r="10" fill="#E8D5B7" opacity="0.9"/>
+  <path d="M208 200 L208 250" stroke="#333" stroke-width="1.5"/>
+  <path d="M175 205 Q175 195 185 198" fill="#ff9f00" stroke="#e67e22" stroke-width="1"/>
+  <!-- DrinkNote text -->
+  <text x="420" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#fff">DrinkNote</text>
+  <text x="420" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#b0b0d0">Дневник напитков • календарь и статистика</text>
+</svg>

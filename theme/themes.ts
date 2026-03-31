@@ -350,11 +350,12 @@ export const nordTheme: ThemeColors = {
   warning: '#ebcb8b',    // nord13
   error: '#bf616a',      // nord11
   errorLight: '#eceff4',
-  beer: { main: '#d08770', light: '#eceff4', text: '#2e3440' },  // nord12
-  wine: { main: '#b48ead', light: '#e5e9f0', text: '#2e3440' }, // nord15
-  spirit: { main: '#bf616a', light: '#eceff4', text: '#2e3440' }, // nord11
-  cocktail: { main: '#8fbcbb', light: '#d8dee9', text: '#2e3440' }, // nord7
-  other: { main: '#4c566a', light: '#d8dee9', text: '#3b4252' },
+  // More nuanced beverage shades for Nord theme
+  beer: { main: '#d08770', light: '#f0e5df', text: '#8f4e3a' },      // warm copper
+  wine: { main: '#b48ead', light: '#eee5f0', text: '#7a5a8f' },      // muted plum
+  spirit: { main: '#bf616a', light: '#f2e2e4', text: '#8e4651' },    // deep rose
+  cocktail: { main: '#8fbcbb', light: '#e2eeed', text: '#4f7f7e' },  // arctic teal
+  other: { main: '#5e81ac', light: '#dbe4ef', text: '#3f5673' },     // cold blue-gray
 };
 
 // Зелёный — тёмная тема в духе IntelliJ IDEA: серые тона, зелёный акцент

@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Android release signing (do not commit secrets)
+android/keystore.properties
+**/release.keystore
+credentials.json
+credentials/
+
 # Metro
 .metro-health-check*
 
@@ -39,3 +45,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# downloaded APKs
+downloads/
+*.apk

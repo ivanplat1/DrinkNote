@@ -131,7 +131,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                           )}
                         </View>
                       </View>
-                      <Text style={[styles.lineChartLabel, trendPeriod === 'weeks' && styles.lineChartLabelSmall, { color: colors.textSecondary }]} numberOfLines={1}>
+                      <Text
+                        style={[
+                          styles.lineChartLabel,
+                          trendPeriod === 'weeks' && styles.lineChartLabelSmall,
+                          trendPeriod === 'weeks' && styles.lineChartLabelRotated,
+                          { color: colors.textSecondary },
+                        ]}
+                        numberOfLines={1}
+                      >
                         {labelText}
                       </Text>
                     </View>
@@ -178,7 +186,15 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                         )}
                       </View>
                     </View>
-                    <Text style={[styles.lineChartLabel, trendPeriod === 'weeks' && styles.lineChartLabelSmall, { color: colors.textSecondary }]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.lineChartLabel,
+                        trendPeriod === 'weeks' && styles.lineChartLabelSmall,
+                        trendPeriod === 'weeks' && styles.lineChartLabelRotated,
+                        { color: colors.textSecondary },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {labelText}
                     </Text>
                   </View>
@@ -722,6 +738,12 @@ const styles = StyleSheet.create({
   },
   lineChartLabelSmall: {
     fontSize: 7,
+  },
+  lineChartLabelRotated: {
+    transform: [{ rotate: '-45deg' }],
+    marginTop: 8,
+    width: 36,
+    textAlign: 'left',
   },
   lineChartValueLabel: {
     fontSize: 8,
