@@ -185,6 +185,11 @@ export const translations = {
       enterLabelTitle: 'Введите название',
       enterLabelBody: 'Укажите название метки перед сохранением.',
       set: 'Установить',
+      notSpecified: 'Не указана',
+    },
+    achievements: {
+      unlockedTitle: '🏆 Достижение разблокировано!',
+      awesome: 'Отлично!',
     },
   },
   en: {
@@ -367,6 +372,11 @@ export const translations = {
       enterLabelTitle: 'Enter a name',
       enterLabelBody: 'Please enter a label name before saving.',
       set: 'Set',
+      notSpecified: 'Not set',
+    },
+    achievements: {
+      unlockedTitle: '🏆 Achievement unlocked!',
+      awesome: 'Nice!',
     },
   },
 } as const satisfies Record<'ru' | 'en', Translations>;

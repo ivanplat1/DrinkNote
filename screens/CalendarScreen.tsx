@@ -977,9 +977,9 @@ export default function CalendarScreen() {
           // Показываем уведомление о новом достижении
           const achievement = newAchievements[0];
           Alert.alert(
-            '🏆 Достижение разблокировано!',
+            t('achievements.unlockedTitle'),
             `${achievement.title}\n${achievement.description}`,
-            [{ text: 'Отлично!', style: 'default' }]
+            [{ text: t('achievements.awesome'), style: 'default' }]
           );
         }
       }
@@ -1383,16 +1383,7 @@ export default function CalendarScreen() {
     if (customModalVisible) customModalTranslateY.value = 0;
   }, [customModalVisible]);
 
-  const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
-    const labels: Record<PresetDrink['beverageType'], string> = {
-      beer: 'Пиво',
-      wine: 'Вино',
-      spirit: 'Крепкий',
-      cocktail: 'Коктейль',
-      other: 'Другое',
-    };
-    return labels[type] || labels.other;
-  };
+  const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => t(`drinkTypes.${type}`);
 
   const getBeverageColors = (type: PresetDrink['beverageType']) => {
     const c = (colors as Record<string, { main: string; light: string; text: string }>)[type] ?? (colors as Record<string, { main: string; light: string; text: string }>).other;
@@ -2843,7 +2834,7 @@ export default function CalendarScreen() {
                       <View style={{ marginBottom: 12 }}>
                         <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
                         <TextInput
-                          placeholder="Не указана"
+                          placeholder={t('calendar.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={newPriceVal}
