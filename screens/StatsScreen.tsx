@@ -40,7 +40,7 @@ export default function StatsScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { currency } = useCurrency();
-  const { language, localeTag, t } = useI18n();
+  const { language, localeTag, t, tf } = useI18n();
   const WEEKDAY_SHORT = language === 'ru' ? WEEKDAY_SHORT_RU : WEEKDAY_SHORT_EN;
   const MONTH_SHORT = language === 'ru' ? MONTH_SHORT_RU : MONTH_SHORT_EN;
   const { isOnboardingActive } = useOnboarding();
@@ -326,7 +326,7 @@ export default function StatsScreen() {
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.totalUnits.toFixed(2)}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Стандартных единиц</Text>
-              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{(currentStats.totalUnits * 10).toFixed(1)} г спирта</Text>
+              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{tf('stats.gramsAlcohol', { g: (currentStats.totalUnits * 10).toFixed(1) })}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{formatTotalVolume(currentStats.totalVolumeMl, 1)}</Text>
@@ -336,13 +336,13 @@ export default function StatsScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{period === 'overall' ? (currentStats as typeof overallStats).totalDays : currentStats.daysWithDrinks}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Дней с записями</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('stats.daysWithEntries')}</Text>
               {period !== 'overall' && (
                 <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>
                   {period === 'week' 
-                    ? `${Math.round(((currentStats.daysWithDrinks || 0) / 7) * 100)}% недели`
+                    ? tf('stats.pctOfWeek', { pct: Math.round(((currentStats.daysWithDrinks || 0) / 7) * 100) })
                     : period === 'month' 
-                    ? `${Math.round(((currentStats.daysWithDrinks || 0) / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()) * 100)}% месяца`
+                    ? tf('stats.pctOfMonth', { pct: Math.round(((currentStats.daysWithDrinks || 0) / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()) * 100) })
                     : ''
                   }
                 </Text>
@@ -350,8 +350,8 @@ export default function StatsScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.averagePerDay.toFixed(2)}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Среднее в день</Text>
-              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{(currentStats.averagePerDay * 10).toFixed(1)} г спирта</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('stats.avgPerDay')}</Text>
+              <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{tf('stats.gramsAlcohol', { g: (currentStats.averagePerDay * 10).toFixed(1) })}</Text>
             </View>
           </View>
           {isPremium && (
@@ -360,9 +360,9 @@ export default function StatsScreen() {
                 <Text style={[styles.statValue, { color: colors.primary }]}>
                   {currentStats.totalSpent > 0 ? formatPriceValueOnly(currentStats.totalSpent) : '—'}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Сумма</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('stats.sum')}</Text>
                 {currentStats.totalSpent === 0 && (
-                  <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>нет цен в записях</Text>
+                  <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{t('stats.noPrices')}</Text>
                 )}
               </View>
             </View>
@@ -372,7 +372,9 @@ export default function StatsScreen() {
         {/* График тренда */}
         {chartData.length > 0 && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>Тренд ({period === 'week' ? 'дни недели' : 'месяцы'})</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>
+              {tf('stats.trendTitle', { unit: period === 'week' ? t('stats.trendUnitWeek') : t('stats.trendUnitMonths') })}
+            </Text>
             <View style={styles.chartWithAxis}>
               {/* Шкала Y */}
               <View style={styles.yAxis}>
@@ -512,7 +514,7 @@ export default function StatsScreen() {
               <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
                 <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Самый тяжелый день</Text>
                 <Text style={[styles.recordValue, { color: colors.primary }]}>{records.heaviestDay.units.toFixed(2)} ед.</Text>
-                <Text style={[styles.recordSubValue, { color: colors.textSecondary }]}>{(records.heaviestDay.units * 10).toFixed(1)} г спирта</Text>
+                <Text style={[styles.recordSubValue, { color: colors.textSecondary }]}>{tf('stats.gramsAlcohol', { g: (records.heaviestDay.units * 10).toFixed(1) })}</Text>
                 <Text style={[styles.recordDate, { color: colors.textTertiary }]}>
                   {new Date(records.heaviestDay.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                 </Text>

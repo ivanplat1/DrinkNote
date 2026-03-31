@@ -191,6 +191,18 @@ export const translations = {
       unlockedTitle: '🏆 Достижение разблокировано!',
       awesome: 'Отлично!',
     },
+    stats: {
+      daysWithEntries: 'Дней с записями',
+      avgPerDay: 'Среднее в день',
+      gramsAlcohol: '{{g}} г спирта',
+      sum: 'Сумма',
+      noPrices: 'нет цен в записях',
+      trendTitle: 'Тренд ({{unit}})',
+      trendUnitWeek: 'дни недели',
+      trendUnitMonths: 'месяцы',
+      pctOfWeek: '{{pct}}% недели',
+      pctOfMonth: '{{pct}}% месяца',
+    },
   },
   en: {
     tabs: {
@@ -377,6 +389,18 @@ export const translations = {
     achievements: {
       unlockedTitle: '🏆 Achievement unlocked!',
       awesome: 'Nice!',
+    },
+    stats: {
+      daysWithEntries: 'Days with entries',
+      avgPerDay: 'Avg per day',
+      gramsAlcohol: '{{g}} g alcohol',
+      sum: 'Total',
+      noPrices: 'no prices in entries',
+      trendTitle: 'Trend ({{unit}})',
+      trendUnitWeek: 'weekdays',
+      trendUnitMonths: 'months',
+      pctOfWeek: '{{pct}}% of week',
+      pctOfMonth: '{{pct}}% of month',
     },
   },
 } as const satisfies Record<'ru' | 'en', Translations>;
