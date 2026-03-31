@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons, Entypo } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -29,6 +30,7 @@ type Props = {
 
 export default function Onboarding({ onComplete, onStartInteractive }: Props) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const listRef = React.useRef<FlatList>(null);
 
@@ -36,38 +38,38 @@ export default function Onboarding({ onComplete, onStartInteractive }: Props) {
     {
       key: 'hello',
       icon: <Ionicons name="hand-left" size={72} color={colors.primary} />,
-      title: 'Привет!',
-      description: 'Рады видеть вас. Сейчас коротко покажем, как пользоваться приложением.',
+      title: t('onboarding.slides.helloTitle'),
+      description: t('onboarding.slides.helloDesc'),
     },
     {
       key: 'welcome',
       icon: <Ionicons name="wine" size={72} color={colors.primary} />,
-      title: 'Добро пожаловать в DrinkNote',
-      description: 'Удобный учёт алкоголя: избранное, календарь, статистика и цели. Коротко покажем основы.',
+      title: t('onboarding.slides.welcomeTitle'),
+      description: t('onboarding.slides.welcomeDesc'),
     },
     {
       key: 'favorites',
       icon: <MaterialIcons name="star" size={72} color={colors.primary} />,
-      title: 'Избранное',
-      description: 'На вкладке «Сегодня» в блоке «Избранное» — ваши сохранённые напитки. Нажатие по кнопке — и запись добавлена на выбранную дату.',
+      title: t('onboarding.slides.favoritesTitle'),
+      description: t('onboarding.slides.favoritesDesc'),
     },
     {
       key: 'add',
       icon: <Entypo name="circle-with-plus" size={72} color={colors.primary} />,
-      title: 'Как добавить напиток',
-      description: 'Нажмите «+» в избранном или кнопку добавления — выберите напиток из списка или добавьте свой (название, объём, крепость).',
+      title: t('onboarding.slides.addTitle'),
+      description: t('onboarding.slides.addDesc'),
     },
     {
       key: 'custom',
       icon: <MaterialIcons name="add-circle-outline" size={72} color={colors.primary} />,
-      title: 'Свой напиток',
-      description: 'В окне выбора напитка нажмите «Свой напиток» — введите название, тип, объём (мл) и крепость (%). Можно сохранить в избранное.',
+      title: t('onboarding.slides.customTitle'),
+      description: t('onboarding.slides.customDesc'),
     },
     {
       key: 'edit',
       icon: <MaterialIcons name="touch-app" size={72} color={colors.primary} />,
-      title: 'Редактирование и удаление',
-      description: 'Долгое нажатие на кнопку в избранном или на запись в списке дня — откроются действия: изменить или удалить.',
+      title: t('onboarding.slides.editTitle'),
+      description: t('onboarding.slides.editDesc'),
     },
   ];
 
@@ -95,7 +97,7 @@ export default function Onboarding({ onComplete, onStartInteractive }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onComplete} style={styles.skipBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={[styles.skipText, { color: colors.textSecondary }]}>Пропустить</Text>
+          <Text style={[styles.skipText, { color: colors.textSecondary }]}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -136,7 +138,7 @@ export default function Onboarding({ onComplete, onStartInteractive }: Props) {
           style={[styles.nextBtn, { backgroundColor: colors.primary }]}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextText}>{isLast ? 'Готово' : 'Далее'}</Text>
+          <Text style={styles.nextText}>{isLast ? t('onboarding.done') : t('onboarding.next')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

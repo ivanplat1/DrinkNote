@@ -40,6 +40,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     await setAppLanguage(lang);
   }, []);
 
+  // Keep a module-level getter so non-component code (e.g. context configs)
+  // can read the current language without hooks.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    currentLanguage = language;
+  }, [language]);
+
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
@@ -58,5 +65,11 @@ export function useI18n(): I18nContextValue {
   const ctx = useContext(I18nContext);
   if (!ctx) throw new Error('useI18n must be used within an I18nProvider');
   return ctx;
+}
+
+let currentLanguage: AppLanguage = 'en';
+
+export function getCurrentLanguageUnsafe(): AppLanguage {
+  return currentLanguage;
 }
 

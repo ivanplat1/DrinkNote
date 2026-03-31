@@ -197,6 +197,50 @@ export const translations = {
       namePlaceholder: 'Например, Мохито',
       notSpecified: 'Не указана',
     },
+    onboarding: {
+      skip: 'Пропустить',
+      done: 'Готово',
+      next: 'Далее',
+      tooltips: {
+        welcome: 'Добро пожаловать в DrinkNote! Покажем самое важное за несколько шагов.',
+        favorites:
+          'Это ваше избранное. Сюда удобно добавлять напитки, которыми пользуетесь чаще всего. Одно нажатие по карточке добавит запись на выбранную дату.',
+        favoritesEdit:
+          'Чтобы изменить название, объём или крепость, задержите палец на карточке. Появятся кнопки редактирования и удаления из избранного.',
+        addButton:
+          'Кнопка «+» добавляет новые напитки в избранное. Нажмите, откроется список: можно выбрать готовый вариант или добавить свой.',
+        oneTimeEntry:
+          'Вы также можете добавить запись с помощью этой кнопки: выберите напиток среди уже сохранённых или добавьте разовую запись без сохранения и без добавления в избранное.',
+        calendar:
+          'В календаре видно записи по дням: что и сколько употребили. Можно листать месяцы и смотреть общую картину.',
+        stats:
+          'Здесь собрана статистика: объёмы и единицы по периодам, тренды по неделям и месяцам, по типам напитков и дням недели. В полной версии доступна расширенная аналитика, а также можно указывать цену напитков и считать траты.',
+        settings:
+          'В настройках задаются пол, возраст и вес. Эти параметры нужны для расчёта условно-безопасной нормы — той, которую ВОЗ использовала в контексте минимального риска, а не полной безопасности для здоровья. По нынешней позиции ВОЗ безопасного уровня употребления алкоголя не существует. Вы также можете задать свою норму по желанию.',
+        fullVersionBenefits:
+          'Также, приобретя полную версию приложения, вы сможете выбрать валюту учёта трат, устанавливать цели по серии дней без алкоголя и менять темы оформления.',
+        profileForNorm:
+          'Чтобы приложение рассчитало вашу условно-безопасную норму, заполните в профиле вес, пол и дату рождения. Мы не собираем никаких данных — всё хранится только на вашем устройстве.',
+      },
+      slides: {
+        helloTitle: 'Привет!',
+        helloDesc: 'Рады видеть вас. Сейчас коротко покажем, как пользоваться приложением.',
+        welcomeTitle: 'Добро пожаловать в DrinkNote',
+        welcomeDesc: 'Удобный учёт алкоголя: избранное, календарь, статистика и цели. Коротко покажем основы.',
+        favoritesTitle: 'Избранное',
+        favoritesDesc:
+          'На вкладке «Сегодня» в блоке «Избранное» — ваши сохранённые напитки. Нажатие по кнопке — и запись добавлена на выбранную дату.',
+        addTitle: 'Как добавить напиток',
+        addDesc:
+          'Нажмите «+» в избранном или кнопку добавления — выберите напиток из списка или добавьте свой (название, объём, крепость).',
+        customTitle: 'Свой напиток',
+        customDesc:
+          'В окне выбора напитка нажмите «Свой напиток» — введите название, тип, объём (мл) и крепость (%). Можно сохранить в избранное.',
+        editTitle: 'Редактирование и удаление',
+        editDesc:
+          'Долгое нажатие на кнопку в избранном или на запись в списке дня — откроются действия: изменить или удалить.',
+      },
+    },
     stats: {
       daysWithEntries: 'Дней с записями',
       avgPerDay: 'Среднее в день',
@@ -401,6 +445,49 @@ export const translations = {
       abvError: 'Enter a valid ABV (%)',
       namePlaceholder: 'e.g., Mojito',
       notSpecified: 'Not set',
+    },
+    onboarding: {
+      skip: 'Skip',
+      done: 'Done',
+      next: 'Next',
+      tooltips: {
+        welcome: 'Welcome to DrinkNote! We’ll show the essentials in a few steps.',
+        favorites:
+          'These are your Favorites. Add the drinks you use most often here. A single tap adds an entry for the selected date.',
+        favoritesEdit:
+          'To edit name, volume, or ABV, press and hold a favorite card. You’ll see edit and delete actions.',
+        addButton:
+          'The “+” button adds new drinks to Favorites. Tap it to open the list: pick a preset or create your own.',
+        oneTimeEntry:
+          'You can also add an entry with this button: choose a saved drink or add a one-time entry without saving it to Favorites.',
+        calendar:
+          'The calendar shows entries by day: what you drank and how much. Swipe months to see the bigger picture.',
+        stats:
+          'Stats show volumes and units by period, trends by weeks/months, drink types, and weekdays. Premium unlocks advanced analytics and price tracking.',
+        settings:
+          'In Settings you can set gender, age, and weight. We use them to estimate a suggested limit for lower risk. WHO states there is no safe level of alcohol consumption. You can also set your own goal.',
+        fullVersionBenefits:
+          'With Premium you can choose a currency for spending, set streak goals, and switch themes.',
+        profileForNorm:
+          'To estimate your suggested limit, fill in weight, gender, and birth date. We don’t collect any data — everything stays on your device.',
+      },
+      slides: {
+        helloTitle: 'Hi!',
+        helloDesc: 'Glad to see you. Let’s quickly show you how the app works.',
+        welcomeTitle: 'Welcome to DrinkNote',
+        welcomeDesc: 'Track your drinks with favorites, calendar, stats, and goals. Here are the basics.',
+        favoritesTitle: 'Favorites',
+        favoritesDesc:
+          'On the Today tab, Favorites are your saved drinks. Tap a card to add an entry for the selected date.',
+        addTitle: 'Add a drink',
+        addDesc:
+          'Tap “+” in Favorites or the add button. Choose a drink from the list or create your own (name, volume, ABV).',
+        customTitle: 'Custom drink',
+        customDesc:
+          'In the drink picker, tap “Custom drink” and enter name, type, volume (ml), and ABV (%). You can save it to Favorites.',
+        editTitle: 'Edit & delete',
+        editDesc: 'Long-press a favorite or a day entry to see actions: edit or delete.',
+      },
     },
     stats: {
       daysWithEntries: 'Days with entries',

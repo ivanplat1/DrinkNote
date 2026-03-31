@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { getHasSeenOnboarding } from '../storage/settings';
+import { t as translate } from '../i18n/i18n';
+import { getCurrentLanguageUnsafe } from '../i18n/I18nContext';
 
 export type SpotLayout = { x: number; y: number; width: number; height: number };
 
@@ -11,45 +13,50 @@ export type InteractiveStepConfig = {
 const INTERACTIVE_STEPS: InteractiveStepConfig[] = [
   {
     key: 'welcome',
-    tooltip: 'Добро пожаловать в DrinkNote! Покажем самое важное за несколько шагов.',
+    tooltip: 'onboarding.tooltips.welcome',
   },
   {
     key: 'favorites',
-    tooltip: 'Это ваше избранное. Сюда удобно добавлять напитки, которыми пользуетесь чаще всего. Одно нажатие по карточке добавит запись на выбранную дату.',
+    tooltip: 'onboarding.tooltips.favorites',
   },
   {
     key: 'favoritesEdit',
-    tooltip: 'Чтобы изменить название, объём или крепость, задержите палец на карточке. Появятся кнопки редактирования и удаления из избранного.',
+    tooltip: 'onboarding.tooltips.favoritesEdit',
   },
   {
     key: 'addButton',
-    tooltip: 'Кнопка «+» добавляет новые напитки в избранное. Нажмите, откроется список: можно выбрать готовый вариант или добавить свой.',
+    tooltip: 'onboarding.tooltips.addButton',
   },
   {
     key: 'oneTimeEntry',
-    tooltip: 'Вы также можете добавить запись с помощью этой кнопки: выберите напиток среди уже сохранённых или добавьте разовую запись без сохранения и без добавления в избранное.',
+    tooltip: 'onboarding.tooltips.oneTimeEntry',
   },
   {
     key: 'calendar',
-    tooltip: 'В календаре видно записи по дням: что и сколько употребили. Можно листать месяцы и смотреть общую картину.',
+    tooltip: 'onboarding.tooltips.calendar',
   },
   {
     key: 'stats',
-    tooltip: 'Здесь собрана статистика: объёмы и единицы по периодам, тренды по неделям и месяцам, по типам напитков и дням недели. В полной версии доступна расширенная аналитика, а также можно указывать цену напитков и считать траты.',
+    tooltip: 'onboarding.tooltips.stats',
   },
   {
     key: 'settings',
-    tooltip: 'В настройках задаются пол, возраст и вес. Эти параметры нужны для расчёта условно-безопасной нормы — той, которую ВОЗ использовала в контексте минимального риска, а не полной безопасности для здоровья. По нынешней позиции ВОЗ безопасного уровня употребления алкоголя не существует. Вы также можете задать свою норму по желанию.',
+    tooltip: 'onboarding.tooltips.settings',
   },
   {
     key: 'fullVersionBenefits',
-    tooltip: 'Также, приобретя полную версию приложения, вы сможете выбрать валюту учёта трат, устанавливать цели по серии дней без алкоголя и менять темы оформления.',
+    tooltip: 'onboarding.tooltips.fullVersionBenefits',
   },
   {
     key: 'profileForNorm',
-    tooltip: 'Чтобы приложение рассчитало вашу условно-безопасную норму, заполните в профиле вес, пол и дату рождения. Мы не собираем никаких данных — всё хранится только на вашем устройстве.',
+    tooltip: 'onboarding.tooltips.profileForNorm',
   },
 ];
+
+function resolveInteractiveSteps(): InteractiveStepConfig[] {
+  const lang = getCurrentLanguageUnsafe();
+  return INTERACTIVE_STEPS.map((s) => ({ ...s, tooltip: translate(lang, s.tooltip) }));
+}
 
 type OnboardingContextValue = {
   /** null = ещё не загрузили, true/false = онбординг уже пройден / не пройден */
@@ -74,7 +81,7 @@ const defaultValue: OnboardingContextValue = {
   setInteractiveStep: () => {},
   registerTarget: () => {},
   targets: {},
-  stepConfig: INTERACTIVE_STEPS,
+  stepConfig: resolveInteractiveSteps(),
   startInteractive: () => {},
   finishInteractive: () => {},
 };
@@ -126,7 +133,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setInteractiveStep,
     registerTarget,
     targets,
-    stepConfig: INTERACTIVE_STEPS,
+    stepConfig: resolveInteractiveSteps(),
     startInteractive,
     finishInteractive,
   };

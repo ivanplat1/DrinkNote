@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated, Easing } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import type { SpotLayout } from '../context/OnboardingContext';
+import { useI18n } from '../i18n/I18nContext';
 
 const SPOT_PADDING = 12;
 const SPOT_PADDING_BOTTOM = 4;
@@ -46,6 +47,7 @@ export default function OnboardingOverlayContent({
   nextDisabled = false,
 }: OnboardingOverlayContentProps) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const shadeOpacity = useRef(new Animated.Value(1)).current;
   const spotlightOpacity = useRef(new Animated.Value(1)).current;
@@ -230,7 +232,7 @@ export default function OnboardingOverlayContent({
           style={[styles.nextBtn, { backgroundColor: colors.primary, opacity: nextDisabled ? 0.75 : 1 }]}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextText}>{isLast ? 'Готово' : 'Далее'}</Text>
+          <Text style={styles.nextText}>{isLast ? t('onboarding.done') : t('onboarding.next')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </>
