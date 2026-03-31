@@ -161,10 +161,10 @@ export default function AdvancedStatsScreen() {
               <View style={styles.comparisonItem}>
                 <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
-                  {monthComparison.period1.totalUnits.toFixed(1)} ед.
+                  {monthComparison.period1.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')}
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {monthComparison.period1.daysWithDrinks} дней
+                  {monthComparison.period1.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
               </View>
               <View style={styles.comparisonArrow}>
@@ -177,10 +177,10 @@ export default function AdvancedStatsScreen() {
               <View style={styles.comparisonItem}>
                 <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
-                  {monthComparison.period2.totalUnits.toFixed(1)} ед.
+                  {monthComparison.period2.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')}
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {monthComparison.period2.daysWithDrinks} дней
+                  {monthComparison.period2.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
               </View>
             </View>
@@ -206,10 +206,10 @@ export default function AdvancedStatsScreen() {
               <View style={styles.comparisonItem}>
                 <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
-                  {yearComparison.period1.totalUnits.toFixed(1)} ед.
+                  {yearComparison.period1.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')}
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {yearComparison.period1.daysWithDrinks} дней
+                  {yearComparison.period1.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
               </View>
               <View style={styles.comparisonArrow}>
@@ -222,10 +222,10 @@ export default function AdvancedStatsScreen() {
               <View style={styles.comparisonItem}>
                 <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
-                  {yearComparison.period2.totalUnits.toFixed(1)} ед.
+                  {yearComparison.period2.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')}
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {yearComparison.period2.daysWithDrinks} дней
+                  {yearComparison.period2.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
               </View>
             </View>
@@ -247,7 +247,7 @@ export default function AdvancedStatsScreen() {
 
         {/* Детальная аналитика по дням недели */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Аналитика по дням недели</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.weekdayAnalytics')}</Text>
           <View style={[styles.analyticsCard, { backgroundColor: colors.backgroundCard }]}>
             {weekdayAnalytics.map((day) => (
               <View key={day.weekday} style={[styles.analyticsRow, { borderBottomColor: colors.border }]}>
@@ -261,9 +261,9 @@ export default function AdvancedStatsScreen() {
                   )}
                 </View>
                 <View style={styles.analyticsValues}>
-                  <Text style={[styles.analyticsValue, { color: colors.text }]}>{day.averageUnits.toFixed(1)} ед.</Text>
+                <Text style={[styles.analyticsValue, { color: colors.text }]}>{day.averageUnits.toFixed(1)} {t('advancedStats.unitsShort')}</Text>
                   <Text style={[styles.analyticsSubtext, { color: colors.textSecondary }]}>
-                    {day.daysCount} дней · {day.percentageOfTotal.toFixed(1)}% от общего
+                    {day.daysCount} {t('advancedStats.daysShort')} · {day.percentageOfTotal.toFixed(1)}% {t('advancedStats.ofTotalShort')}
                   </Text>
                 </View>
               </View>
@@ -274,20 +274,20 @@ export default function AdvancedStatsScreen() {
         {/* Прогрессия серий */}
         {streakProgression.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Прогрессия серий воздержания</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.abstinenceStreaks')}</Text>
             <View style={[styles.streaksCard, { backgroundColor: colors.backgroundCard }]}>
               {streakProgression.slice(0, 5).map((streak, index) => (
                 <View key={index} style={[styles.streakRow, { borderBottomColor: colors.border }]}>
                   <View style={styles.streakInfo}>
-                    <Text style={[styles.streakLength, { color: colors.text }]}>{streak.length} дней</Text>
-                    <Text style={[styles.streakDates, { color: colors.textSecondary }]}>
-                      {new Date(streak.streakStart).toLocaleDateString('ru-RU')} -{' '}
-                      {new Date(streak.streakEnd).toLocaleDateString('ru-RU')}
-                    </Text>
+                  <Text style={[styles.streakLength, { color: colors.text }]}>{streak.length} {t('advancedStats.daysShort')}</Text>
+                  <Text style={[styles.streakDates, { color: colors.textSecondary }]}>
+                    {new Date(streak.streakStart).toLocaleDateString(t('widgets.mlShort') === 'мл' ? 'ru-RU' : 'en-US')} -{' '}
+                    {new Date(streak.streakEnd).toLocaleDateString(t('widgets.mlShort') === 'мл' ? 'ru-RU' : 'en-US')}
+                  </Text>
                   </View>
                   {!streak.completed && (
                     <View style={[styles.streakBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.streakBadgeText}>Текущая</Text>
+                    <Text style={styles.streakBadgeText}>{t('advancedStats.current')}</Text>
                     </View>
                   )}
                 </View>
