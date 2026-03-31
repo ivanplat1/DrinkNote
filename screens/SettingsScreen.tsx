@@ -12,7 +12,7 @@ import { colors as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
 import { ThemeName } from '../theme/themes';
-import { CURRENCY_LIST } from '../utils/currency';
+import { CURRENCY_LIST, CURRENCY_SYMBOLS } from '../utils/currency';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 import { useI18n } from '../i18n/I18nContext';
@@ -701,7 +701,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
-              {CURRENCY_LIST.find((c) => c.code === currency)?.label ?? currency}
+              {t(`currency.${currency}`) ?? `${currency} (${CURRENCY_SYMBOLS[currency] ?? ''})`}
             </Text>
             <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -976,7 +976,7 @@ export default function SettingsScreen() {
               directionalLockEnabled
               scrollEventThrottle={32}
             >
-              {CURRENCY_LIST.map(({ code, label }, index) => (
+              {CURRENCY_LIST.map((code, index) => (
                 <TouchableOpacity
                   key={code}
                   style={[
@@ -992,7 +992,7 @@ export default function SettingsScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
-                    {label}
+                    {t(`currency.${code}`)}
                   </Text>
                   {currency === code && (
                     <MaterialIcons name="check" size={22} color={colors.primary} />

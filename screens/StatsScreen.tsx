@@ -232,7 +232,7 @@ export default function StatsScreen() {
           <View style={styles.limitWarning}>
             <MaterialCommunityIcons name="information" size={18} color={colors.warning} />
             <Text style={styles.limitWarningText}>
-              Базовая версия показывает статистику только за последние 3 месяца
+              {t('statsScreen.baseLimitHint')}
             </Text>
             <TouchableOpacity
               style={styles.limitWarningButton}
@@ -254,7 +254,7 @@ export default function StatsScreen() {
               style={[styles.periodButtonText, period === 'overall' && styles.periodButtonTextActive, { color: period === 'overall' ? '#fff' : colors.textSecondary }]}
               numberOfLines={1}
             >
-              Общая
+              {t('statsScreen.periodOverall')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -265,7 +265,7 @@ export default function StatsScreen() {
               style={[styles.periodButtonText, period === 'week' && styles.periodButtonTextActive, { color: period === 'week' ? '#fff' : colors.textSecondary }]}
               numberOfLines={1}
             >
-              Неделя
+              {t('statsScreen.periodWeek')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -276,7 +276,7 @@ export default function StatsScreen() {
               style={[styles.periodButtonText, period === 'month' && styles.periodButtonTextActive, { color: period === 'month' ? '#fff' : colors.textSecondary }]}
               numberOfLines={1}
             >
-              Месяц
+              {t('statsScreen.periodMonth')}
             </Text>
           </TouchableOpacity>
         </View>

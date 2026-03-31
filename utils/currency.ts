@@ -1,23 +1,6 @@
 import { CurrencyCode, VALID_CURRENCIES } from '../storage/settings';
 
-export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
-  RUB: 'Российский рубль (₽)',
-  BYN: 'Белорусский рубль (Br)',
-  KZT: 'Казахстанский тенге (₸)',
-  UZS: 'Узбекский сум (soʻm)',
-  UAH: 'Украинская гривна (₴)',
-  AMD: 'Армянский драм (֏)',
-  AZN: 'Азербайджанский манат (₼)',
-  GEL: 'Грузинский лари (₾)',
-  KGS: 'Киргизский сом (с)',
-  MDL: 'Молдавский лей (L)',
-  TJS: 'Таджикский сомони (SM)',
-  TMT: 'Туркменский манат (m)',
-  EUR: 'Евро (€)',
-  USD: 'Доллар США ($)',
-};
-
-const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   RUB: '₽',
   BYN: 'Br',
   KZT: '₸',
@@ -35,10 +18,7 @@ const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
 };
 
 /** Список валют для выбора в настройках (порядок: СНГ, затем EUR, USD) */
-export const CURRENCY_LIST: { code: CurrencyCode; label: string }[] = VALID_CURRENCIES.map((code) => ({
-  code,
-  label: CURRENCY_LABELS[code],
-}));
+export const CURRENCY_LIST: CurrencyCode[] = [...VALID_CURRENCIES];
 
 /** Форматирует сумму с символом валюты (без конвертации — только отображение) */
 export function formatPrice(amount: number, currency: CurrencyCode): string {
