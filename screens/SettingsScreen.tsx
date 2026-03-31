@@ -385,7 +385,7 @@ export default function SettingsScreen() {
           <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Вес */}
             <View style={styles.profileRow}>
-              <Text style={[styles.profileLabel, { color: colors.text }]}>Вес:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.weight')}:</Text>
               <View style={styles.profileInputRow}>
                 <TouchableOpacity
                   style={styles.profileArrowButton}
@@ -415,7 +415,7 @@ export default function SettingsScreen() {
                   onSubmitEditing={handleSaveWeight}
                   onBlur={handleSaveWeight}
                 />
-                <Text style={[styles.profileUnit, { color: colors.textSecondary }]}>кг</Text>
+                <Text style={[styles.profileUnit, { color: colors.textSecondary }]}>kg</Text>
                 <TouchableOpacity
                   style={styles.profileArrowButton}
                   onPress={async () => {
@@ -435,7 +435,7 @@ export default function SettingsScreen() {
 
             {/* Пол */}
             <View style={styles.profileRow}>
-              <Text style={[styles.profileLabel, { color: colors.text }]}>Пол:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.gender')}:</Text>
               <View style={styles.profileInputRow}>
                 <TouchableOpacity
                   style={[
@@ -481,7 +481,7 @@ export default function SettingsScreen() {
 
             {/* Дата рождения */}
             <View style={styles.profileRow}>
-              <Text style={[styles.profileLabel, { color: colors.text }]}>Дата рождения:</Text>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.birthDate')}:</Text>
               <TouchableOpacity
                 style={{ flex: 1, alignItems: 'flex-end' }}
                 onPress={() => {
@@ -542,7 +542,7 @@ export default function SettingsScreen() {
 
         {/* Цель по серии: премиум — активна, базовая — показать заблокированной */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Цель по серии</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.streakGoal')}</Text>
           {isPremium ? (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
@@ -711,12 +711,12 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
             <MaterialIcons name="file-download" size={24} color={colors.primary} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>Экспорт данных</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.exportData')}</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={() => setShowImportModal(true)}>
             <MaterialIcons name="file-upload" size={24} color={colors.primary} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>Импорт данных</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.importData')}</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
@@ -725,7 +725,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={[styles.actionButton, styles.dangerButton, { backgroundColor: colors.backgroundCard, borderColor: colors.error }]} onPress={handleClearData}>
             <MaterialIcons name="delete-forever" size={24} color={colors.error} />
-            <Text style={[styles.actionButtonText, styles.dangerButtonText, { color: colors.error }]}>Удалить все данные</Text>
+            <Text style={[styles.actionButtonText, styles.dangerButtonText, { color: colors.error }]}>{t('settings.deleteAllData')}</Text>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
@@ -755,7 +755,7 @@ export default function SettingsScreen() {
                 >
                   <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата рождения</Text>
+                <Text style={[styles.datePickerTitle, { color: colors.text }]}>{t('settings.birthDate')}</Text>
                 <TouchableOpacity
                   onPress={async () => {
                     const dateISO = tempBirthDate.toISOString().split('T')[0];
@@ -873,7 +873,7 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               
               <View style={[styles.importHeader, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.importTitle, { color: colors.text }]}>Импорт данных</Text>
+                <Text style={[styles.importTitle, { color: colors.text }]}>{t('settings.importTitle')}</Text>
                 <TouchableOpacity
                   onPress={closeImportModal}
                   style={styles.closeButton}
