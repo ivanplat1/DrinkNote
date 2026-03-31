@@ -25,8 +25,11 @@ export const translations = {
       no: 'Нет',
       replaceAll: 'Заменить все',
       add: 'Добавить',
+      unitsShort: 'ед.',
     },
     settings: {
+      profileTitle: 'Параметры профиля',
+      profileSubtitle: 'Настройте профиль для определения условной нормы',
       title: 'Настройки',
       language: 'Язык',
       chooseLanguage: 'Выберите язык',
@@ -35,6 +38,72 @@ export const translations = {
       languageEn: 'English',
       currency: 'Валюта',
       chooseCurrency: 'Выберите валюту',
+      dailyGoal: 'Дневная цель',
+      dailyGoalSubtitle1: 'Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.',
+      unitHint: 'Условная единица (ед.) = 10 г чистого этанола.',
+      yourValue: 'Своё значение',
+      recommended: 'Рекомендовано',
+      setGoal: 'Установить цель',
+      weight: 'Вес',
+      gender: 'Пол',
+      birthDate: 'Дата рождения',
+      notSet: 'Не установлена',
+      premium: 'Премиум',
+      premiumActive: 'Премиум активен',
+      streakGoal: 'Цель по серии',
+      streakNotSet: 'Не задана',
+      enterDays: 'Введите число дней',
+      themes: 'Темы оформления',
+      exportData: 'Экспорт данных',
+      importData: 'Импорт данных',
+      deleteAllData: 'Удалить все данные',
+      importTitle: 'Импорт данных',
+      importHint: 'Выберите файл (.json или .txt) или вставьте JSON данные из экспортированного файла',
+      pickFile: 'Выбрать файл',
+      importPastePlaceholder: 'Или вставьте JSON данные здесь...',
+      importReplaceAll: 'Заменить все',
+      importAdd: 'Добавить',
+      clearDataTitle: 'Удалить все данные?',
+      clearDataBody: 'Это действие нельзя отменить. Все записи, пресеты и настройки будут удалены.',
+      clearedTitle: 'Готово',
+      clearedBody: 'Все данные удалены',
+      saveGoalError: 'Введите корректное значение',
+      goalSavedTitle: 'Сохранено',
+      goalSavedBody: 'Дневная цель обновлена',
+      weightError: 'Введите корректный вес (1-300 кг)',
+      exportTitle: 'Экспорт',
+      exportDone: 'Файл загружен',
+      exportError: 'Не удалось экспортировать данные',
+      importPasteError: 'Вставьте данные для импорта',
+      importDoneTitle: 'Импорт завершен',
+      importDoneBody: 'Успешно импортировано {{count}} записей о напитках',
+      importErrorTitle: 'Ошибка импорта',
+      importError: 'Не удалось импортировать данные',
+      importReadFileError: 'Не удалось прочитать файл. Попробуйте вставить данные вручную.',
+      pickFileError: 'Не удалось выбрать файл',
+      streakResetTitle: 'Сбросить цель?',
+      streakResetBody: 'Текущая цель: {{days}}. Сбросить?',
+      streakReplaceTitle: 'Заменить цель?',
+      streakReplaceBody: 'Текущая цель: {{current}}. Заменить на {{next}}?',
+      reset: 'Сбросить',
+      replace: 'Заменить',
+      daysShort: 'дней',
+      conditionalNorm: 'Условная норма',
+      howCalculatedTitle: 'Как рассчитывается?',
+      howCalculatedBody:
+        '📐 Условная единица (ед.) = 10 г чистого этанола.\n\n' +
+        '📊 Базовая норма:\n' +
+        '• Мужчины: 2.5 ед. (25 г спирта)\n' +
+        '• Женщины: 1.5 ед. (15 г спирта)\n\n' +
+        '⚖️ Корректировка по весу:\n' +
+        '• Средний вес: 80 кг (М) / 65 кг (Ж)\n' +
+        '• Коэффициент: ±30%\n\n' +
+        '🎂 Корректировка по возрасту:\n' +
+        '• До 25 лет: -20%\n' +
+        '• 50–65 лет: -15%\n' +
+        '• Старше 65: -30%\n\n' +
+        '⚠️ Внимание:\n' +
+        'Это ориентировочный расчёт, не медицинская рекомендация. ВОЗ утверждает, что безопасного уровня потребления алкоголя не существует.',
     },
     premium: {
       title: 'Премиум',
@@ -118,8 +187,11 @@ export const translations = {
       no: 'No',
       replaceAll: 'Replace all',
       add: 'Add',
+      unitsShort: 'u',
     },
     settings: {
+      profileTitle: 'Profile',
+      profileSubtitle: 'Set up your profile to estimate the suggested limit',
       title: 'Settings',
       language: 'Language',
       chooseLanguage: 'Choose language',
@@ -128,6 +200,72 @@ export const translations = {
       languageEn: 'English',
       currency: 'Currency',
       chooseCurrency: 'Choose currency',
+      dailyGoal: 'Daily goal',
+      dailyGoalSubtitle1: 'There is no safe level of alcohol consumption (WHO). Less is better.',
+      unitHint: '1 unit = 10 g of pure ethanol.',
+      yourValue: 'Your value',
+      recommended: 'Recommended',
+      setGoal: 'Set goal',
+      weight: 'Weight',
+      gender: 'Gender',
+      birthDate: 'Birth date',
+      notSet: 'Not set',
+      premium: 'Premium',
+      premiumActive: 'Premium active',
+      streakGoal: 'Streak goal',
+      streakNotSet: 'Not set',
+      enterDays: 'Enter number of days',
+      themes: 'Themes',
+      exportData: 'Export data',
+      importData: 'Import data',
+      deleteAllData: 'Delete all data',
+      importTitle: 'Import data',
+      importHint: 'Choose a file (.json or .txt) or paste JSON from an exported file',
+      pickFile: 'Choose file',
+      importPastePlaceholder: 'Or paste JSON here...',
+      importReplaceAll: 'Replace all',
+      importAdd: 'Add',
+      clearDataTitle: 'Delete all data?',
+      clearDataBody: 'This can’t be undone. All entries, presets, and settings will be removed.',
+      clearedTitle: 'Done',
+      clearedBody: 'All data has been deleted',
+      saveGoalError: 'Enter a valid value',
+      goalSavedTitle: 'Saved',
+      goalSavedBody: 'Daily goal updated',
+      weightError: 'Enter a valid weight (1–300 kg)',
+      exportTitle: 'Export',
+      exportDone: 'File downloaded',
+      exportError: 'Failed to export data',
+      importPasteError: 'Paste data to import',
+      importDoneTitle: 'Import complete',
+      importDoneBody: 'Imported {{count}} drink entries',
+      importErrorTitle: 'Import error',
+      importError: 'Failed to import data',
+      importReadFileError: 'Could not read the file. Try pasting the data manually.',
+      pickFileError: 'Could not pick a file',
+      streakResetTitle: 'Reset goal?',
+      streakResetBody: 'Current goal: {{days}}. Reset it?',
+      streakReplaceTitle: 'Replace goal?',
+      streakReplaceBody: 'Current goal: {{current}}. Replace with {{next}}?',
+      reset: 'Reset',
+      replace: 'Replace',
+      daysShort: 'days',
+      conditionalNorm: 'Suggested limit',
+      howCalculatedTitle: 'How is it calculated?',
+      howCalculatedBody:
+        '📐 1 unit = 10 g of pure ethanol.\n\n' +
+        '📊 Baseline:\n' +
+        '• Men: 2.5 u (25 g alcohol)\n' +
+        '• Women: 1.5 u (15 g alcohol)\n\n' +
+        '⚖️ Weight adjustment:\n' +
+        '• Average: 80 kg (M) / 65 kg (F)\n' +
+        '• Factor: ±30%\n\n' +
+        '🎂 Age adjustment:\n' +
+        '• Under 25: -20%\n' +
+        '• 50–65: -15%\n' +
+        '• 65+: -30%\n\n' +
+        '⚠️ Note:\n' +
+        'This is an estimate, not medical advice. WHO states there is no safe level of alcohol consumption.',
     },
     premium: {
       title: 'Premium',

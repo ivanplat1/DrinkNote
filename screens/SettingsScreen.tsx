@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { t, mode, setMode, localeTag } = useI18n();
+  const { t, tf, mode, setMode, localeTag } = useI18n();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -53,12 +53,12 @@ export default function SettingsScreen() {
     (newGoal: number | null) => {
       if (newGoal === null) {
         Alert.alert(
-          'Сбросить цель?',
-          `Текущая цель: ${streakGoal} дней. Сбросить?`,
+          t('settings.streakResetTitle'),
+          tf('settings.streakResetBody', { days: `${streakGoal} ${t('settings.daysShort')}` }),
           [
-            { text: 'Нет', style: 'cancel' },
+            { text: t('common.no'), style: 'cancel' },
             {
-              text: 'Сбросить',
+              text: t('settings.reset'),
               style: 'destructive',
               onPress: async () => {
                 await setStreakGoal(null);
@@ -71,12 +71,15 @@ export default function SettingsScreen() {
       }
       if (streakGoal != null) {
         Alert.alert(
-          'Заменить цель?',
-          `Текущая цель: ${streakGoal} дней. Заменить на ${newGoal} дней?`,
+          t('settings.streakReplaceTitle'),
+          tf('settings.streakReplaceBody', {
+            current: `${streakGoal} ${t('settings.daysShort')}`,
+            next: `${newGoal} ${t('settings.daysShort')}`,
+          }),
           [
-            { text: 'Нет', style: 'cancel' },
+            { text: t('common.no'), style: 'cancel' },
             {
-              text: 'Заменить',
+              text: t('settings.replace'),
               onPress: async () => {
                 await setStreakGoal(newGoal);
                 await loadStreakGoal();
@@ -134,12 +137,12 @@ export default function SettingsScreen() {
   const handleSaveGoal = async () => {
     const value = parseFloat(dailyGoal.replace(',', '.'));
     if (isNaN(value) || value < 0) {
-      Alert.alert('Ошибка', 'Введите корректное значение');
+      Alert.alert(t('common.error'), t('settings.saveGoalError'));
       return;
     }
     await setDailyGoal(value);
     setIsEditingGoal(false);
-    Alert.alert('Сохранено', 'Дневная цель обновлена');
+    Alert.alert(t('settings.goalSavedTitle'), t('settings.goalSavedBody'));
   };
 
   const handleSaveWeight = async () => {
@@ -155,7 +158,7 @@ export default function SettingsScreen() {
     }
     const value = parseFloat(trimmed.replace(',', '.'));
     if (isNaN(value) || value <= 0 || value > 300) {
-      Alert.alert('Ошибка', 'Введите корректный вес (1-300 кг)');
+      Alert.alert(t('common.error'), t('settings.weightError'));
       return;
     }
     await setUserWeight(value);
@@ -188,7 +191,7 @@ export default function SettingsScreen() {
         link.download = fileName;
         link.click();
         URL.revokeObjectURL(url);
-        Alert.alert('Экспорт', 'Файл загружен');
+        Alert.alert(t('settings.exportTitle'), t('settings.exportDone'));
       } else {
         await Share.share({
           message: data,
@@ -196,13 +199,13 @@ export default function SettingsScreen() {
         });
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось экспортировать данные');
+      Alert.alert(t('common.error'), t('settings.exportError'));
     }
   };
 
   const handleImport = async (merge: boolean) => {
     if (!importText.trim()) {
-      Alert.alert('Ошибка', 'Вставьте данные для импорта');
+      Alert.alert(t('common.error'), t('settings.importPasteError'));
       return;
     }
 
@@ -211,11 +214,11 @@ export default function SettingsScreen() {
       
       if (result.success) {
         Alert.alert(
-          'Импорт завершен',
-          `Успешно импортировано ${result.drinksCount} записей о напитках`,
+          t('settings.importDoneTitle'),
+          tf('settings.importDoneBody', { count: result.drinksCount }),
           [
             {
-              text: 'OK',
+              text: t('common.ok'),
               onPress: () => {
                 setShowImportModal(false);
                 setImportText('');
@@ -225,10 +228,10 @@ export default function SettingsScreen() {
           ]
         );
       } else {
-        Alert.alert('Ошибка импорта', result.error || 'Не удалось импортировать данные');
+        Alert.alert(t('settings.importErrorTitle'), result.error || t('settings.importError'));
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось импортировать данные');
+      Alert.alert(t('common.error'), t('settings.importError'));
     }
   };
 
@@ -263,7 +266,7 @@ export default function SettingsScreen() {
             setImportText(text);
           } catch (fetchError) {
             // Если fetch не работает, попробуем прочитать через FileReader
-            Alert.alert('Ошибка', 'Не удалось прочитать файл. Попробуйте вставить данные вручную.');
+            Alert.alert(t('common.error'), t('settings.importReadFileError'));
           }
         }
       }
@@ -272,7 +275,7 @@ export default function SettingsScreen() {
         // Пользователь отменил выбор файла
         return;
       }
-      Alert.alert('Ошибка', 'Не удалось выбрать файл');
+      Alert.alert(t('common.error'), t('settings.pickFileError'));
     }
   };
 
@@ -284,17 +287,17 @@ export default function SettingsScreen() {
 
   const handleClearData = () => {
     Alert.alert(
-      'Удалить все данные?',
-      'Это действие нельзя отменить. Все записи, пресеты и настройки будут удалены.',
+      t('settings.clearDataTitle'),
+      t('settings.clearDataBody'),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Удалить',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await clearAllData();
             setDailyGoalValue('');
-            Alert.alert('Готово', 'Все данные удалены');
+            Alert.alert(t('settings.clearedTitle'), t('settings.clearedBody'));
           },
         },
       ]
@@ -307,13 +310,13 @@ export default function SettingsScreen() {
         <Animated.ScrollView keyboardShouldPersistTaps="handled" style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }, { paddingBottom: 280 }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
         {/* Дневная цель */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дневная цель</Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Безопасного уровня потребления алкоголя не существует (ВОЗ). Чем меньше, тем лучше.</Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, marginTop: 4 }]}>Условная единица (ед.) = 10 г чистого этанола.</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.dailyGoal')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.dailyGoalSubtitle1')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, marginTop: 4 }]}>{t('settings.unitHint')}</Text>
           <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Левая часть - Своё значение */}
             <View style={styles.goalColumn}>
-              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Своё значение</Text>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>{t('settings.yourValue')}</Text>
               {isEditingGoal ? (
                 <View style={styles.goalInputRow}>
                   <TextInput
@@ -323,7 +326,7 @@ export default function SettingsScreen() {
                       const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
                       setDailyGoalValue(normalized);
                     }}
-                    placeholder={`${recommendedLimit.toFixed(1)} ед.`}
+                    placeholder={`${recommendedLimit.toFixed(1)} ${t('common.unitsShort')}`}
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
@@ -331,7 +334,7 @@ export default function SettingsScreen() {
                     onBlur={handleSaveGoal}
                     autoFocus
                   />
-                  <Text style={[styles.goalUnit, { color: colors.textSecondary }]}>ед.</Text>
+                  <Text style={[styles.goalUnit, { color: colors.textSecondary }]}>{t('common.unitsShort')}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -340,7 +343,9 @@ export default function SettingsScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.goalValue, { color: dailyGoal ? colors.text : colors.textTertiary }]}>
-                    {dailyGoal ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ед.` : `${recommendedLimit.toFixed(1)} ед.`}
+                    {dailyGoal
+                      ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ${t('common.unitsShort')}`
+                      : `${recommendedLimit.toFixed(1)} ${t('common.unitsShort')}`}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -351,29 +356,17 @@ export default function SettingsScreen() {
             
             {/* Правая часть - Условная норма */}
             <View style={styles.goalColumn}>
-              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>Условная норма</Text>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>{t('settings.conditionalNorm')}</Text>
               <View style={[styles.goalDisplayRow, { flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
                 <Text style={[styles.goalValue, styles.goalRecommended, { color: colors.primary }]}>
-                  {recommendedLimit.toFixed(1)} ед.
+                  {recommendedLimit.toFixed(1)} {t('common.unitsShort')}
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
                     Alert.alert(
-                      '',
-                      '📐 Условная единица (ед.) = 10 г чистого этанола.\n\n' +
-                      '📊 Базовая норма:\n' +
-                      '• Мужчины: 2.5 ед. (25г спирта)\n' +
-                      '• Женщины: 1.5 ед. (15г спирта)\n\n' +
-                      '⚖️ Корректировка по весу:\n' +
-                      '• Средний вес: 80кг (М) / 65кг (Ж)\n' +
-                      '• Коэффициент: ±30%\n\n' +
-                      '🎂 Корректировка по возрасту:\n' +
-                      '• До 25 лет: -20%\n' +
-                      '• 50-65 лет: -15%\n' +
-                      '• Старше 65: -30%\n\n' +
-                      '⚠️ Внимание:\n' +
-                      'Это ориентировочный расчет, не медицинская рекомендация. ВОЗ утверждает, что безопасного уровня потребления алкоголя не существует.',
-                      [{ text: 'Понятно', style: 'default' }]
+                      t('settings.howCalculatedTitle'),
+                      t('settings.howCalculatedBody'),
+                      [{ text: t('common.ok'), style: 'default' }]
                     );
                   }}
                   style={{ padding: 4 }}
@@ -387,8 +380,8 @@ export default function SettingsScreen() {
 
         {/* Параметры профиля */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Параметры профиля</Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Настройте профиль для определения условной нормы</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.profileTitle')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.profileSubtitle')}</Text>
           <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
             {/* Вес */}
             <View style={styles.profileRow}>
@@ -497,7 +490,7 @@ export default function SettingsScreen() {
                 }}
               >
                 <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder, { color: birthDate ? colors.textSecondary : colors.textTertiary }]}>
-                  {birthDate ? new Date(birthDate).toLocaleDateString(localeTag, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
+                  {birthDate ? new Date(birthDate).toLocaleDateString(localeTag, { year: 'numeric', month: 'long', day: 'numeric' }) : t('settings.notSet')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -514,7 +507,7 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons name="crown" size={24} color={isPremium ? "#f4c430" : colors.primary} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {isPremium ? 'Премиум активен' : 'Премиум'}
+                {isPremium ? t('settings.premiumActive') : t('settings.premium')}
               </Text>
               {!isPremium && (
                 <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>Разблокировать все функции</Text>
@@ -561,7 +554,7 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="target" size={24} color={colors.primary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                  {streakGoal != null ? `${streakGoal} дней` : 'Не задана'}
+                  {streakGoal != null ? `${streakGoal} ${t('settings.daysShort')}` : t('settings.streakNotSet')}
                 </Text>
                 <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>
                   Отслеживание прогресса в статистике и календаре
@@ -596,7 +589,7 @@ export default function SettingsScreen() {
                   style={[styles.modalInput, { backgroundColor: colors.backgroundSecondary, color: colors.text, borderColor: colors.border }]}
                   value={customStreakGoalInput}
                   onChangeText={setCustomStreakGoalInput}
-                  placeholder="Введите число дней"
+                  placeholder={t('settings.enterDays')}
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="number-pad"
                   maxLength={3}
@@ -899,23 +892,21 @@ export default function SettingsScreen() {
                   directionalLockEnabled
                   scrollEventThrottle={32}
                 >
-                  <Text style={[styles.importHint, { color: colors.textSecondary }]}>
-                    Выберите файл (.json или .txt) или вставьте JSON данные из экспортированного файла
-                  </Text>
+                  <Text style={[styles.importHint, { color: colors.textSecondary }]}>{t('settings.importHint')}</Text>
                   
                   <TouchableOpacity
                     style={[styles.filePickerButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
                     onPress={handlePickFile}
                   >
                     <MaterialIcons name="insert-drive-file" size={24} color={colors.primary} />
-                    <Text style={[styles.filePickerButtonText, { color: colors.primary }]}>Выбрать файл</Text>
+                    <Text style={[styles.filePickerButtonText, { color: colors.primary }]}>{t('settings.pickFile')}</Text>
                   </TouchableOpacity>
                   
                   <TextInput
                     style={[styles.importTextInput, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
                     value={importText}
                     onChangeText={setImportText}
-                    placeholder="Или вставьте JSON данные здесь..."
+                    placeholder={t('settings.importPastePlaceholder')}
                     placeholderTextColor={colors.textTertiary}
                     multiline
                     textAlignVertical="top"
@@ -940,14 +931,14 @@ export default function SettingsScreen() {
                     onPress={() => handleImport(false)}
                     disabled={!importText.trim()}
                   >
-                    <Text style={[styles.importButtonText, { color: '#fff' }]}>Заменить все</Text>
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>{t('settings.importReplaceAll')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.importButton, styles.importButtonMerge, { backgroundColor: colors.primaryDark, borderColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
                     onPress={() => handleImport(true)}
                     disabled={!importText.trim()}
                   >
-                    <Text style={[styles.importButtonText, { color: '#fff' }]}>Добавить</Text>
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>{t('settings.importAdd')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { detectDefaultLanguage, localeTagFor, t as translate } from './i18n';
+import { detectDefaultLanguage, localeTagFor, t as translate, tf as translateFormat } from './i18n';
 import { getLanguageOverride, setLanguageOverride, type AppLanguage } from '../storage/settings';
 
 type LanguageMode = 'auto' | AppLanguage;
@@ -10,6 +10,7 @@ interface I18nContextValue {
   mode: LanguageMode;
   setMode: (mode: LanguageMode) => Promise<void>;
   t: (key: string) => string;
+  tf: (key: string, vars: Record<string, string | number>) => string;
   localeTag: string;
 }
 
@@ -52,6 +53,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       mode,
       setMode,
       t: (key: string) => translate(language, key),
+      tf: (key: string, vars: Record<string, string | number>) => translateFormat(language, key, vars),
       localeTag: localeTagFor(language),
     }),
     [language, mode, setMode]

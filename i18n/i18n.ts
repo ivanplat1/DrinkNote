@@ -46,7 +46,27 @@ export function t(language: AppLanguage, key: string): string {
   return getPath(dict, key) ?? getPath(fallback, key) ?? key;
 }
 
+export function tf(language: AppLanguage, key: string, vars: Record<string, string | number>): string {
+  const raw = t(language, key);
+  return raw.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, name: string) => {
+    const v = vars[name];
+    return v == null ? '' : String(v);
+  });
+}
+
 export function localeTagFor(language: AppLanguage): string {
   return language === 'ru' ? 'ru-RU' : 'en-US';
+}
+
+export function formatDaysCount(language: AppLanguage, days: number): string {
+  if (language !== 'ru') {
+    return days === 1 ? `${days} day` : `${days} days`;
+  }
+  const n = Math.abs(days) % 100;
+  const n1 = n % 10;
+  if (n > 10 && n < 20) return `${days} дней`;
+  if (n1 > 1 && n1 < 5) return `${days} дня`;
+  if (n1 === 1) return `${days} день`;
+  return `${days} дней`;
 }
 
