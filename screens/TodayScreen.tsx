@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { MaterialIcons, Ionicons, Entypo, FontAwesome } from '@expo/vector-icons';
@@ -223,7 +223,7 @@ const SwipeableListItem = React.memo(function SwipeableListItem({ item, beverage
 export default function TodayScreen() {
   const { colors } = useTheme();
   const { currency } = useCurrency();
-  const { t: tt } = useI18n();
+  const { t } = useI18n();
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [catalog, setCatalog] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -1122,7 +1122,9 @@ export default function TodayScreen() {
           style={styles.kav}
         >
           <View style={styles.modalBackdrop}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeAddModal} />
+            <TouchableWithoutFeedback onPress={closeAddModal}>
+              <View style={StyleSheet.absoluteFill} />
+            </TouchableWithoutFeedback>
               <Animated.View
                 style={[
                   styles.modalCard,
@@ -1235,7 +1237,9 @@ export default function TodayScreen() {
         onRequestClose={closeAddEntryModal}
       >
         <View style={styles.modalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={closeAddEntryModal} />
+          <TouchableWithoutFeedback onPress={closeAddEntryModal}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : (isAddEntryKeyboardVisible ? 'padding' : undefined)}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
@@ -1343,23 +1347,23 @@ export default function TodayScreen() {
                         <>
                           <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.favorites')}</Text>
                           {filteredEntryFavorites.map((preset) => (
-                            <Pressable
+                            <TouchableOpacity
                               key={preset.id}
-                              style={({ pressed }) => [
+                              style={[
                                 styles.presetItem,
                                 { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
-                                pressed && { opacity: 0.7 },
                               ]}
                               onPressIn={() => {
                                 Keyboard.dismiss();
                               }}
                               onPress={() => addEntryFromPreset(preset)}
+                              activeOpacity={0.7}
                             >
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Text style={[styles.presetText, { color: colors.text }]}>{preset.name}</Text>
                                   <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} ml · {preset.abvPercent}%</Text>
                               </View>
-                            </Pressable>
+                            </TouchableOpacity>
                           ))}
                         </>
                       )}
@@ -1381,21 +1385,19 @@ export default function TodayScreen() {
                                 },
                               ]}
                             >
-                              <Pressable
-                                style={({ pressed }) => [
-                                  { flex: 1, paddingRight: 12 },
-                                  pressed && { opacity: 0.7 },
-                                ]}
+                              <TouchableOpacity
+                                style={{ flex: 1, paddingRight: 12 }}
                                 onPressIn={() => {
                                   Keyboard.dismiss();
                                 }}
                                 onPress={() => addEntryFromPreset(preset)}
+                                activeOpacity={0.7}
                               >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                   <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                                   <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} ml · {preset.abvPercent}%</Text>
                                 </View>
-                              </Pressable>
+                              </TouchableOpacity>
                             </View>
                           ))}
                         </>

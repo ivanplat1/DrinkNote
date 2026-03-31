@@ -12,7 +12,6 @@ import {
   Keyboard,
   Alert,
   ScrollView,
-  Pressable,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
@@ -172,7 +171,14 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => { Keyboard.dismiss(); onClose(); }} />
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            onClose();
+          }}
+        >
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
         <KeyboardAvoidingView
           style={styles.kav}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

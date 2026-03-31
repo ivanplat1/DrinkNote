@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert, Platform, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent, ScrollView, TextInput, KeyboardAvoidingView, Keyboard, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, Alert, Platform, TouchableWithoutFeedback, NativeSyntheticEvent, NativeScrollEvent, ScrollView, TextInput, KeyboardAvoidingView, Keyboard, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -2664,12 +2664,11 @@ export default function CalendarScreen() {
                     <>
                       <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.favorites')}</Text>
                       {filteredUserPresets.map((preset) => (
-                        <Pressable
+                        <TouchableOpacity
                           key={preset.id}
-                          style={({ pressed }) => [
+                          style={[
                             styles.presetItem,
                             { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
-                            pressed && { opacity: 0.7 }
                           ]}
                           onPressIn={() => {
                             Keyboard.dismiss();
@@ -2677,12 +2676,13 @@ export default function CalendarScreen() {
                           onPress={() => {
                             addDrinkFromPreset(preset);
                           }}
+                          activeOpacity={0.7}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Text style={[styles.presetText, { color: colors.text }]}>{preset.name}</Text>
                             <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
-                        </Pressable>
+                        </TouchableOpacity>
                       ))}
                     </>
                   )}
@@ -2704,20 +2704,21 @@ export default function CalendarScreen() {
                             },
                           ]}
                         >
-                          <Pressable
-                            style={({ pressed }) => [{ flex: 1, paddingRight: 12 }, pressed && { opacity: 0.7 }]}
+                          <TouchableOpacity
+                            style={{ flex: 1, paddingRight: 12 }}
                             onPressIn={() => {
                               Keyboard.dismiss();
                             }}
                             onPress={() => {
                               addSuggestedPreset(preset);
                             }}
+                            activeOpacity={0.7}
                           >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                             <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
-                          </Pressable>
+                          </TouchableOpacity>
                         </View>
                       ))}
                     </>
@@ -2866,7 +2867,9 @@ export default function CalendarScreen() {
       {/* Модалка меток на период (премиум) — по центру экрана */}
       <Modal visible={labelsModalVisible} transparent animationType="fade">
         <View style={styles.labelsModalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLabelsModalVisible(false)} />
+          <TouchableWithoutFeedback onPress={() => setLabelsModalVisible(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
           <View style={[styles.labelsModalBackdropCenter, StyleSheet.absoluteFillObject]} pointerEvents="box-none">
             <View style={styles.labelsModalCardWrap}>
               <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
