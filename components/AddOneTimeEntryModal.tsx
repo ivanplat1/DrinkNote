@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import type { Drink } from '../types/drink';
 import type { ThemeColors } from '../theme/themes';
+import { useI18n } from '../i18n/I18nContext';
 
 const BEVERAGE_TYPES: Array<Drink['beverageType']> = ['beer', 'wine', 'spirit', 'cocktail', 'other'];
 
@@ -28,12 +29,12 @@ function getBeverageColors(type: Drink['beverageType'], themeColors: ThemeColors
   return { main: c.main, light: c.light, text: c.text };
 }
 
-const TYPE_LABELS: Record<Drink['beverageType'], string> = {
-  beer: 'Пиво',
-  wine: 'Вино',
-  spirit: 'Крепкий',
-  cocktail: 'Коктейль',
-  other: 'Другое',
+const TYPE_LABEL_KEYS: Record<Drink['beverageType'], string> = {
+  beer: 'drinkTypes.beer',
+  wine: 'drinkTypes.wine',
+  spirit: 'drinkTypes.spirit',
+  cocktail: 'drinkTypes.cocktail',
+  other: 'drinkTypes.other',
 };
 
 const TYPE_DEFAULTS: Record<Drink['beverageType'], { volumeMl: number; abvPercent: number }> = {
@@ -65,6 +66,7 @@ const SCROLL_Y_PRICE = Platform.OS === 'android' ? 420 : 320;
 
 export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSave }: Props) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -114,19 +116,19 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
   };
 
   const handleSave = () => {
-    const n = name.trim() || TYPE_LABELS[beverageType];
+    const n = name.trim() || t(TYPE_LABEL_KEYS[beverageType]);
     const vol = parseFloat(volumeStr.replace(',', '.'));
     const abv = parseFloat(abvStr.replace(',', '.'));
     if (!n) {
-      Alert.alert('Ошибка', 'Введите название или выберите тип напитка');
+      Alert.alert(t('common.error'), t('oneTimeEntry.nameOrTypeError'));
       return;
     }
     if (isNaN(vol) || vol <= 0) {
-      Alert.alert('Ошибка', 'Введите корректный объём (мл)');
+      Alert.alert(t('common.error'), t('oneTimeEntry.volumeError'));
       return;
     }
     if (isNaN(abv) || abv < 0 || abv > 100) {
-      Alert.alert('Ошибка', 'Введите корректную крепость (%)');
+      Alert.alert(t('common.error'), t('oneTimeEntry.abvError'));
       return;
     }
     const priceNum = priceStr.trim() ? parseFloat(priceStr.replace(',', '.')) : undefined;
@@ -203,7 +205,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
 
                     <Text style={[styles.label, { color: colors.text }]}>Название</Text>
                     <TextInput
-                      placeholder="Например, Мохито"
+                      placeholder={t('oneTimeEntry.namePlaceholder')}
                       placeholderTextColor={colors.textTertiary}
                       value={name}
                       onChangeText={setName}
@@ -267,7 +269,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                       <>
                         <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
                         <TextInput
-                          placeholder="Не указана"
+                          placeholder={t('oneTimeEntry.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={priceStr}

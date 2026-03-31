@@ -191,6 +191,13 @@ export const translations = {
       unlockedTitle: '🏆 Достижение разблокировано!',
       awesome: 'Отлично!',
     },
+    oneTimeEntry: {
+      nameOrTypeError: 'Введите название или выберите тип напитка',
+      volumeError: 'Введите корректный объём (мл)',
+      abvError: 'Введите корректную крепость (%)',
+      namePlaceholder: 'Например, Мохито',
+      notSpecified: 'Не указана',
+    },
     stats: {
       daysWithEntries: 'Дней с записями',
       avgPerDay: 'Среднее в день',
@@ -389,6 +396,13 @@ export const translations = {
     achievements: {
       unlockedTitle: '🏆 Achievement unlocked!',
       awesome: 'Nice!',
+    },
+    oneTimeEntry: {
+      nameOrTypeError: 'Enter a name or choose a drink type',
+      volumeError: 'Enter a valid volume (ml)',
+      abvError: 'Enter a valid ABV (%)',
+      namePlaceholder: 'e.g., Mojito',
+      notSpecified: 'Not set',
     },
     stats: {
       daysWithEntries: 'Days with entries',
