@@ -1221,9 +1221,9 @@ export default function CalendarScreen() {
   const customModalTranslateY = useSharedValue(0);
 
   // Форматтер вынесен наружу, чтобы не создавать его при каждом рендере
-  const dateFormatter = useMemo(() => 
-    new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }),
-    []
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }),
+    [localeTag]
   );
 
   // Определяем "доминирующий" месяц на экране — по центральной из 6 видимых недель
@@ -2234,7 +2234,7 @@ export default function CalendarScreen() {
           activeOpacity={0.7}
         >
           <Text style={[styles.viewModeButtonText, calendarViewMode === 'month' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'month' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
-            Месяц
+            {t('calendar.viewMonth')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -2243,7 +2243,7 @@ export default function CalendarScreen() {
           activeOpacity={0.7}
         >
           <Text style={[styles.viewModeButtonText, calendarViewMode === 'year' && styles.viewModeButtonTextActive, { color: calendarViewMode === 'year' ? (isLightCalendarTheme ? colors.text : '#ffffff') : colors.textSecondary }]}>
-            Год
+            {t('calendar.viewYear')}
           </Text>
         </TouchableOpacity>
       </View>

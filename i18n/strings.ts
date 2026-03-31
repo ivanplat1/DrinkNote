@@ -190,6 +190,8 @@ export const translations = {
     calendar: {
       labels: 'Метки',
       dayLabels: 'Метки дня',
+      viewMonth: 'Месяц',
+      viewYear: 'Год',
       searchDrinks: 'Поиск напитков...',
       namePlaceholderExample: 'Название (например, Джин-тоник)',
       volumeMl: 'Объём, мл',
@@ -543,6 +545,8 @@ export const translations = {
     calendar: {
       labels: 'Labels',
       dayLabels: "Day's labels",
+      viewMonth: 'Month',
+      viewYear: 'Year',
       searchDrinks: 'Search drinks...',
       namePlaceholderExample: 'Name (e.g., Gin & Tonic)',
       volumeMl: 'Volume, ml',
