@@ -1,14 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { detectDefaultLanguage, localeTagFor, t as translate, tf as translateFormat } from './i18n';
-import { getLanguageOverride, setLanguageOverride, type AppLanguage } from '../storage/settings';
-
-type LanguageMode = 'auto' | AppLanguage;
+import { getAppLanguage, setAppLanguage, type AppLanguage } from '../storage/settings';
 
 interface I18nContextValue {
   language: AppLanguage;
-  mode: LanguageMode;
-  setMode: (mode: LanguageMode) => Promise<void>;
+  setLanguage: (language: AppLanguage) => Promise<void>;
   t: (key: string) => string;
   tf: (key: string, vars: Record<string, string | number>) => string;
   localeTag: string;
@@ -17,46 +14,41 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<LanguageMode>('auto');
   const [language, setLanguage] = useState<AppLanguage>('en');
 
-  const recompute = useCallback((m: LanguageMode) => {
-    const resolved: AppLanguage = m === 'auto' ? detectDefaultLanguage() : m;
-    setLanguage(resolved);
+  useEffect(() => {
+    getAppLanguage()
+      .then(async (saved) => {
+        if (saved) {
+          setLanguage(saved);
+          return;
+        }
+        // First run: pick a concrete language and persist it.
+        const detected = detectDefaultLanguage();
+        setLanguage(detected);
+        await setAppLanguage(detected);
+      })
+      .catch(async () => {
+        const detected = detectDefaultLanguage();
+        setLanguage(detected);
+        await setAppLanguage(detected);
+      });
   }, []);
 
-  useEffect(() => {
-    getLanguageOverride()
-      .then((override) => {
-        const m: LanguageMode = override ?? 'auto';
-        setModeState(m);
-        recompute(m);
-      })
-      .catch(() => {
-        setModeState('auto');
-        recompute('auto');
-      });
-  }, [recompute]);
-
-  const setMode = useCallback(
-    async (m: LanguageMode) => {
-      setModeState(m);
-      recompute(m);
-      await setLanguageOverride(m === 'auto' ? null : m);
-    },
-    [recompute]
-  );
+  const setLanguageAndPersist = useCallback(async (lang: AppLanguage) => {
+    setLanguage(lang);
+    await setAppLanguage(lang);
+  }, []);
 
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
-      mode,
-      setMode,
+      setLanguage: setLanguageAndPersist,
       t: (key: string) => translate(language, key),
       tf: (key: string, vars: Record<string, string | number>) => translateFormat(language, key, vars),
       localeTag: localeTagFor(language),
     }),
-    [language, mode, setMode]
+    [language, setLanguageAndPersist]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

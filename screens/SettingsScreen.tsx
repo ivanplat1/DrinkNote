@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { t, tf, mode, setMode, localeTag } = useI18n();
+  const { t, tf, language, setLanguage, localeTag } = useI18n();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -686,7 +686,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
-              {mode === 'auto' ? t('settings.languageAutoHint') : mode === 'ru' ? t('settings.languageRu') : t('settings.languageEn')}
+              {language === 'en' ? t('settings.languageEn') : t('settings.languageRu')}
             </Text>
             <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -1041,9 +1041,8 @@ export default function SettingsScreen() {
               scrollEventThrottle={32}
             >
               {([
-                { id: 'auto' as const, label: t('settings.languageAutoHint') },
-                { id: 'ru' as const, label: t('settings.languageRu') },
                 { id: 'en' as const, label: t('settings.languageEn') },
+                { id: 'ru' as const, label: t('settings.languageRu') },
               ]).map(({ id, label }, index, arr) => (
                 <TouchableOpacity
                   key={id}
@@ -1051,10 +1050,10 @@ export default function SettingsScreen() {
                     styles.currencyPickerItem,
                     { borderBottomColor: colors.border },
                     index === arr.length - 1 && { borderBottomWidth: 0 },
-                    mode === id && { backgroundColor: colors.backgroundSecondary },
+                    language === id && { backgroundColor: colors.backgroundSecondary },
                   ]}
                   onPress={async () => {
-                    await setMode(id);
+                    await setLanguage(id);
                     setShowLanguagePicker(false);
                   }}
                   activeOpacity={0.7}
@@ -1062,7 +1061,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
                     {label}
                   </Text>
-                  {mode === id && <MaterialIcons name="check" size={22} color={colors.primary} />}
+                  {language === id && <MaterialIcons name="check" size={22} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </Animated.ScrollView>

@@ -335,17 +335,13 @@ export async function setCurrency(currency: CurrencyCode): Promise<void> {
 
 export type AppLanguage = 'ru' | 'en';
 
-export async function getLanguageOverride(): Promise<AppLanguage | null> {
+export async function getAppLanguage(): Promise<AppLanguage | null> {
   const raw = await AsyncStorage.getItem(LANGUAGE_OVERRIDE_KEY);
   if (raw === 'ru' || raw === 'en') return raw;
   return null;
 }
 
-export async function setLanguageOverride(language: AppLanguage | null): Promise<void> {
-  if (language === null) {
-    await AsyncStorage.removeItem(LANGUAGE_OVERRIDE_KEY);
-    return;
-  }
+export async function setAppLanguage(language: AppLanguage): Promise<void> {
   await AsyncStorage.setItem(LANGUAGE_OVERRIDE_KEY, language);
 }
 
