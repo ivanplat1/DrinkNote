@@ -850,10 +850,10 @@ export default function TodayScreen() {
     if (interactiveStep !== 1 || userPresets.length > 0 || demoPresetsAddedRef.current) return;
     demoPresetsAddedRef.current = true;
     const demo = [
-      { name: 'Пиво 500мл', beverageType: 'beer' as const, volumeMl: 500, abvPercent: 5 },
-      { name: 'Вино', beverageType: 'wine' as const, volumeMl: 150, abvPercent: 12 },
-      { name: 'Коньяк', beverageType: 'spirit' as const, volumeMl: 50, abvPercent: 40 },
-      { name: 'Виски кола', beverageType: 'cocktail' as const, volumeMl: 250, abvPercent: 16 },
+      { name: t('drinkTypes.beer') + ' 500ml', beverageType: 'beer' as const, volumeMl: 500, abvPercent: 5 },
+      { name: t('drinkTypes.wine'), beverageType: 'wine' as const, volumeMl: 150, abvPercent: 12 },
+      { name: t('drinkTypes.spirit'), beverageType: 'spirit' as const, volumeMl: 50, abvPercent: 40 },
+      { name: t('drinkTypes.cocktail') + ' cola', beverageType: 'cocktail' as const, volumeMl: 250, abvPercent: 16 },
     ];
     (async () => {
       for (const p of demo) {
@@ -892,7 +892,7 @@ export default function TodayScreen() {
         onPress={() => setPresetsCollapsed(!presetsCollapsed)}
         activeOpacity={0.7}
       >
-        <Text style={[styles.title, { color: colors.text }]}>Избранное</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('todayScreen.favorites')}</Text>
         <Ionicons 
           name={presetsCollapsed ? "chevron-down" : "chevron-up"} 
           size={20} 
@@ -1039,17 +1039,17 @@ export default function TodayScreen() {
       {/* Бар со статистикой */}
       <View style={[styles.statsBar, { backgroundColor: colors.backgroundCard }]}>
         <View style={styles.statsBarItem}>
-          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Объем</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>{t('todayScreen.volume')}</Text>
           <Text style={[styles.statsBarValue, { color: colors.text }]}>{formatTotalVolume(totalVolumeMl, 1)}</Text>
         </View>
         <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statsBarItem}>
-          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Единицы</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>{t('todayScreen.units')}</Text>
           <Text style={[styles.statsBarValue, { color: colors.text }]}>{totalUnits.toFixed(2)}</Text>
         </View>
         <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statsBarItem}>
-          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Спирт</Text>
+          <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>{t('todayScreen.alcohol')}</Text>
           <Text style={[styles.statsBarValue, { color: colors.text }]}>{Math.round(totalAlcoholGrams)} г</Text>
         </View>
         {isPremium && totalPrice > 0 && (
@@ -1109,7 +1109,7 @@ export default function TodayScreen() {
             />
           );
         }}
-        ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>Пока нет записей</Text>}
+        ListEmptyComponent={<Text style={{ color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 }}>{t('todayScreen.noEntries')}</Text>}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
       </View>
@@ -1158,7 +1158,7 @@ export default function TodayScreen() {
                     </GestureDetector>
                     <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
-                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.addDrink')}</Text>
                       <View ref={modalHeaderPlusRef} collapsable={false}>
                         <TouchableOpacity
                           style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
@@ -1169,7 +1169,7 @@ export default function TodayScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
-                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>Выберите из списка или нажмите + для своего напитка</Text>
+                    <Text style={{ marginBottom: 12, color: colors.textSecondary }}>{t('todayScreen.pickOrCreate')}</Text>
                   
                     {/* Строка поиска: не прячем при пустом результате (иначе скрывается клавиатура) */}
                     {catalog.length > 0 && (
@@ -1287,7 +1287,7 @@ export default function TodayScreen() {
 
                   <View style={entrySearchQuery && entrySearchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
-                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.addDrink')}</Text>
                       <View ref={modalHeaderPlusRef} collapsable={false}>
                         <TouchableOpacity
                           style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
@@ -1304,7 +1304,7 @@ export default function TodayScreen() {
                     </View>
 
                     <Text style={{ marginBottom: 8, color: colors.textSecondary }}>
-                      Выберите из списка или нажмите + для своего напитка
+                      {t('todayScreen.pickOrCreate')}
                     </Text>
 
                     <TouchableOpacity
@@ -1316,7 +1316,7 @@ export default function TodayScreen() {
                       activeOpacity={0.7}
                     >
                       <Entypo name="plus" size={18} color={colors.primary} />
-                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>Добавить разовую запись</Text>
+                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>{t('todayScreen.addOneTime')}</Text>
                     </TouchableOpacity>
 
                     <TextInput
@@ -1341,7 +1341,7 @@ export default function TodayScreen() {
                     >
                       {filteredEntryFavorites.length > 0 && (
                         <>
-                          <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Избранное</Text>
+                          <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.favorites')}</Text>
                           {filteredEntryFavorites.map((preset) => (
                             <Pressable
                               key={preset.id}
@@ -1357,7 +1357,7 @@ export default function TodayScreen() {
                             >
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Text style={[styles.presetText, { color: colors.text }]}>{preset.name}</Text>
-                                <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                                  <Text style={[styles.presetDetails, { color: colors.textSecondary }]}>{preset.volumeMl} ml · {preset.abvPercent}%</Text>
                               </View>
                             </Pressable>
                           ))}
@@ -1366,7 +1366,7 @@ export default function TodayScreen() {
 
                       {entryCatalogItems.length > 0 && (
                         <>
-                          <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Каталог</Text>
+                          <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.catalog')}</Text>
                           {entryCatalogItems.map((preset) => (
                             <View
                               key={preset.id}
@@ -1393,7 +1393,7 @@ export default function TodayScreen() {
                               >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                   <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
-                                  <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
+                                  <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} ml · {preset.abvPercent}%</Text>
                                 </View>
                               </Pressable>
                             </View>
@@ -1456,10 +1456,10 @@ export default function TodayScreen() {
                     contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 12 : 48 + insets.bottom }}
                   >
                   <Text style={[styles.modalTitle, { color: colors.text }]}>
-                    {editingCatalogItem ? 'Редактировать напиток' : 'Новый напиток'}
+                    {editingCatalogItem ? t('todayScreen.editDrinkTitle') : t('todayScreen.newDrinkTitle')}
                   </Text>
                   <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
-                    {editingCatalogItem ? 'Измените данные напитка' : 'Объём и крепость будут автоматически добавлены в название'}
+                    {editingCatalogItem ? t('todayScreen.editDrinkSubtitle') : t('todayScreen.autoNameHint')}
                   </Text>
                   <TextInput
                     placeholder={tt('today.namePlaceholderExample')}
@@ -1472,7 +1472,7 @@ export default function TodayScreen() {
                     onSubmitEditing={Keyboard.dismiss}
                   />
                   <View style={styles.row}>
-                    <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.typeLabel')}</Text>
                     <View style={styles.typeRow}>
                       {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
                         const bc = getBeverageColor(t, colors);
@@ -1494,7 +1494,7 @@ export default function TodayScreen() {
                   </View>
                   <View style={styles.row}>
                     <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.volumeMlLabel')}</Text>
                       <TextInput
                         placeholder={tt('today.ml')}
                         placeholderTextColor={colors.textTertiary}
@@ -1511,7 +1511,7 @@ export default function TodayScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.abvLabel')}</Text>
                       <TextInput
                         placeholder={tt('today.percent')}
                         placeholderTextColor={colors.textTertiary}
@@ -1529,7 +1529,7 @@ export default function TodayScreen() {
                     </View>
                   </View>
                   <View style={{ marginBottom: 12 }}>
-                    <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.price')}</Text>
                     {isPremium ? (
                       <TextInput
                         placeholder={tt('today.notSpecified')}
@@ -1551,10 +1551,10 @@ export default function TodayScreen() {
                   </View>
                   <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                     <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeCustomModal}>
-                      <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
+                      <Text style={[styles.cancelBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveCustomPreset}>
-                      <Text style={styles.saveBtnText}>Сохранить</Text>
+                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                     </TouchableOpacity>
                   </View>
                     </ScrollView>
@@ -1609,7 +1609,7 @@ export default function TodayScreen() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
                   >
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Изменить количество</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.editQuantity')}</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       {editingDrink?.name} · {formatTotalVolume(editingDrink?.volumeMl || 0, 1)} · {editingDrink?.abvPercent}%
                     </Text>
@@ -1653,7 +1653,7 @@ export default function TodayScreen() {
                     </View>
                     {isPremium && (
                       <View style={{ marginBottom: 16 }}>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>Цена</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>{t('todayScreen.price')}</Text>
                         <TextInput
                           value={editPriceVal}
                           onChangeText={setEditPriceVal}
@@ -1677,10 +1677,10 @@ export default function TodayScreen() {
                       ]}
                     >
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditModal}>
-                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
+                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveEditedDrink}>
-                        <Text style={styles.saveBtnText}>Сохранить</Text>
+                        <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
@@ -1736,9 +1736,9 @@ export default function TodayScreen() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 12 : 48 + insets.bottom }}
                   >
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Редактировать напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.editDrinkTitle')}</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
-                      Измените данные напитка
+                      {t('todayScreen.editDrinkSubtitle')}
                     </Text>
                     <TextInput
                       placeholder={tt('today.name')}
@@ -1751,7 +1751,7 @@ export default function TodayScreen() {
                       onSubmitEditing={Keyboard.dismiss}
                     />
                     <View style={styles.row}>
-                      <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
+                      <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.typeLabel')}</Text>
                       <View style={styles.typeRow}>
                         {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
                           <TouchableOpacity
@@ -1771,7 +1771,7 @@ export default function TodayScreen() {
                     </View>
                     <View style={styles.row}>
                       <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Объём, мл</Text>
+                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.volumeMlLabel')}</Text>
                         <TextInput
                           placeholder={tt('today.ml')}
                           placeholderTextColor={colors.textTertiary}
@@ -1788,7 +1788,7 @@ export default function TodayScreen() {
                         />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Крепость, %</Text>
+                        <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.abvLabel')}</Text>
                         <TextInput
                           placeholder={tt('today.percent')}
                           placeholderTextColor={colors.textTertiary}
@@ -1806,7 +1806,7 @@ export default function TodayScreen() {
                       </View>
                     </View>
                     <View style={{ marginBottom: 12 }}>
-                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>Цена</Text>
+                      <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.price')}</Text>
                       {isPremium ? (
                         <TextInput
                           placeholder={tt('today.notSpecified')}
@@ -1839,10 +1839,10 @@ export default function TodayScreen() {
                       ]}
                     >
                       <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]} onPress={closeEditPresetModal}>
-                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>Отмена</Text>
+                        <Text style={[styles.cancelBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={saveEditedPreset}>
-                        <Text style={styles.saveBtnText}>Сохранить</Text>
+                        <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
@@ -1887,7 +1887,7 @@ export default function TodayScreen() {
                     <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                   </TouchableOpacity>
                 </GestureDetector>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Выберите дату</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.chooseDate')}</Text>
                 <View style={styles.datePickerWeekRow}>
                   {WEEKDAY_SHORT_RU.map((day) => (
                     <Text key={day} style={[styles.datePickerWeekLabel, { color: colors.textSecondary }]}>{day}</Text>
@@ -1966,7 +1966,7 @@ export default function TodayScreen() {
                     setDatePickerVisible(false);
                   }}
                 >
-                  <Text style={styles.todayButtonText}>Сегодня</Text>
+                  <Text style={styles.todayButtonText}>{t('todayScreen.today')}</Text>
                 </TouchableOpacity>
               </Animated.View>
             </TouchableWithoutFeedback>
