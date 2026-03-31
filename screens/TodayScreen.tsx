@@ -1476,19 +1476,19 @@ export default function TodayScreen() {
                   <View style={styles.row}>
                     <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.typeLabel')}</Text>
                     <View style={styles.typeRow}>
-                      {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
-                        const bc = getBeverageColor(t, colors);
-                        const isSelected = newType === t;
+                      {(['beer','wine','spirit','cocktail','other'] as const).map((bevType) => {
+                        const bc = getBeverageColor(bevType, colors);
+                        const isSelected = newType === bevType;
                         return (
                           <TouchableOpacity
-                            key={t}
+                            key={bevType}
                             style={[
                               styles.typeChip,
                               { backgroundColor: isSelected ? bc.main : bc.light, borderColor: bc.main },
                             ]}
-                            onPress={() => setNewType(t)}
+                            onPress={() => setNewType(bevType)}
                           >
-                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t, t)}</Text>
+                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(bevType, t)}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -1755,18 +1755,18 @@ export default function TodayScreen() {
                     <View style={styles.row}>
                       <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.typeLabel')}</Text>
                       <View style={styles.typeRow}>
-                        {(['beer','wine','spirit','cocktail','other'] as const).map((t) => (
+                        {(['beer','wine','spirit','cocktail','other'] as const).map((bevType) => (
                           <TouchableOpacity
-                            key={t}
+                            key={bevType}
                             style={[
                               styles.typeChip,
                               { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                              presetType === t && styles.typeChipActive,
-                              presetType === t && { backgroundColor: colors.primaryDark, borderColor: colors.primary },
+                              presetType === bevType && styles.typeChipActive,
+                              presetType === bevType && { backgroundColor: colors.primaryDark, borderColor: colors.primary },
                             ]}
-                            onPress={() => setPresetType(t)}
+                            onPress={() => setPresetType(bevType)}
                           >
-                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t, t)}</Text>
+                            <Text style={[styles.typeChipText, { color: presetType === bevType ? '#fff' : colors.text }]}>{getBeverageTypeLabel(bevType, t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
