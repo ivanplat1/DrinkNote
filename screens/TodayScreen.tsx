@@ -438,9 +438,9 @@ export default function TodayScreen() {
   };
 
   const openCatalogEditor = (item: PresetDrink) => {
-    Alert.alert(item.name, tt('today.catalogAction'), [
+    Alert.alert(item.name, t('today.catalogAction'), [
       {
-        text: tt('common.edit'),
+        text: t('common.edit'),
         onPress: () => {
           setEditingCatalogItem(item);
           setNewName(item.name);
@@ -453,14 +453,14 @@ export default function TodayScreen() {
         },
       },
       {
-        text: tt('common.delete'),
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const next = await removeCatalogDrink(item.id);
           setCatalog(next);
         },
       },
-      { text: tt('common.cancel'), style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -476,10 +476,10 @@ export default function TodayScreen() {
   };
 
   const confirmCatalogDelete = (item: PresetDrink) => {
-    Alert.alert(tt('today.deleteDrinkTitle'), item.name, [
-      { text: tt('common.cancel'), style: 'cancel' },
+    Alert.alert(t('today.deleteDrinkTitle'), item.name, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: tt('common.delete'),
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const next = await removeCatalogDrink(item.id);
@@ -536,7 +536,7 @@ export default function TodayScreen() {
     const volume = parseFloat(normalizedVolume);
     const abv = parseFloat(normalizedAbv);
     if (!newName || isNaN(volume) || isNaN(abv)) {
-      Alert.alert(tt('common.error'), tt('today.fillRequired'));
+      Alert.alert(t('common.error'), t('today.fillRequired'));
       return;
     }
     const priceNum = newPriceVal.trim() ? parseFloat(newPriceVal.replace(',', '.')) : undefined;
@@ -667,7 +667,7 @@ export default function TodayScreen() {
     const quantity = Math.max(1, Math.floor(Number(newQuantity.replace(',', '.')) || 1));
     
     if (isNaN(quantity) || quantity < 1) {
-      Alert.alert(tt('common.error'), tt('today.invalidQuantity'));
+      Alert.alert(t('common.error'), t('today.invalidQuantity'));
       return;
     }
 
@@ -717,7 +717,7 @@ export default function TodayScreen() {
     const abv = parseFloat(normalizedAbv);
     
     if (!presetName || isNaN(volume) || isNaN(abv)) {
-      Alert.alert(tt('common.error'), tt('today.fillRequired'));
+      Alert.alert(t('common.error'), t('today.fillRequired'));
       return;
     }
 
@@ -982,7 +982,7 @@ export default function TodayScreen() {
                 setEditingPresetId(null);
                 openAddModal();
               }}
-              accessibilityLabel={tt('today.addDrinkA11y')}
+              accessibilityLabel={t('today.addDrinkA11y')}
             >
               <Entypo name="circle-with-plus" size={22} color={colors.primary} />
             </TouchableOpacity>
@@ -1176,7 +1176,7 @@ export default function TodayScreen() {
                     {/* Строка поиска: не прячем при пустом результате (иначе скрывается клавиатура) */}
                     {catalog.length > 0 && (
                       <TextInput
-                        placeholder={tt('today.searchDrinks')}
+                        placeholder={t('today.searchDrinks')}
                         placeholderTextColor={colors.textTertiary}
                         value={searchQuery}
                         onChangeText={handleSearchChange}
@@ -1324,7 +1324,7 @@ export default function TodayScreen() {
                     </TouchableOpacity>
 
                     <TextInput
-                      placeholder={tt('today.searchDrinks')}
+                      placeholder={t('today.searchDrinks')}
                       placeholderTextColor={colors.textTertiary}
                       value={entrySearchQuery}
                       onChangeText={setEntrySearchQuery}
@@ -1464,7 +1464,7 @@ export default function TodayScreen() {
                     {editingCatalogItem ? t('todayScreen.editDrinkSubtitle') : t('todayScreen.autoNameHint')}
                   </Text>
                   <TextInput
-                    placeholder={tt('today.namePlaceholderExample')}
+                    placeholder={t('today.namePlaceholderExample')}
                     placeholderTextColor={colors.textTertiary}
                     value={newName}
                     onChangeText={setNewName}
@@ -1488,7 +1488,7 @@ export default function TodayScreen() {
                             ]}
                             onPress={() => setNewType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t, tt)}</Text>
+                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t, t)}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -1498,7 +1498,7 @@ export default function TodayScreen() {
                     <View style={{ flex: 1, marginRight: 8 }}>
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.volumeMlLabel')}</Text>
                       <TextInput
-                        placeholder={tt('today.ml')}
+                        placeholder={t('today.ml')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newVolume}
@@ -1515,7 +1515,7 @@ export default function TodayScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.abvLabel')}</Text>
                       <TextInput
-                        placeholder={tt('today.percent')}
+                        placeholder={t('today.percent')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newAbv}
@@ -1534,7 +1534,7 @@ export default function TodayScreen() {
                     <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.price')}</Text>
                     {isPremium ? (
                       <TextInput
-                        placeholder={tt('today.notSpecified')}
+                        placeholder={t('today.notSpecified')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="decimal-pad"
                         value={newPriceVal}
@@ -1543,7 +1543,7 @@ export default function TodayScreen() {
                       />
                     ) : (
                       <TextInput
-                        placeholder={tt('today.premiumOnly')}
+                        placeholder={t('today.premiumOnly')}
                         placeholderTextColor={colors.textTertiary}
                         editable={false}
                         value=""
@@ -1629,7 +1629,7 @@ export default function TodayScreen() {
                         <Entypo name="circle-with-minus" size={28} color={colors.primary} />
                       </TouchableOpacity>
                       <TextInput
-                        placeholder={tt('today.quantity')}
+                        placeholder={t('today.quantity')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="number-pad"
                         value={newQuantity}
@@ -1660,7 +1660,7 @@ export default function TodayScreen() {
                           value={editPriceVal}
                           onChangeText={setEditPriceVal}
                           keyboardType="decimal-pad"
-                          placeholder={tt('today.notSpecified')}
+                          placeholder={t('today.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           onFocus={() => editDrinkScrollRef.current?.scrollTo({ y: EDIT_MODAL_SCROLL_Y_PRICE, animated: true })}
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -1743,7 +1743,7 @@ export default function TodayScreen() {
                       {t('todayScreen.editDrinkSubtitle')}
                     </Text>
                     <TextInput
-                      placeholder={tt('today.name')}
+                      placeholder={t('today.name')}
                       placeholderTextColor={colors.textTertiary}
                       value={presetName}
                       onChangeText={setPresetName}
@@ -1766,7 +1766,7 @@ export default function TodayScreen() {
                             ]}
                             onPress={() => setPresetType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t, tt)}</Text>
+                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t, t)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1775,7 +1775,7 @@ export default function TodayScreen() {
                       <View style={{ flex: 1, marginRight: 8 }}>
                         <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.volumeMlLabel')}</Text>
                         <TextInput
-                          placeholder={tt('today.ml')}
+                          placeholder={t('today.ml')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetVolume}
@@ -1792,7 +1792,7 @@ export default function TodayScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.abvLabel')}</Text>
                         <TextInput
-                          placeholder={tt('today.percent')}
+                          placeholder={t('today.percent')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetAbv}
@@ -1811,7 +1811,7 @@ export default function TodayScreen() {
                       <Text style={[styles.label, { color: colors.text, marginBottom: 4 }]}>{t('todayScreen.price')}</Text>
                       {isPremium ? (
                         <TextInput
-                          placeholder={tt('today.notSpecified')}
+                          placeholder={t('today.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
                           keyboardType="decimal-pad"
                           value={presetPrice}
@@ -1821,7 +1821,7 @@ export default function TodayScreen() {
                         />
                       ) : (
                         <TextInput
-                          placeholder={tt('today.premiumOnly')}
+                          placeholder={t('today.premiumOnly')}
                           placeholderTextColor={colors.textTertiary}
                           editable={false}
                           value={presetPrice}
