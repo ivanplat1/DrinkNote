@@ -210,16 +210,16 @@ export default function StatsScreen() {
         !isPremium ? (
           <View style={styles.lockedContainer}>
             <MaterialCommunityIcons name="lock" size={64} color={colors.textSecondary} />
-            <Text style={styles.lockedTitle}>Расширенная статистика</Text>
+            <Text style={styles.lockedTitle}>{t('premium.features.advancedStatsTitle')}</Text>
             <Text style={styles.lockedText}>
-              Эта функция доступна только в премиум версии
+              {t('premium.notAvailable')}
             </Text>
             <TouchableOpacity
               style={[styles.premiumButton, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('Premium' as never)}
             >
               <MaterialCommunityIcons name="crown" size={20} color="#f4c430" />
-              <Text style={styles.premiumButtonText}>Разблокировать Премиум</Text>
+              <Text style={styles.premiumButtonText}>{t('statsScreen.unlockPremium')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -239,7 +239,7 @@ export default function StatsScreen() {
               onPress={() => navigation.navigate('Premium' as never)}
             >
               <MaterialCommunityIcons name="crown" size={14} color={colors.primary} />
-              <Text style={styles.limitWarningButtonText}>Премиум</Text>
+              <Text style={styles.limitWarningButtonText}>{t('statsScreen.premiumShort')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -325,12 +325,12 @@ export default function StatsScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{currentStats.totalUnits.toFixed(2)}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Стандартных единиц</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('statsScreen.standardUnits')}</Text>
               <Text style={[styles.statSubLabel, { color: colors.textTertiary }]}>{tf('stats.gramsAlcohol', { g: (currentStats.totalUnits * 10).toFixed(1) })}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{formatTotalVolume(currentStats.totalVolumeMl, 1)}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Объем</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('statsScreen.volume')}</Text>
             </View>
           </View>
           <View style={styles.statsRow}>
@@ -438,7 +438,7 @@ export default function StatsScreen() {
         {/* Статистика по типам напитков (только для общей статистики) */}
         {period === 'overall' && beverageTypeStats.length > 0 && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>По типам напитков</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>{t('statsScreen.byDrinkTypes')}</Text>
             {beverageTypeStats.map((item, index) => {
               const typeColors = colors[item.type] || colors.other;
               const getTypeLabel = (type: Drink['beverageType']) => t(`drinkTypesPlural.${type}`);
@@ -451,7 +451,7 @@ export default function StatsScreen() {
                   <View style={styles.typeStatsRow}>
                     <Text style={[styles.typePercentage, { color: colors.primary }]}>{item.percentage}%</Text>
                     <View style={styles.typeUnitsContainer}>
-                      <Text style={[styles.typeUnits, { color: colors.textSecondary }]}>{item.totalUnits.toFixed(1)} ед.</Text>
+                      <Text style={[styles.typeUnits, { color: colors.textSecondary }]}>{item.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')}</Text>
                       <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>{Math.round(item.totalUnits * 10)} г</Text>
                       {isPremium && item.totalSpent > 0 && (
                         <Text style={[styles.typeUnitsSub, { color: colors.textTertiary }]}>· {formatPriceValueOnly(item.totalSpent)}</Text>
@@ -467,7 +467,7 @@ export default function StatsScreen() {
         {/* График по дням недели (только для общей статистики) */}
         {period === 'overall' && weekdayStats.length > 0 && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>По дням недели (среднее)</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>{t('statsScreen.byWeekdaysAvg')}</Text>
             <View style={styles.chartWithAxis}>
               {/* Шкала Y */}
               <View style={styles.yAxis}>
@@ -509,11 +509,11 @@ export default function StatsScreen() {
         {/* Рекорды (только для общей статистики) */}
         {period === 'overall' && records.heaviestDay && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>Рекорды</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>{t('statsScreen.records')}</Text>
             <View style={styles.recordsRow}>
               <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
-                <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Самый тяжелый день</Text>
-                <Text style={[styles.recordValue, { color: colors.primary }]}>{records.heaviestDay.units.toFixed(2)} ед.</Text>
+                <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>{t('statsScreen.heaviestDay')}</Text>
+                <Text style={[styles.recordValue, { color: colors.primary }]}>{records.heaviestDay.units.toFixed(2)} {t('advancedStats.unitsShort')}</Text>
                 <Text style={[styles.recordSubValue, { color: colors.textSecondary }]}>{tf('stats.gramsAlcohol', { g: (records.heaviestDay.units * 10).toFixed(1) })}</Text>
                 <Text style={[styles.recordDate, { color: colors.textTertiary }]}>
                   {new Date(records.heaviestDay.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -521,23 +521,25 @@ export default function StatsScreen() {
               </View>
               {records.currentStreak > 0 && (
                 <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
-                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Дней без алкоголя</Text>
+                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>{t('statsScreen.alcoholFreeDays')}</Text>
                   <Text style={[styles.recordValue, { color: colors.primary }]}>{records.currentStreak}</Text>
-                  <Text style={[styles.recordDate, { color: colors.textTertiary }]}>Текущая серия</Text>
+                  <Text style={[styles.recordDate, { color: colors.textTertiary }]}>{t('statsScreen.currentStreak')}</Text>
                 </View>
               )}
             </View>
             {records.longestStreak > 0 && (
               <View style={styles.recordsRow}>
                 <View style={[styles.recordItem, { backgroundColor: colors.backgroundSecondary }]}>
-                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>Рекордная серия</Text>
-                  <Text style={[styles.recordValue, { color: colors.primary }]}>{records.longestStreak} дней</Text>
+                  <Text style={[styles.recordLabel, { color: colors.textSecondary }]}>{t('statsScreen.bestStreak')}</Text>
+                  <Text style={[styles.recordValue, { color: colors.primary }]}>{records.longestStreak} {t('advancedStats.daysShort')}</Text>
                 </View>
               </View>
             )}
             {isPremium && streakGoal != null && streakGoal > 0 && (
               <View style={[styles.recordItem, { marginTop: 12, backgroundColor: colors.backgroundSecondary, padding: 12 }]}>
-                <Text style={[styles.recordLabel, { color: colors.textSecondary, marginBottom: 6 }]}>Цель: {streakGoal} дней</Text>
+                <Text style={[styles.recordLabel, { color: colors.textSecondary, marginBottom: 6 }]}>
+                  {tf('statsScreen.goal', { days: `${streakGoal} ${t('advancedStats.daysShort')}` })}
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ flex: 1, height: 8, backgroundColor: colors.backgroundTertiary, borderRadius: 4, overflow: 'hidden' }}>
                     <View
@@ -554,7 +556,7 @@ export default function StatsScreen() {
                   </Text>
                 </View>
                 {records.currentStreak >= streakGoal && (
-                  <Text style={[styles.recordDate, { color: colors.success, marginTop: 4 }]}>Цель достигнута!</Text>
+                  <Text style={[styles.recordDate, { color: colors.success, marginTop: 4 }]}>{t('statsScreen.goalAchieved')}</Text>
                 )}
               </View>
             )}
@@ -564,7 +566,7 @@ export default function StatsScreen() {
         {/* Топ напитков (только для общей статистики) */}
         {period === 'overall' && topDrinks.length > 0 && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>Топ-5 напитков</Text>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>{t('statsScreen.top5Drinks')}</Text>
             {topDrinks.map((drink, index) => {
               const typeColors = colors[drink.beverageType] || colors.other;
               return (
@@ -575,7 +577,7 @@ export default function StatsScreen() {
                   <View style={styles.topDrinkInfo}>
                     <Text style={[styles.topDrinkName, { color: colors.text }]}>{drink.name}</Text>
                     <Text style={[styles.topDrinkDetails, { color: colors.textSecondary }]}>
-                      {drink.count} раз · {formatTotalVolume(drink.totalVolumeMl, 1)} · {drink.totalUnits.toFixed(1)} ед. ({Math.round(drink.totalUnits * 10)} г)
+                      {drink.count} × · {formatTotalVolume(drink.totalVolumeMl, 1)} · {drink.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')} ({Math.round(drink.totalUnits * 10)} g)
                     </Text>
                   </View>
                   <View style={[styles.topDrinkTypeDot, { backgroundColor: typeColors.main }]} />
