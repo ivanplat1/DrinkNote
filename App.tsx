@@ -19,6 +19,7 @@ import PremiumScreen from './screens/PremiumScreen';
 import AddFromWidgetScreen from './screens/AddFromWidgetScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { CurrencyProvider } from './theme/CurrencyContext';
+import { I18nProvider, useI18n } from './i18n/I18nContext';
 import { updateAllWidgets } from './services/widget';
 import { setHasCompletedFirstLaunch, setHasSeenOnboarding } from './storage/settings';
 import OnboardingOverlay from './components/OnboardingOverlay';
@@ -78,6 +79,7 @@ function parsePresetIdFromUrl(url: string): string | null {
 function AppContent() {
   const insets = useSafeAreaInsets();
   const { colors, themeName } = useTheme();
+  const { t } = useI18n();
   const navigationRef = useNavigationContainerRef();
   const [initialTab] = React.useState<'Сегодня' | 'Настройки'>('Сегодня');
   const { onboardingSeen, setOnboardingSeen, interactiveStep } = useOnboarding();
@@ -257,6 +259,7 @@ function AppContent() {
             options={{
               headerShown: false,
               tabBarIcon: TodayIcon,
+              tabBarLabel: t('tabs.today'),
             }}
           />
           <Tab.Screen 
@@ -265,6 +268,7 @@ function AppContent() {
             options={{ 
               headerShown: false,
               tabBarIcon: CalendarIcon,
+              tabBarLabel: t('tabs.calendar'),
             }} 
           />
           <Tab.Screen 
@@ -272,6 +276,8 @@ function AppContent() {
             component={StatsScreen}
             options={{
               tabBarIcon: StatsIcon,
+              tabBarLabel: t('tabs.stats'),
+              title: t('tabs.stats'),
             }}
           />
           <Tab.Screen 
@@ -279,6 +285,8 @@ function AppContent() {
             component={SettingsScreen}
             options={{
               tabBarIcon: SettingsIcon,
+              tabBarLabel: t('tabs.settings'),
+              title: t('tabs.settings'),
             }}
           />
         </Tab.Navigator>
@@ -339,13 +347,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <CurrencyProvider>
-          <OnboardingProvider>
-            <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
-              <AppContent />
-            </GestureHandlerRootView>
-          </OnboardingProvider>
-        </CurrencyProvider>
+        <I18nProvider>
+          <CurrencyProvider>
+            <OnboardingProvider>
+              <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+                <AppContent />
+              </GestureHandlerRootView>
+            </OnboardingProvider>
+          </CurrencyProvider>
+        </I18nProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

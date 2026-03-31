@@ -21,21 +21,16 @@ import { formatISO, WEEKDAY_SHORT_RU, getWeekdayIndexMonFirst, buildMonthMatrix 
 import { runNotificationChecks } from '../services/notifications';
 import { useOnboarding } from '../context/OnboardingContext';
 import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
+import { useI18n } from '../i18n/I18nContext';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
   return themeColors[type] || themeColors.other;
 };
 
-const getBeverageTypeLabel = (type: PresetDrink['beverageType']): string => {
-  const labels: Record<PresetDrink['beverageType'], string> = {
-    beer: 'Пиво',
-    wine: 'Вино',
-    spirit: 'Крепкий',
-    cocktail: 'Коктейль',
-    other: 'Другое',
-  };
-  return labels[type] || labels.other;
-};
+const getBeverageTypeLabel = (
+  type: PresetDrink['beverageType'],
+  translate: (key: string) => string
+): string => translate(`drinkTypes.${type}`);
 
 // Компонент для свайп-удаления записи
 const SwipeableListItem = React.memo(function SwipeableListItem({ item, beverageColor, onRemove, onQuantityChange, colors, currency }: { item: Drink; beverageColor: any; onRemove: (id: string) => void; onQuantityChange: (id: string, delta: number) => void; colors: any; currency: import('../storage/settings').CurrencyCode }) {
@@ -228,6 +223,7 @@ const SwipeableListItem = React.memo(function SwipeableListItem({ item, beverage
 export default function TodayScreen() {
   const { colors } = useTheme();
   const { currency } = useCurrency();
+  const { t: tt } = useI18n();
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
   const [catalog, setCatalog] = useState<PresetDrink[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -1490,7 +1486,7 @@ export default function TodayScreen() {
                             ]}
                             onPress={() => setNewType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>{getBeverageTypeLabel(t, tt)}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -1768,7 +1764,7 @@ export default function TodayScreen() {
                             ]}
                             onPress={() => setPresetType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t)}</Text>
+                            <Text style={[styles.typeChipText, { color: presetType === t ? '#fff' : colors.text }]}>{getBeverageTypeLabel(t, tt)}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>

@@ -14,6 +14,7 @@ const USER_BIRTH_YEAR_KEY = 'user_birth_year';
 const USER_BIRTH_DATE_KEY = 'user_birth_date';
 const APP_START_DATE_KEY = 'app_start_date';
 const CURRENCY_KEY = 'app_currency_v1';
+const LANGUAGE_OVERRIDE_KEY = 'app_language_override_v1';
 const FIRST_LAUNCH_DONE_KEY = 'first_launch_done';
 const ONBOARDING_SEEN_KEY = 'onboarding_seen';
 
@@ -330,6 +331,22 @@ export async function getCurrency(): Promise<CurrencyCode> {
 
 export async function setCurrency(currency: CurrencyCode): Promise<void> {
   await AsyncStorage.setItem(CURRENCY_KEY, currency);
+}
+
+export type AppLanguage = 'ru' | 'en';
+
+export async function getLanguageOverride(): Promise<AppLanguage | null> {
+  const raw = await AsyncStorage.getItem(LANGUAGE_OVERRIDE_KEY);
+  if (raw === 'ru' || raw === 'en') return raw;
+  return null;
+}
+
+export async function setLanguageOverride(language: AppLanguage | null): Promise<void> {
+  if (language === null) {
+    await AsyncStorage.removeItem(LANGUAGE_OVERRIDE_KEY);
+    return;
+  }
+  await AsyncStorage.setItem(LANGUAGE_OVERRIDE_KEY, language);
 }
 
 /** Первый запуск: при true показываем «Сегодня», при false — открываем вкладку «Настройки» как превью возможностей */

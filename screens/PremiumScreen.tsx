@@ -8,9 +8,11 @@ import { colors as defaultColors } from '../theme/colors';
 import { isPremiumUser } from '../storage/premium';
 import { initPurchases, purchasePremium, restorePurchases } from '../services/purchases';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useI18n } from '../i18n/I18nContext';
 
 export default function PremiumScreen() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [isPremium, setIsPremium] = useState(false);
@@ -49,24 +51,24 @@ export default function PremiumScreen() {
       if (result.success) {
         setIsPremium(true);
         Alert.alert(
-          'Спасибо!',
-          'Премиум функции разблокированы!',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          t('premium.thanksTitle'),
+          t('premium.thanksBody'),
+          [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
         );
       } else {
         if (result.error !== 'Purchase canceled') {
           // Show more helpful error messages
-          let errorMessage = result.error || 'Не удалось выполнить покупку';
+          let errorMessage = result.error || t('premium.purchaseErrorTitle');
           if (result.error?.includes('not configured')) {
-            errorMessage = 'Продукт не настроен в Google Play. Пожалуйста, обратитесь к разработчику.';
+            errorMessage = t('premium.notConfigured');
           } else if (result.error?.includes('not available')) {
-            errorMessage = 'Покупки недоступны. Убедитесь, что приложение установлено из Google Play.';
+            errorMessage = t('premium.notAvailable');
           }
-          Alert.alert('Ошибка покупки', errorMessage);
+          Alert.alert(t('premium.purchaseErrorTitle'), errorMessage);
         }
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Произошла ошибка при покупке');
+      Alert.alert(t('common.error'), t('premium.purchaseErrorTitle'));
     } finally {
       setIsLoading(false);
     }
@@ -79,17 +81,17 @@ export default function PremiumScreen() {
       if (result.success && result.restored) {
         setIsPremium(true);
         Alert.alert(
-          'Успешно!',
-          'Покупки восстановлены. Премиум функции разблокированы!',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          t('premium.restoredTitle'),
+          t('premium.restoredBody'),
+          [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
         );
       } else if (result.success && !result.restored) {
-        Alert.alert('Информация', 'Не найдено предыдущих покупок');
+        Alert.alert(t('common.info'), t('premium.notFound'));
       } else {
-        Alert.alert('Ошибка', result.error || 'Не удалось восстановить покупки');
+        Alert.alert(t('premium.restoreErrorTitle'), result.error || t('premium.restoreErrorTitle'));
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Произошла ошибка при восстановлении');
+      Alert.alert(t('common.error'), t('premium.restoreErrorTitle'));
     } finally {
       setIsRestoring(false);
     }
@@ -98,28 +100,28 @@ export default function PremiumScreen() {
   const premiumFeatures = [
     {
       icon: 'chart-line',
-      title: 'Расширенная статистика',
-      description: 'Графики трендов, сравнение периодов, детальная аналитика',
+      title: t('premium.features.advancedStatsTitle'),
+      description: t('premium.features.advancedStatsDesc'),
     },
     {
       icon: 'target',
-      title: 'Цель по серии',
-      description: 'Задайте цель (7, 30, 90 дней без алкоголя) и отслеживайте прогресс в статистике',
+      title: t('premium.features.streakGoalTitle'),
+      description: t('premium.features.streakGoalDesc'),
     },
     {
       icon: 'palette',
-      title: 'Темы оформления',
-      description: 'Темная, светлая и цветовые темы для персонализации',
+      title: t('premium.features.themesTitle'),
+      description: t('premium.features.themesDesc'),
     },
     {
       icon: 'cash',
-      title: 'Цена напитка',
-      description: 'Учёт стоимости каждой записи, сумма за день и период',
+      title: t('premium.features.drinkPriceTitle'),
+      description: t('premium.features.drinkPriceDesc'),
     },
     {
       icon: 'label',
-      title: 'Метки на календаре',
-      description: 'Свои заметки к дням: отпуск, праздник, поездка — для контекста в статистике',
+      title: t('premium.features.calendarLabelsTitle'),
+      description: t('premium.features.calendarLabelsDesc'),
     },
   ];
 
@@ -130,14 +132,14 @@ export default function PremiumScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Премиум</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('premium.title')}</Text>
           <View style={styles.backButton} />
         </View>
         <View style={styles.premiumActiveContainer}>
           <MaterialCommunityIcons name="crown" size={64} color="#f4c430" />
-          <Text style={[styles.premiumActiveTitle, { color: colors.text }]}>Премиум активен!</Text>
+          <Text style={[styles.premiumActiveTitle, { color: colors.text }]}>{t('premium.active')}</Text>
           <Text style={[styles.premiumActiveText, { color: colors.textSecondary }]}>
-            Все премиум функции разблокированы и доступны для использования.
+            {t('premium.activeBody')}
           </Text>
         </View>
       </SafeAreaView>
@@ -150,7 +152,7 @@ export default function PremiumScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Премиум</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('premium.title')}</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -165,9 +167,9 @@ export default function PremiumScreen() {
           {/* Hero Section */}
           <View style={styles.heroSection}>
             <MaterialCommunityIcons name="crown" size={80} color="#f4c430" />
-            <Text style={[styles.heroTitle, { color: colors.text }]}>Разблокируйте все возможности</Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>{t('premium.heroTitle')}</Text>
             <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-              Получите доступ к расширенной статистике, темам оформления и учёту цен
+              {t('premium.heroSubtitle')}
             </Text>
           </View>
 
@@ -196,8 +198,8 @@ export default function PremiumScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.purchaseButtonText}>Купить Премиум</Text>
-                <Text style={styles.purchaseButtonSubtext}>Одноразовая покупка</Text>
+                <Text style={styles.purchaseButtonText}>{t('premium.buy')}</Text>
+                <Text style={styles.purchaseButtonSubtext}>{t('premium.oneTimePurchase')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -211,15 +213,14 @@ export default function PremiumScreen() {
             {isRestoring ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <Text style={[styles.restoreButtonText, { color: colors.primary }]}>Восстановить покупки</Text>
+              <Text style={[styles.restoreButtonText, { color: colors.primary }]}>{t('premium.restore')}</Text>
             )}
           </TouchableOpacity>
 
           {/* Info */}
           <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              • Одноразовая покупка, без подписок{'\n'}
-              • Все функции доступны сразу после покупки
+              {t('premium.infoBullets')}
             </Text>
           </View>
         </View>

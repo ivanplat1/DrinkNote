@@ -11,7 +11,8 @@ import { useCurrency } from '../theme/CurrencyContext';
 import { formatPrice, formatPriceValueOnly } from '../utils/currency';
 import { colors as defaultColors } from '../theme/colors';
 import { formatTotalVolume } from '../utils/units';
-import { WEEKDAY_SHORT_RU, MONTH_SHORT_RU } from '../utils/date';
+import { WEEKDAY_SHORT_RU, WEEKDAY_SHORT_EN, MONTH_SHORT_RU, MONTH_SHORT_EN } from '../utils/date';
+import { useI18n } from '../i18n/I18nContext';
 import { isPremiumUser } from '../storage/premium';
 import { getStreakGoal } from '../storage/streakGoal';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -39,6 +40,9 @@ export default function StatsScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { currency } = useCurrency();
+  const { language, localeTag, t } = useI18n();
+  const WEEKDAY_SHORT = language === 'ru' ? WEEKDAY_SHORT_RU : WEEKDAY_SHORT_EN;
+  const MONTH_SHORT = language === 'ru' ? MONTH_SHORT_RU : MONTH_SHORT_EN;
   const { isOnboardingActive } = useOnboarding();
   const wasOnboardingRef = React.useRef(isOnboardingActive);
   const [allDrinks, setAllDrinks] = useState<Drink[]>([]);
@@ -407,10 +411,7 @@ export default function StatsScreen() {
                         adjustsFontSizeToFit={true}
                         minimumFontScale={0.7}
                       >
-                        {period === 'week' 
-                          ? WEEKDAY_SHORT_RU[index]
-                          : MONTH_SHORT_RU[item.month.getMonth()]
-                        }
+                        {period === 'week' ? WEEKDAY_SHORT[index] : MONTH_SHORT[item.month.getMonth()]}
                       </Text>
                     </View>
                   );
@@ -424,7 +425,7 @@ export default function StatsScreen() {
         {period === 'overall' && overallStats.firstDate && overallStats.lastDate && (
           <View style={[styles.infoCard, { backgroundColor: colors.backgroundCard }]}>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              Период: {new Date(overallStats.firstDate).toLocaleDateString('ru-RU')} - {new Date(overallStats.lastDate).toLocaleDateString('ru-RU')}
+              Период: {new Date(overallStats.firstDate).toLocaleDateString(localeTag)} - {new Date(overallStats.lastDate).toLocaleDateString(localeTag)}
               {!isPremium && allDrinks.length > filteredDrinks.length && (
                 <Text style={[styles.infoTextSub, { color: colors.textTertiary }]}> (ограничено до 3 месяцев)</Text>
               )}
@@ -438,16 +439,7 @@ export default function StatsScreen() {
             <Text style={[styles.chartTitle, { color: colors.text }]}>По типам напитков</Text>
             {beverageTypeStats.map((item, index) => {
               const typeColors = colors[item.type] || colors.other;
-              const getTypeLabel = (type: Drink['beverageType']) => {
-                const labels: Record<Drink['beverageType'], string> = {
-                  beer: 'Пиво',
-                  wine: 'Вино',
-                  spirit: 'Крепкие',
-                  cocktail: 'Коктейли',
-                  other: 'Другое',
-                };
-                return labels[type];
-              };
+              const getTypeLabel = (type: Drink['beverageType']) => t(`drinkTypesPlural.${type}`);
               return (
                 <View key={item.type} style={styles.typeRow}>
                   <View style={styles.typeLabelRow}>
@@ -503,7 +495,7 @@ export default function StatsScreen() {
                           )}
                         </View>
                       </View>
-                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>{WEEKDAY_SHORT_RU[item.weekday]}</Text>
+                      <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>{WEEKDAY_SHORT[item.weekday]}</Text>
                     </View>
                   );
                 })}

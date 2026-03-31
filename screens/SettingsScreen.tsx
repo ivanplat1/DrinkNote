@@ -15,12 +15,14 @@ import { ThemeName } from '../theme/themes';
 import { CURRENCY_LIST } from '../utils/currency';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
+import { useI18n } from '../i18n/I18nContext';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
+  const { t, mode, setMode, localeTag } = useI18n();
   const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
@@ -34,12 +36,18 @@ export default function SettingsScreen() {
   const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [importText, setImportText] = useState('');
   const [isPremium, setIsPremium] = useState(false);
   const [streakGoal, setStreakGoalValue] = useState<number | null>(null);
   const [showStreakGoalModal, setShowStreakGoalModal] = useState(false);
   const [customStreakGoalInput, setCustomStreakGoalInput] = useState('');
   const importModalTranslateY = useSharedValue(0);
+
+  const loadStreakGoal = useCallback(async () => {
+    const goal = await getStreakGoal();
+    setStreakGoalValue(goal);
+  }, []);
 
   const confirmStreakGoalChange = useCallback(
     (newGoal: number | null) => {
@@ -109,11 +117,6 @@ export default function SettingsScreen() {
     // Загружаем рекомендацию
     await updateRecommendation();
   }, [updateRecommendation]);
-
-  const loadStreakGoal = useCallback(async () => {
-    const goal = await getStreakGoal();
-    setStreakGoalValue(goal);
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -494,7 +497,7 @@ export default function SettingsScreen() {
                 }}
               >
                 <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder, { color: birthDate ? colors.textSecondary : colors.textTertiary }]}>
-                  {birthDate ? new Date(birthDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
+                  {birthDate ? new Date(birthDate).toLocaleDateString(localeTag, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Не установлена'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -681,9 +684,24 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Язык */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.language')}</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+            onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
+              {mode === 'auto' ? t('settings.languageAutoHint') : mode === 'ru' ? t('settings.languageRu') : t('settings.languageEn')}
+            </Text>
+            <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Валюта */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Валюта</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.currency')}</Text>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
             onPress={() => setShowCurrencyPicker(true)}
@@ -742,7 +760,7 @@ export default function SettingsScreen() {
                   onPress={() => setShowBirthDatePicker(false)}
                   style={styles.datePickerButton}
                 >
-                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>Отмена</Text>
+                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <Text style={[styles.datePickerTitle, { color: colors.text }]}>Дата рождения</Text>
                 <TouchableOpacity
@@ -759,7 +777,7 @@ export default function SettingsScreen() {
                   }}
                   style={styles.datePickerButton}
                 >
-                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>Готово</Text>
+                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>{t('common.done')}</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
@@ -769,7 +787,7 @@ export default function SettingsScreen() {
                 maximumDate={new Date()}
                 minimumDate={new Date(1900, 0, 1)}
                 themeVariant="dark"
-                locale="ru-RU"
+                locale={localeTag}
                 onChange={(event, selectedDate) => {
                   if (selectedDate) {
                     setTempBirthDate(selectedDate);
@@ -954,7 +972,7 @@ export default function SettingsScreen() {
           />
           <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard, paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom) }]}>
             <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>Выберите валюту</Text>
+              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>{t('settings.chooseCurrency')}</Text>
               <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} style={styles.currencyPickerClose}>
                 <MaterialIcons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -988,6 +1006,72 @@ export default function SettingsScreen() {
                   {currency === code && (
                     <MaterialIcons name="check" size={22} color={colors.primary} />
                   )}
+                </TouchableOpacity>
+              ))}
+            </Animated.ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Выпадающий список языка */}
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowLanguagePicker(false)}
+          />
+          <View
+            style={[
+              styles.currencyPickerModal,
+              {
+                backgroundColor: colors.backgroundCard,
+                paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom),
+              },
+            ]}
+          >
+            <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>{t('settings.chooseLanguage')}</Text>
+              <TouchableOpacity onPress={() => setShowLanguagePicker(false)} style={styles.currencyPickerClose}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Animated.ScrollView
+              style={styles.currencyPickerScroll}
+              contentContainerStyle={{ paddingBottom: insets.bottom }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+              directionalLockEnabled
+              scrollEventThrottle={32}
+            >
+              {([
+                { id: 'auto' as const, label: t('settings.languageAutoHint') },
+                { id: 'ru' as const, label: t('settings.languageRu') },
+                { id: 'en' as const, label: t('settings.languageEn') },
+              ]).map(({ id, label }, index, arr) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[
+                    styles.currencyPickerItem,
+                    { borderBottomColor: colors.border },
+                    index === arr.length - 1 && { borderBottomWidth: 0 },
+                    mode === id && { backgroundColor: colors.backgroundSecondary },
+                  ]}
+                  onPress={async () => {
+                    await setMode(id);
+                    setShowLanguagePicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
+                    {label}
+                  </Text>
+                  {mode === id && <MaterialIcons name="check" size={22} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </Animated.ScrollView>
