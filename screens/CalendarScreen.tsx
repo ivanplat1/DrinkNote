@@ -12,7 +12,9 @@ import { PresetDrink } from '../types/preset';
 import { getUserPresets, addPreset, presetsEventEmitter } from '../storage/presets';
 import { addDrinkToCatalog, getDrinkCatalog, removeCatalogDrink, updateCatalogDrink } from '../storage/drinkCatalog';
 import { getCalendarLabels, setCalendarLabel, setCalendarLabelRange, getCalendarLabelRanges, deleteCalendarLabelRange, updateCalendarLabelRange, DEFAULT_LABEL_COLOR, type LabelRange } from '../storage/calendarLabels';
-import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
+import { WEEKDAY_SHORT_RU, WEEKDAY_SHORT_EN, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
+import { useI18n } from '../i18n/I18nContext';
+import { formatDaysCount } from '../i18n/i18n';
 
 function addDaysISO(iso: string, delta: number): string {
   const d = new Date(iso + 'T00:00:00');
@@ -111,6 +113,7 @@ function MonthHeader({
   rightAction?: React.ReactNode;
   streakColor?: string;
 }) {
+  const { language, t } = useI18n();
   const currentStreak = sobrietyStats?.currentStreak ?? 0;
   const showGoalProgress = streakGoal != null && streakGoal > 0;
   const goalReached = showGoalProgress && currentStreak >= streakGoal;
@@ -127,7 +130,7 @@ function MonthHeader({
             </Text>
             {sobrietyStats && sobrietyStats.currentStreak > 0 && (
               <Text style={{ color: streakColor, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
-                🔥 {sobrietyStats.currentStreak} {sobrietyStats.currentStreak === 1 ? 'день' : sobrietyStats.currentStreak < 5 ? 'дня' : 'дней'} без алкоголя
+                🔥 {formatDaysCount(language, sobrietyStats.currentStreak)} {t('calendar.soberSuffix')}
               </Text>
             )}
           </View>
@@ -155,7 +158,7 @@ function MonthHeader({
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 4 }}>
               <Text style={metaTextStyle}>{currentStreak} / {streakGoal}</Text>
               {hasBestStreak && sobrietyStats ? (
-                <Text style={metaTextStyle}>Рекорд: {sobrietyStats.bestStreak}</Text>
+                <Text style={metaTextStyle}>{t('calendar.bestStreak')}: {sobrietyStats.bestStreak}</Text>
               ) : (
                 <Text style={metaTextStyle} />
               )}
@@ -168,7 +171,7 @@ function MonthHeader({
 
         {!showGoalProgress && hasBestStreak && sobrietyStats && (
           <Text style={[metaTextStyle, { marginTop: 4 }]}>
-            Рекорд: {sobrietyStats.bestStreak} {sobrietyStats.bestStreak === 1 ? 'день' : sobrietyStats.bestStreak < 5 ? 'дня' : 'дней'}
+            {t('calendar.bestStreak')}: {formatDaysCount(language, sobrietyStats.bestStreak)}
           </Text>
         )}
       </View>
@@ -366,8 +369,15 @@ const YearCalendarView = React.memo(function YearCalendarView({
   const todayISO = useMemo(() => formatISO(new Date()), []);
   const { bestStreakDays, bestCompletedStreak } = streakMaps;
   
-  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-  const monthNamesShort = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  const { language, localeTag, t } = useI18n();
+  const WEEKDAY_SHORT = language === 'ru' ? WEEKDAY_SHORT_RU : WEEKDAY_SHORT_EN;
+  const monthNames = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(localeTag, { month: 'long' });
+    return Array.from({ length: 12 }, (_, m) => {
+      const name = fmt.format(new Date(2026, m, 1));
+      return name.slice(0, 1).toUpperCase() + name.slice(1);
+    });
+  }, [localeTag]);
   
   // Мемоизируем расчеты размеров
   // Важно: все расчеты сделаны так, чтобы по горизонтали не было остаточного пространства и сдвигов
@@ -1622,7 +1632,7 @@ export default function CalendarScreen() {
     const volume = parseFloat(newVolume);
     const abv = parseFloat(newAbv);
     if (!newName || isNaN(volume) || isNaN(abv)) {
-      Alert.alert('Ошибка', 'Заполните название, объём и крепость');
+      Alert.alert(t('common.error'), t('calendar.fillRequired'));
       return;
     }
     const units = calculateStandardUnits(volume, abv);
@@ -2280,7 +2290,7 @@ export default function CalendarScreen() {
                   activeOpacity={0.7}
                 >
                   <MaterialCommunityIcons name="label-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>Метки</Text>
+                  <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>{t('calendar.labels')}</Text>
                 </TouchableOpacity>
               ) : undefined}
             />
@@ -2296,7 +2306,7 @@ export default function CalendarScreen() {
               }
             }}
           >
-            {WEEKDAY_SHORT_RU.map((w, idx) => {
+            {WEEKDAY_SHORT.map((w, idx) => {
               const isTodayWeekday = idx === todayWeekdayIndex;
               return (
                 <Text
@@ -2383,7 +2393,7 @@ export default function CalendarScreen() {
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name="label-outline" size={18} color={colors.primary} />
-                <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>Метки</Text>
+                <Text style={[styles.labelsHeaderBtnText, { color: colors.primary }]}>{t('calendar.labels')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -2478,7 +2488,7 @@ export default function CalendarScreen() {
                     {selectedDate && (() => {
                       const date = new Date(selectedDate + 'T00:00:00');
                       const weekdayIndex = getWeekdayIndexMonFirst(date);
-                      const weekdayShort = WEEKDAY_SHORT_RU[weekdayIndex];
+                      const weekdayShort = WEEKDAY_SHORT[weekdayIndex];
                       const dayNumber = date.getDate();
                       const month = date.toLocaleDateString('ru-RU', { month: 'short' });
                       return (
@@ -2511,7 +2521,7 @@ export default function CalendarScreen() {
                 </View>
                 {isPremium && (
                   <View style={[styles.dayLabelSection, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.dayLabelSectionTitle, { color: colors.textSecondary }]}>Метки дня</Text>
+                    <Text style={[styles.dayLabelSectionTitle, { color: colors.textSecondary }]}>{t('calendar.dayLabels')}</Text>
                     {dayLabels.length > 0 ? (
                       <View style={styles.dayLabelsList}>
                         {dayLabels.map((entry, i) => (
@@ -2643,7 +2653,7 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                     {/* Строка поиска для предложенных пресетов */}
                     <TextInput
-                      placeholder="Поиск напитков..."
+                      placeholder={t('calendar.searchDrinks')}
                       placeholderTextColor={colors.textTertiary}
                       value={searchQuery}
                       onChangeText={setSearchQuery}
@@ -2775,7 +2785,7 @@ export default function CalendarScreen() {
                       Объём и крепость будут автоматически добавлены в название
                     </Text>
                     <TextInput
-                      placeholder="Название (например, Джин-тоник)"
+                      placeholder={t('calendar.namePlaceholderExample')}
                       placeholderTextColor={colors.textTertiary}
                       value={newName}
                       onChangeText={setNewName}
@@ -2807,7 +2817,7 @@ export default function CalendarScreen() {
                     </View>
                     <View style={styles.row}>
                       <TextInput
-                        placeholder="Объём, мл"
+                        placeholder={t('calendar.volumeMl')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="numeric"
                         value={newVolume}
@@ -2818,7 +2828,7 @@ export default function CalendarScreen() {
                         onSubmitEditing={Keyboard.dismiss}
                       />
                       <TextInput
-                        placeholder="Крепость, %"
+                        placeholder={t('calendar.abvPercent')}
                         placeholderTextColor={colors.textTertiary}
                         keyboardType="numeric"
                         value={newAbv}
@@ -2844,7 +2854,7 @@ export default function CalendarScreen() {
                     )}
                     <View style={[styles.modalActions, { paddingBottom: 20 + insets.bottom }]}>
                       <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primaryLight || colors.primary, shadowColor: colors.primary }]} onPress={saveCustomPreset}>
-                        <Text style={[styles.saveBtnText, { color: '#fff' }]}>Сохранить</Text>
+                        <Text style={[styles.saveBtnText, { color: '#fff' }]}>{t('common.save')}</Text>
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
@@ -2870,7 +2880,9 @@ export default function CalendarScreen() {
             <View style={styles.labelsModalCardWrap}>
               <View style={[styles.labelsModalCard, { backgroundColor: colors.backgroundCard }]}>
               <ScrollView style={styles.labelsModalScroll} contentContainerStyle={[styles.labelsModalScrollContent, { paddingBottom: 16 }]} keyboardShouldPersistTaps="handled">
-              <Text style={[styles.labelsModalTitle, { color: colors.text }]}>{editingRange ? 'Редактировать метку' : 'Метка на период'}</Text>
+              <Text style={[styles.labelsModalTitle, { color: colors.text }]}>
+                {editingRange ? t('calendar.labelRangeTitleEdit') : t('calendar.labelRangeTitleCreate')}
+              </Text>
               <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>Период от и до включительно. Один день — выберите одинаковые даты.</Text>
 
               {/* Список всех меток */}
@@ -2902,10 +2914,10 @@ export default function CalendarScreen() {
                       <TouchableOpacity
                         hitSlop={8}
                         onPress={() => {
-                          Alert.alert('Удалить метку?', `«${r.text || '—'}» за период ${r.fromISO === r.toISO ? r.fromISO : `${r.fromISO} — ${r.toISO}`}`, [
-                            { text: 'Отмена', style: 'cancel' },
+                          Alert.alert(t('calendar.deleteLabelTitle'), `«${r.text || '—'}» за период ${r.fromISO === r.toISO ? r.fromISO : `${r.fromISO} — ${r.toISO}`}`, [
+                            { text: t('common.cancel'), style: 'cancel' },
                             {
-                              text: 'Удалить',
+                              text: t('common.delete'),
                               style: 'destructive',
                               onPress: async () => {
                                 const next = await deleteCalendarLabelRange(r.id);
@@ -2955,7 +2967,7 @@ export default function CalendarScreen() {
                 <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>Метка</Text>
                 <TextInput
                   style={[styles.labelsModalInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
-                  placeholder="Отпуск, праздник…"
+                  placeholder={t('calendar.labelTextPlaceholder')}
                   placeholderTextColor={colors.textTertiary}
                   value={labelText}
                   onChangeText={setLabelText}
@@ -2984,7 +2996,7 @@ export default function CalendarScreen() {
                   style={[styles.labelsModalButton, { backgroundColor: colors.primary }]}
                   onPress={async () => {
                     if (!labelText.trim()) {
-                      Alert.alert('Введите название', 'Укажите название метки перед сохранением.');
+                      Alert.alert(t('calendar.enterLabelTitle'), t('calendar.enterLabelBody'));
                       return;
                     }
                     const fromISO = labelFromDate.getFullYear() + '-' + String(labelFromDate.getMonth() + 1).padStart(2, '0') + '-' + String(labelFromDate.getDate()).padStart(2, '0');
@@ -3008,7 +3020,7 @@ export default function CalendarScreen() {
                     }
                   }}
                 >
-                  <Text style={[styles.labelsModalButtonText, { color: '#fff' }]}>{editingRange ? 'Сохранить' : 'Установить'}</Text>
+                  <Text style={[styles.labelsModalButtonText, { color: '#fff' }]}>{editingRange ? t('common.save') : t('calendar.set')}</Text>
                 </TouchableOpacity>
               </View>
               </View>
