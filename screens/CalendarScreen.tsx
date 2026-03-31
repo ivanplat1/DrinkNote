@@ -164,7 +164,7 @@ function MonthHeader({
               )}
             </View>
             {goalReached && (
-              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600', marginTop: 2 }}>Цель достигнута!</Text>
+              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600', marginTop: 2 }}>{t('calendar.goalAchieved')}</Text>
             )}
           </View>
         )}
@@ -2523,7 +2523,7 @@ export default function CalendarScreen() {
                         ))}
                       </View>
                     ) : (
-                      <Text style={[styles.dayLabelSectionTitle, { color: colors.textTertiary, marginBottom: 0 }]}>Нет меток</Text>
+                      <Text style={[styles.dayLabelSectionTitle, { color: colors.textTertiary, marginBottom: 0 }]}>{t('calendar.noLabels')}</Text>
                     )}
                   </View>
                 )}
@@ -2544,7 +2544,7 @@ export default function CalendarScreen() {
                     )}
                     ListEmptyComponent={
                       <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                        <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>Нет записей</Text>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>{t('calendar.noEntries')}</Text>
                       </View>
                     }
                     ListFooterComponent={
@@ -2618,7 +2618,7 @@ export default function CalendarScreen() {
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
-                      <Text style={[styles.modalTitle, { color: colors.text }]}>Добавить напиток</Text>
+                      <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.addDrink')}</Text>
                       <TouchableOpacity
                         style={[styles.modalHeaderPlusBtn, { backgroundColor: colors.backgroundSecondary, borderWidth: 0 }]}
                         onPress={() => {
@@ -2630,7 +2630,7 @@ export default function CalendarScreen() {
                         <Entypo name="circle-with-plus" size={22} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>Выберите из списка или нажмите + для своего напитка</Text>
+                    <Text style={{ marginBottom: 8, color: colors.textSecondary }}>{t('todayScreen.pickOrCreate')}</Text>
                     <TouchableOpacity
                       style={[styles.addOneTimeButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.primary }]}
                       onPress={() => {
@@ -2640,7 +2640,7 @@ export default function CalendarScreen() {
                       activeOpacity={0.7}
                     >
                       <Entypo name="plus" size={18} color={colors.primary} />
-                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>Добавить разовую запись</Text>
+                      <Text style={[styles.addOneTimeButtonText, { color: colors.primary }]}>{t('todayScreen.addOneTime')}</Text>
                     </TouchableOpacity>
                     {/* Строка поиска для предложенных пресетов */}
                     <TextInput
@@ -2662,7 +2662,7 @@ export default function CalendarScreen() {
                     >
                   {filteredUserPresets.length > 0 && (
                     <>
-                      <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Избранное</Text>
+                      <Text style={{ marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.favorites')}</Text>
                       {filteredUserPresets.map((preset) => (
                         <Pressable
                           key={preset.id}
@@ -2689,7 +2689,7 @@ export default function CalendarScreen() {
                   
                   {availableCatalogItems.length > 0 && (
                     <>
-                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Каталог</Text>
+                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>{t('todayScreen.catalog')}</Text>
                       {availableCatalogItems.map((preset) => (
                         <View
                           key={preset.id}
@@ -2771,7 +2771,7 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Новый напиток</Text>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.newDrinkTitle')}</Text>
                     <Text style={{ marginBottom: 12, color: colors.textSecondary, fontSize: 14 }}>
                       Объём и крепость будут автоматически добавлены в название
                     </Text>
@@ -2786,7 +2786,7 @@ export default function CalendarScreen() {
                       onSubmitEditing={Keyboard.dismiss}
                     />
                     <View style={styles.row}>
-                      <Text style={[styles.label, { color: colors.text }]}>Тип:</Text>
+                      <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.typeLabel')}</Text>
                       <View style={styles.typeRow}>
                         {(['beer','wine','spirit','cocktail','other'] as const).map((t) => {
                           const bc = getBeverageColors(t);
@@ -2832,7 +2832,7 @@ export default function CalendarScreen() {
                     </View>
                     {isPremium && (
                       <View style={{ marginBottom: 12 }}>
-                        <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.price')}</Text>
                         <TextInput
                           placeholder={t('calendar.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
@@ -2874,12 +2874,12 @@ export default function CalendarScreen() {
               <Text style={[styles.labelsModalTitle, { color: colors.text }]}>
                 {editingRange ? t('calendar.labelRangeTitleEdit') : t('calendar.labelRangeTitleCreate')}
               </Text>
-              <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>Период от и до включительно. Один день — выберите одинаковые даты.</Text>
+              <Text style={[styles.labelsModalHint, { color: colors.textTertiary }]}>{t('calendar.labelsHint')}</Text>
 
               {/* Список всех меток */}
               {labelRanges.length > 0 && (
                 <View style={[styles.labelsModalSection, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.labelsModalSectionTitle, { color: colors.textSecondary }]}>Все метки</Text>
+                  <Text style={[styles.labelsModalSectionTitle, { color: colors.textSecondary }]}>{t('calendar.allLabels')}</Text>
                   {labelRanges.map((r) => (
                     <View key={r.id} style={[styles.labelsModalListItem, { borderBottomColor: colors.border }]}>
                       <View style={[styles.labelsModalListColor, { backgroundColor: r.color }]} />
@@ -2935,7 +2935,7 @@ export default function CalendarScreen() {
               )}
 
               <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>От</Text>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>{t('calendar.from')}</Text>
                 <TouchableOpacity
                   style={[styles.labelsModalDateBtn, { backgroundColor: colors.backgroundSecondary }]}
                   onPress={() => setLabelDatePickerMode('from')}
@@ -2945,7 +2945,7 @@ export default function CalendarScreen() {
                 </TouchableOpacity>
               </View>
               <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>До</Text>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>{t('calendar.to')}</Text>
                 <TouchableOpacity
                   style={[styles.labelsModalDateBtn, { backgroundColor: colors.backgroundSecondary }]}
                   onPress={() => setLabelDatePickerMode('to')}
@@ -2955,7 +2955,7 @@ export default function CalendarScreen() {
                 </TouchableOpacity>
               </View>
               <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>Метка</Text>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>{t('calendar.label')}</Text>
                 <TextInput
                   style={[styles.labelsModalInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
                   placeholder={t('calendar.labelTextPlaceholder')}
@@ -2966,7 +2966,7 @@ export default function CalendarScreen() {
                 />
               </View>
               <View style={[styles.labelsModalRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>Цвет</Text>
+                <Text style={[styles.labelsModalLabel, { color: colors.textSecondary }]}>{t('calendar.color')}</Text>
                 <View style={styles.labelsModalColorRow}>
                   {LABEL_COLOR_PRESETS.map((c) => (
                     <TouchableOpacity
