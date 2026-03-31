@@ -1,14 +1,14 @@
-name: Build Android APK
+name: Build Android AAB
 
 on:
   push:
-    branches: [main, master, 'feature/**']
+    branches: [main, master, "feature/**"]
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to build'
+        description: "Branch to build"
         required: false
-        default: ''
+        default: ""
 
 jobs:
   build:
@@ -23,14 +23,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Install dependencies
         run: npm ci
@@ -75,24 +75,24 @@ jobs:
             echo "Checking build.gradle configuration..."
           fi
 
-      - name: Build APK (release, no signing)
+      - name: Build AAB (release, no signing)
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew bundleRelease --no-daemon --stacktrace
 
-      - name: Find and list APK files
+      - name: Find and list AAB files
         run: |
-          echo "Searching for APK files..."
-          find android/app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | head -20 || echo "No APK files found"
+          echo "Searching for AAB files..."
+          find android/app/build/outputs/bundle -name "*.aab" -type f 2>/dev/null | head -20 || echo "No AAB files found"
           echo "---"
-          ls -la android/app/build/outputs/apk/release/ 2>/dev/null || echo "Release directory not found"
+          ls -la android/app/build/outputs/bundle/release/ 2>/dev/null || echo "Release directory not found"
           echo "---"
-          ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "APK outputs directory not found"
+          ls -la android/app/build/outputs/bundle/ 2>/dev/null || echo "Bundle outputs directory not found"
 
-      - name: Upload APK
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: drinknote-apk
-          path: android/app/build/outputs/apk/**/*.apk
+          name: drinknote-aab
+          path: android/app/build/outputs/bundle/**/*.aab
           if-no-files-found: error
           retention-days: 30
