@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PresetDrink } from '../types/preset';
 import { getSuggestedPresets } from './presets';
-import { getCurrentLanguageUnsafe } from '../i18n/I18nContext';
+import { getAppLanguage } from './language';
+import { detectDefaultLanguage } from '../i18n/i18n';
 
 const CATALOG_KEY = 'drink_catalog_v1';
 
@@ -13,18 +14,20 @@ function makeId(seed?: string) {
   return `catalog_${seed ?? Date.now().toString()}`;
 }
 
-function seedCatalog(): PresetDrink[] {
+async function seedCatalog(): Promise<PresetDrink[]> {
   // Seed catalog with the built-in suggestions, but as editable user data.
   // IDs are re-mapped to avoid clashing with other lists.
-  const language = getCurrentLanguageUnsafe();
+  const saved = await getAppLanguage();
+  const language = saved ?? detectDefaultLanguage();
   return getSuggestedPresets(language).map((p) => ({
     ...p,
     id: makeId(p.id),
   }));
 }
 
-function maybeLocalizeSeededCatalog(list: PresetDrink[]): { next: PresetDrink[]; changed: boolean } {
-  const language = getCurrentLanguageUnsafe();
+async function maybeLocalizeSeededCatalog(list: PresetDrink[]): Promise<{ next: PresetDrink[]; changed: boolean }> {
+  const saved = await getAppLanguage();
+  const language = saved ?? detectDefaultLanguage();
   // Catalog IDs are catalog_<seedId>.
   const seedIds = new Set(
     getSuggestedPresets('ru').map((p) => p.id)
@@ -51,25 +54,25 @@ function maybeLocalizeSeededCatalog(list: PresetDrink[]): { next: PresetDrink[];
 export async function getDrinkCatalog(): Promise<PresetDrink[]> {
   const raw = await AsyncStorage.getItem(CATALOG_KEY);
   if (!raw) {
-    const seeded = seedCatalog();
+    const seeded = await seedCatalog();
     await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
     return seeded;
   }
   try {
     const parsed = JSON.parse(raw) as PresetDrink[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      const seeded = seedCatalog();
+      const seeded = await seedCatalog();
       await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
       return seeded;
     }
-    const { next, changed } = maybeLocalizeSeededCatalog(parsed);
+    const { next, changed } = await maybeLocalizeSeededCatalog(parsed);
     if (changed) {
       await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(next));
       return next;
     }
     return parsed;
   } catch {
-    const seeded = seedCatalog();
+    const seeded = await seedCatalog();
     await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
     return seeded;
   }

@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PresetDrink } from '../types/preset';
-import type { AppLanguage } from '../storage/settings';
+import type { AppLanguage } from './language';
+import { getAppLanguage } from './language';
 import { t as translate } from '../i18n/i18n';
-import { getCurrentLanguageUnsafe } from '../i18n/I18nContext';
+import { detectDefaultLanguage } from '../i18n/i18n';
 
 const PRESETS_KEY = 'user_presets_v1';
 
@@ -87,6 +88,11 @@ export function getSuggestedPresets(language: AppLanguage): PresetDrink[] {
   }));
 }
 
+async function resolveLanguage(): Promise<AppLanguage> {
+  const saved = await getAppLanguage();
+  return saved ?? detectDefaultLanguage();
+}
+
 function maybeLocalizeSeededPresets(list: PresetDrink[], language: AppLanguage): { next: PresetDrink[]; changed: boolean } {
   // Update only seeded items with stable IDs (preset_<seedId>) if they still have the old seeded name.
   const seedById = new Map(SUGGESTED_PRESET_SEEDS.map((s) => [s.id, s]));
@@ -112,8 +118,8 @@ function getDefaultUserPresets(): PresetDrink[] {
   // Default Favorites: pre-seeded so first launch doesn't "build" them in UI.
   // These are normal user presets and can be edited/removed.
   const ids = ['beer_500_5', 'wine_150_12', 'cognac_50_40', 'whiskey_cola_250_16'];
-  const language = getCurrentLanguageUnsafe();
-  const byId = new Map(getSuggestedPresets(language).map((p) => [p.id, p]));
+  // Language is resolved by caller.
+  const byId = new Map(getSuggestedPresets('ru').map((p) => [p.id, p]));
   return ids
     .map((id) => byId.get(id))
     .filter(Boolean)
@@ -121,9 +127,15 @@ function getDefaultUserPresets(): PresetDrink[] {
 }
 
 export async function getUserPresets(): Promise<PresetDrink[]> {
+  const language = await resolveLanguage();
   const raw = await AsyncStorage.getItem(PRESETS_KEY);
   if (!raw) {
-    const seeded = getDefaultUserPresets();
+    const seeded = getDefaultUserPresets().map((p) => {
+      const seedId = p.id.slice('preset_'.length);
+      const seed = SUGGESTED_PRESET_SEEDS.find((s) => s.id === seedId);
+      if (!seed) return p;
+      return { ...p, name: translate(language, seed.nameKey) };
+    });
     if (seeded.length) {
       await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(seeded));
       presetsEventEmitter.emit(seeded);
@@ -142,7 +154,7 @@ export async function getUserPresets(): Promise<PresetDrink[]> {
         return seeded;
       }
     }
-    const { next, changed } = maybeLocalizeSeededPresets(list, getCurrentLanguageUnsafe());
+    const { next, changed } = maybeLocalizeSeededPresets(list, language);
     if (changed) {
       await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next));
       presetsEventEmitter.emit(next);

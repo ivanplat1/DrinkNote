@@ -1,5 +1,5 @@
 import * as Localization from 'expo-localization';
-import type { AppLanguage } from '../storage/settings';
+import type { AppLanguage } from '../storage/language';
 import { translations, type Translations } from './strings';
 
 const RU_REGIONS = new Set([

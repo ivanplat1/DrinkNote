@@ -333,17 +333,8 @@ export async function setCurrency(currency: CurrencyCode): Promise<void> {
   await AsyncStorage.setItem(CURRENCY_KEY, currency);
 }
 
-export type AppLanguage = 'ru' | 'en';
-
-export async function getAppLanguage(): Promise<AppLanguage | null> {
-  const raw = await AsyncStorage.getItem(LANGUAGE_OVERRIDE_KEY);
-  if (raw === 'ru' || raw === 'en') return raw;
-  return null;
-}
-
-export async function setAppLanguage(language: AppLanguage): Promise<void> {
-  await AsyncStorage.setItem(LANGUAGE_OVERRIDE_KEY, language);
-}
+export type { AppLanguage } from './language';
+export { getAppLanguage, setAppLanguage } from './language';
 
 /** Первый запуск: при true показываем «Сегодня», при false — открываем вкладку «Настройки» как превью возможностей */
 export async function getHasCompletedFirstLaunch(): Promise<boolean> {

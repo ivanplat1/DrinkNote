@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { detectDefaultLanguage, localeTagFor, t as translate, tf as translateFormat } from './i18n';
-import { getAppLanguage, setAppLanguage, type AppLanguage } from '../storage/settings';
+import { getAppLanguage, setAppLanguage, type AppLanguage } from '../storage/language';
 
 interface I18nContextValue {
   language: AppLanguage;
