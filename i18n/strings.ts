@@ -216,6 +216,10 @@ export const translations = {
       abvError: 'Введите корректную крепость (%)',
       namePlaceholder: 'Например, Мохито',
       notSpecified: 'Не указана',
+      title: 'Разовая запись',
+      subtitle: 'Напиток без добавления в избранное — например, коктейль в баре',
+      name: 'Название',
+      type: 'Тип',
     },
     onboarding: {
       skip: 'Пропустить',
@@ -540,6 +544,10 @@ export const translations = {
       abvError: 'Enter a valid ABV (%)',
       namePlaceholder: 'e.g., Mojito',
       notSpecified: 'Not set',
+      title: 'One-time entry',
+      subtitle: 'A drink without adding it to Favorites — for example, a cocktail at a bar',
+      name: 'Name',
+      type: 'Type',
     },
     onboarding: {
       skip: 'Skip',

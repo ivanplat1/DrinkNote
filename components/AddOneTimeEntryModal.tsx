@@ -198,12 +198,12 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 360 }}
                   >
-                    <Text style={[styles.title, { color: colors.text }]}>Добавить разовую запись</Text>
+                    <Text style={[styles.title, { color: colors.text }]}>{t('todayScreen.addOneTime')}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                      Напиток без добавления в избранное — например, коктейль в баре
+                      {t('oneTimeEntry.subtitle')}
                     </Text>
 
-                    <Text style={[styles.label, { color: colors.text }]}>Название</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>{t('oneTimeEntry.name')}</Text>
                     <TextInput
                       placeholder={t('oneTimeEntry.namePlaceholder')}
                       placeholderTextColor={colors.textTertiary}
@@ -213,7 +213,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                       returnKeyType="next"
                     />
 
-                    <Text style={[styles.label, { color: colors.text }]}>Тип</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>{t('oneTimeEntry.type')}</Text>
                     <View style={styles.typeRow}>
                       {BEVERAGE_TYPES.map((t) => {
                         const bc = getBeverageColors(t, colors as ThemeColors);
@@ -231,7 +231,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                             onPress={() => selectType(t)}
                           >
                             <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>
-                              {TYPE_LABELS[t]}
+                              {t(TYPE_LABEL_KEYS[t])}
                             </Text>
                           </TouchableOpacity>
                         );
@@ -240,7 +240,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
 
                     <View style={styles.row}>
                       <View style={styles.half}>
-                        <Text style={[styles.label, { color: colors.text }]}>Объём, мл</Text>
+                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.volumeMlLabel')}</Text>
                         <TextInput
                           placeholder="300"
                           placeholderTextColor={colors.textTertiary}
@@ -252,7 +252,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                         />
                       </View>
                       <View style={styles.half}>
-                        <Text style={[styles.label, { color: colors.text }]}>Крепость, %</Text>
+                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.abvLabel')}</Text>
                         <TextInput
                           placeholder="15"
                           placeholderTextColor={colors.textTertiary}
@@ -267,7 +267,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
 
                     {isPremium && (
                       <>
-                        <Text style={[styles.label, { color: colors.text }]}>Цена</Text>
+                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.price')}</Text>
                         <TextInput
                           placeholder={t('oneTimeEntry.notSpecified')}
                           placeholderTextColor={colors.textTertiary}
@@ -285,7 +285,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                       onPress={handleSave}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.saveBtnText}>Сохранить</Text>
+                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                     </TouchableOpacity>
                   </ScrollView>
                 </Animated.View>

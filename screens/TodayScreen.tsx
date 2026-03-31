@@ -1056,7 +1056,7 @@ export default function TodayScreen() {
           <>
             <View style={[styles.statsBarDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statsBarItem}>
-              <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>Сумма</Text>
+              <Text style={[styles.statsBarLabel, { color: colors.textSecondary }]}>{t('stats.sum')}</Text>
               <Text style={[styles.statsBarValue, { color: colors.text }]}>{formatPrice(totalPrice, currency)}</Text>
             </View>
           </>
