@@ -6,8 +6,9 @@ import { Drink } from '../types/drink';
 import { useTheme } from '../theme/ThemeContext';
 import { useCurrency } from '../theme/CurrencyContext';
 import { formatPrice, formatPriceChart, formatPriceValueOnly } from '../utils/currency';
-import { MONTH_SHORT_RU, formatDDMM } from '../utils/date';
+import { MONTH_SHORT_RU, MONTH_SHORT_EN, formatDDMM } from '../utils/date';
 import { colors as defaultColors } from '../theme/colors';
+import { useI18n } from '../i18n/I18nContext';
 import {
   getMonthlyTrend,
   getWeeklyTrend,
@@ -28,6 +29,8 @@ interface AdvancedStatsContentProps {
 export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContentProps) {
   const { colors } = useTheme();
   const { currency } = useCurrency();
+  const { language, t, tf } = useI18n();
+  const MONTH_SHORT = language === 'ru' ? MONTH_SHORT_RU : MONTH_SHORT_EN;
   const [trendPeriod, setTrendPeriod] = useState<'weeks' | 'months'>('months');
 
   // Данные для графиков
@@ -78,7 +81,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
           onPress={() => setTrendPeriod('months')}
         >
           <Text style={[styles.periodButtonText, trendPeriod === 'months' && styles.periodButtonTextActive, { color: trendPeriod === 'months' ? '#fff' : colors.textSecondary }]}>
-            По месяцам
+            {t('advancedStats.byMonths')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -86,7 +89,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
           onPress={() => setTrendPeriod('weeks')}
         >
           <Text style={[styles.periodButtonText, trendPeriod === 'weeks' && styles.periodButtonTextActive, { color: trendPeriod === 'weeks' ? '#fff' : colors.textSecondary }]}>
-            По неделям
+            {t('advancedStats.byWeeks')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -95,7 +98,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
       {trendData.length > 0 && (
         <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
           <Text style={[styles.chartTitle, { color: colors.text }]}>
-            Тренд ({trendPeriod === 'months' ? '12 месяцев' : '12 недель'})
+            {tf('advancedStats.trendTitle', { n: 12, unit: trendPeriod === 'months' ? t('advancedStats.unitMonths12') : t('advancedStats.unitWeeks12') })}
           </Text>
           <View style={styles.chartWithAxis}>
             {/* Шкала Y */}
@@ -112,7 +115,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   const height = maxTrendValue > 0 ? (item.totalUnits / maxTrendValue) * 100 : 0;
                   // Для месяцев — короткое название (янв, фев, …), для недель — дата начала (DD.MM)
                   const labelText = trendPeriod === 'months'
-                    ? MONTH_SHORT_RU[('month' in item ? item.month : item.weekStart).getMonth()]
+                    ? MONTH_SHORT[('month' in item ? item.month : item.weekStart).getMonth()]
                     : formatDDMM('weekStart' in item ? item.weekStart : item.month);
                   
                   return (
@@ -154,7 +157,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
       {hasSpending && trendData.length > 0 && (
         <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
           <Text style={[styles.chartTitle, { color: colors.text }]}>
-            Траты ({trendPeriod === 'months' ? '12 месяцев' : '12 недель'})
+            {tf('advancedStats.spendingTitle', { n: 12, unit: trendPeriod === 'months' ? t('advancedStats.unitMonths12') : t('advancedStats.unitWeeks12') })}
           </Text>
           <View style={styles.chartWithAxis}>
             <View style={styles.yAxis}>
@@ -168,7 +171,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
               {trendData.map((item, index) => {
                 const height = maxSpentValue > 0 ? (item.totalSpent / maxSpentValue) * 100 : 0;
                 const labelText = trendPeriod === 'months'
-                  ? MONTH_SHORT_RU[('month' in item ? item.month : item.weekStart).getMonth()]
+                  ? MONTH_SHORT[('month' in item ? item.month : item.weekStart).getMonth()]
                   : formatDDMM('weekStart' in item ? item.weekStart : item.month);
                 return (
                   <View key={index} style={styles.lineChartBar}>
@@ -207,16 +210,16 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
       {/* Сравнение периодов */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Сравнение периодов</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.periodComparison')}</Text>
 
           {/* Текущая неделя vs предыдущая (только для режима "По неделям") */}
           {trendPeriod === 'weeks' && (
             <>
               <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущая неделя vs предыдущая</Text>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentWeekVsPrev')}</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущая</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparison.period1.totalUnits.toFixed(1)} ед.
                     </Text>
@@ -237,7 +240,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущая</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparison.period2.totalUnits.toFixed(1)} ед.
                     </Text>
@@ -277,10 +280,10 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 </View>
               </View>
               <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущая неделя vs предыдущая (за схожий период)</Text>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentWeekVsPrev')}</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущая</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparisonAdjusted.period1.totalUnits.toFixed(1)} ед.
                     </Text>
@@ -301,7 +304,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущая</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {weekComparisonAdjusted.period2.totalUnits.toFixed(1)} ед.
                     </Text>
@@ -329,7 +332,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   </Text>
                   {(weekComparisonAdjusted.period1.totalSpent > 0 || weekComparisonAdjusted.period2.totalSpent > 0) && (
                     <Text style={[styles.comparisonChangeText, styles.comparisonChangeSub, weekComparisonAdjusted.change.spentPercent >= 0 ? { color: colors.error } : { color: colors.primary }]}>
-                      Сумма: {weekComparisonAdjusted.change.spentPercent >= 0 ? '+' : ''}{weekComparisonAdjusted.change.spentPercent.toFixed(1)}%
+                      {t('stats.sum')}: {weekComparisonAdjusted.change.spentPercent >= 0 ? '+' : ''}{weekComparisonAdjusted.change.spentPercent.toFixed(1)}%
                     </Text>
                   )}
                 </View>
@@ -341,19 +344,19 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
           {trendPeriod === 'months' && (
             <>
               <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий месяц vs предыдущий</Text>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentMonthVsPrev')}</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparison.period1.totalUnits.toFixed(1)} ед.
                     </Text>
                     <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                      {monthComparison.period1.daysWithDrinks} дней
+                      {monthComparison.period1.daysWithDrinks} {t('settings.daysShort')}
                     </Text>
                     {(monthComparison.period1.totalSpent > 0 || monthComparison.period2.totalSpent > 0) && (
                       <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                        Сумма: {formatPriceValueOnly(monthComparison.period1.totalSpent)}
+                        {t('stats.sum')}: {formatPriceValueOnly(monthComparison.period1.totalSpent)}
                       </Text>
                     )}
                   </View>
@@ -365,16 +368,16 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparison.period2.totalUnits.toFixed(1)} ед.
                     </Text>
                     <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                      {monthComparison.period2.daysWithDrinks} дней
+                      {monthComparison.period2.daysWithDrinks} {t('settings.daysShort')}
                     </Text>
                     {(monthComparison.period1.totalSpent > 0 || monthComparison.period2.totalSpent > 0) && (
                       <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                        Сумма: {formatPriceValueOnly(monthComparison.period2.totalSpent)}
+                        {t('stats.sum')}: {formatPriceValueOnly(monthComparison.period2.totalSpent)}
                       </Text>
                     )}
                   </View>
@@ -393,25 +396,25 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   </Text>
                   {(monthComparison.period1.totalSpent > 0 || monthComparison.period2.totalSpent > 0) && (
                     <Text style={[styles.comparisonChangeText, styles.comparisonChangeSub, monthComparison.change.spentPercent >= 0 ? { color: colors.error } : { color: colors.primary }]}>
-                      Сумма: {monthComparison.change.spentPercent >= 0 ? '+' : ''}{monthComparison.change.spentPercent.toFixed(1)}%
+                      {t('stats.sum')}: {monthComparison.change.spentPercent >= 0 ? '+' : ''}{monthComparison.change.spentPercent.toFixed(1)}%
                     </Text>
                   )}
                 </View>
               </View>
               <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-                <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий месяц vs предыдущий (за схожий период)</Text>
+                <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentMonthVsPrev')}</Text>
                 <View style={styles.comparisonRow}>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparisonAdjusted.period1.totalUnits.toFixed(1)} ед.
                     </Text>
                     <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                      {monthComparisonAdjusted.period1.daysWithDrinks} дней
+                      {monthComparisonAdjusted.period1.daysWithDrinks} {t('settings.daysShort')}
                     </Text>
                     {(monthComparisonAdjusted.period1.totalSpent > 0 || monthComparisonAdjusted.period2.totalSpent > 0) && (
                       <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                        Сумма: {formatPriceValueOnly(monthComparisonAdjusted.period1.totalSpent)}
+                        {t('stats.sum')}: {formatPriceValueOnly(monthComparisonAdjusted.period1.totalSpent)}
                       </Text>
                     )}
                   </View>
@@ -423,16 +426,16 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                     />
                   </View>
                   <View style={styles.comparisonItem}>
-                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                    <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                     <Text style={[styles.comparisonValue, { color: colors.text }]}>
                       {monthComparisonAdjusted.period2.totalUnits.toFixed(1)} ед.
                     </Text>
                     <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                      {monthComparisonAdjusted.period2.daysWithDrinks} дней
+                      {monthComparisonAdjusted.period2.daysWithDrinks} {t('settings.daysShort')}
                     </Text>
                     {(monthComparisonAdjusted.period1.totalSpent > 0 || monthComparisonAdjusted.period2.totalSpent > 0) && (
                       <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                        Сумма: {formatPriceValueOnly(monthComparisonAdjusted.period2.totalSpent)}
+                        {t('stats.sum')}: {formatPriceValueOnly(monthComparisonAdjusted.period2.totalSpent)}
                       </Text>
                     )}
                   </View>
@@ -451,7 +454,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                   </Text>
                   {(monthComparisonAdjusted.period1.totalSpent > 0 || monthComparisonAdjusted.period2.totalSpent > 0) && (
                     <Text style={[styles.comparisonChangeText, styles.comparisonChangeSub, monthComparisonAdjusted.change.spentPercent >= 0 ? { color: colors.error } : { color: colors.primary }]}>
-                      Сумма: {monthComparisonAdjusted.change.spentPercent >= 0 ? '+' : ''}{monthComparisonAdjusted.change.spentPercent.toFixed(1)}%
+                      {t('stats.sum')}: {monthComparisonAdjusted.change.spentPercent >= 0 ? '+' : ''}{monthComparisonAdjusted.change.spentPercent.toFixed(1)}%
                     </Text>
                   )}
                 </View>
@@ -461,19 +464,19 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
           {/* Текущий год vs предыдущий (за одинаковый период: 1 янв — сегодня) */}
           <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий год vs предыдущий</Text>
+            <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentYearVsPrev')}</Text>
             <View style={styles.comparisonRow}>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period1.totalUnits.toFixed(1)} ед.
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {yearComparison.period1.daysWithDrinks} дней
+                  {yearComparison.period1.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
                 {(yearComparison.period1.totalSpent > 0 || yearComparison.period2.totalSpent > 0) && (
                   <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                    Сумма: {formatPriceValueOnly(yearComparison.period1.totalSpent)}
+                    {t('stats.sum')}: {formatPriceValueOnly(yearComparison.period1.totalSpent)}
                   </Text>
                 )}
               </View>
@@ -485,16 +488,16 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 />
               </View>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period2.totalUnits.toFixed(1)} ед.
                 </Text>
                 <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                  {yearComparison.period2.daysWithDrinks} дней
+                  {yearComparison.period2.daysWithDrinks} {t('advancedStats.daysShort')}
                 </Text>
                 {(yearComparison.period1.totalSpent > 0 || yearComparison.period2.totalSpent > 0) && (
                   <Text style={[styles.comparisonSubtext, { color: colors.textTertiary }]}>
-                    Сумма: {formatPriceValueOnly(yearComparison.period2.totalSpent)}
+                    {t('stats.sum')}: {formatPriceValueOnly(yearComparison.period2.totalSpent)}
                   </Text>
                 )}
               </View>
@@ -513,7 +516,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
               </Text>
               {(yearComparison.period1.totalSpent > 0 || yearComparison.period2.totalSpent > 0) && (
                 <Text style={[styles.comparisonChangeText, styles.comparisonChangeSub, yearComparison.change.spentPercent >= 0 ? { color: colors.error } : { color: colors.primary }]}>
-                  Сумма: {yearComparison.change.spentPercent >= 0 ? '+' : ''}{yearComparison.change.spentPercent.toFixed(1)}%
+                  {t('stats.sum')}: {yearComparison.change.spentPercent >= 0 ? '+' : ''}{yearComparison.change.spentPercent.toFixed(1)}%
                 </Text>
               )}
             </View>
@@ -523,23 +526,17 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
       {/* Траты по типам напитков (если есть цены) */}
       {typeStatsWithSpending.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Траты по типам напитков</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.spendingByTypes')}</Text>
           <View style={[styles.analyticsCard, { backgroundColor: colors.backgroundCard }]}>
             {typeStatsWithSpending.map((item) => {
-              const typeLabels: Record<Drink['beverageType'], string> = {
-                beer: 'Пиво',
-                wine: 'Вино',
-                spirit: 'Крепкие',
-                cocktail: 'Коктейли',
-                other: 'Другое',
-              };
+              const getTypeLabel = (type: Drink['beverageType']) => t(`drinkTypesPlural.${type}`);
               return (
                 <View key={item.type} style={[styles.analyticsRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.analyticsDayName, { color: colors.text }]}>{typeLabels[item.type]}</Text>
+                  <Text style={[styles.analyticsDayName, { color: colors.text }]}>{getTypeLabel(item.type)}</Text>
                   <View style={styles.analyticsValues}>
                     <Text style={[styles.analyticsValue, { color: colors.text }]}>{formatPriceValueOnly(item.totalSpent)}</Text>
                     <Text style={[styles.analyticsSubtext, { color: colors.textSecondary }]}>
-                      {item.totalUnits.toFixed(1)} ед. · {item.count} записей
+                      {item.totalUnits.toFixed(1)} {t('advancedStats.unitsShort')} · {item.count} {t('advancedStats.entriesShort')}
                     </Text>
                   </View>
                 </View>
@@ -551,7 +548,7 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
 
       {/* Детальная аналитика по дням недели */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Аналитика по дням недели</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.weekdayAnalytics')}</Text>
         <View style={[styles.analyticsCard, { backgroundColor: colors.backgroundCard }]}>
           {weekdayAnalytics.map((day) => (
             <View key={day.weekday} style={[styles.analyticsRow, { borderBottomColor: colors.border }]}>
@@ -565,9 +562,9 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
                 )}
               </View>
               <View style={styles.analyticsValues}>
-                <Text style={[styles.analyticsValue, { color: colors.text }]}>{day.averageUnits.toFixed(1)} ед.</Text>
+                <Text style={[styles.analyticsValue, { color: colors.text }]}>{day.averageUnits.toFixed(1)} {t('advancedStats.unitsShort')}</Text>
                 <Text style={[styles.analyticsSubtext, { color: colors.textSecondary }]}>
-                  {day.daysCount} дней · {day.percentageOfTotal.toFixed(1)}% от общего
+                  {day.daysCount} {t('advancedStats.daysShort')} · {day.percentageOfTotal.toFixed(1)}% {t('advancedStats.ofTotalShort')}
                 </Text>
               </View>
             </View>
@@ -578,20 +575,20 @@ export default function AdvancedStatsContent({ allDrinks }: AdvancedStatsContent
       {/* Прогрессия серий */}
       {streakProgression.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Прогрессия серий воздержания</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.abstinenceStreaks')}</Text>
           <View style={[styles.streaksCard, { backgroundColor: colors.backgroundCard }]}>
             {streakProgression.slice(0, 5).map((streak, index) => (
               <View key={index} style={[styles.streakRow, { borderBottomColor: colors.border }]}>
                 <View style={styles.streakInfo}>
-                  <Text style={[styles.streakLength, { color: colors.text }]}>{streak.length} дней</Text>
+                  <Text style={[styles.streakLength, { color: colors.text }]}>{streak.length} {t('advancedStats.daysShort')}</Text>
                   <Text style={[styles.streakDates, { color: colors.textSecondary }]}>
-                    {new Date(streak.streakStart).toLocaleDateString('ru-RU')} -{' '}
-                    {new Date(streak.streakEnd).toLocaleDateString('ru-RU')}
+                    {new Date(streak.streakStart).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')} -{' '}
+                    {new Date(streak.streakEnd).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}
                   </Text>
                 </View>
                 {!streak.completed && (
                   <View style={[styles.streakBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.streakBadgeText}>Текущая</Text>
+                    <Text style={styles.streakBadgeText}>{t('advancedStats.current')}</Text>
                   </View>
                 )}
               </View>

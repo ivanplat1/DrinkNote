@@ -9,6 +9,7 @@ import { Drink } from '../types/drink';
 import { colors as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { formatTotalVolume } from '../utils/units';
+import { useI18n } from '../i18n/I18nContext';
 import {
   getMonthlyTrend,
   getWeeklyTrend,
@@ -23,6 +24,7 @@ import { isPremiumUser } from '../storage/premium';
 export default function AdvancedStatsScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const { t, tf } = useI18n();
   const [allDrinks, setAllDrinks] = useState<Drink[]>([]);
   const [isPremium, setIsPremium] = useState(false);
   const [trendPeriod, setTrendPeriod] = useState<'weeks' | 'months'>('months');
@@ -70,16 +72,16 @@ export default function AdvancedStatsScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View style={styles.lockedContainer}>
           <MaterialCommunityIcons name="lock" size={64} color={colors.textSecondary} />
-          <Text style={[styles.lockedTitle, { color: colors.text }]}>Расширенная статистика</Text>
+          <Text style={[styles.lockedTitle, { color: colors.text }]}>{t('premium.features.advancedStatsTitle')}</Text>
           <Text style={[styles.lockedText, { color: colors.textSecondary }]}>
-            Эта функция доступна только в премиум версии
+            {t('premium.notAvailable')}
           </Text>
           <TouchableOpacity
             style={[styles.premiumButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('Premium' as never)}
           >
             <MaterialCommunityIcons name="crown" size={20} color="#f4c430" />
-            <Text style={styles.premiumButtonText}>Разблокировать Премиум</Text>
+            <Text style={styles.premiumButtonText}>{t('premium.buy')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -96,7 +98,7 @@ export default function AdvancedStatsScreen() {
             onPress={() => setTrendPeriod('months')}
           >
             <Text style={[styles.periodButtonText, trendPeriod === 'months' && styles.periodButtonTextActive, { color: trendPeriod === 'months' ? '#fff' : colors.textSecondary }]}>
-              По месяцам
+              {t('advancedStats.byMonths')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -104,7 +106,7 @@ export default function AdvancedStatsScreen() {
             onPress={() => setTrendPeriod('weeks')}
           >
             <Text style={[styles.periodButtonText, trendPeriod === 'weeks' && styles.periodButtonTextActive, { color: trendPeriod === 'weeks' ? '#fff' : colors.textSecondary }]}>
-              По неделям
+              {t('advancedStats.byWeeks')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -113,7 +115,7 @@ export default function AdvancedStatsScreen() {
         {trendData.length > 0 && (
           <View style={[styles.chartCard, { backgroundColor: colors.backgroundCard }]}>
             <Text style={[styles.chartTitle, { color: colors.text }]}>
-              Тренд ({trendPeriod === 'months' ? '12 месяцев' : '12 недель'})
+              {tf('advancedStats.trendTitle', { n: 12, unit: trendPeriod === 'months' ? t('advancedStats.unitMonths12') : t('advancedStats.unitWeeks12') })}
             </Text>
             <View style={styles.chartWithAxis}>
               {/* Шкала Y */}
@@ -150,14 +152,14 @@ export default function AdvancedStatsScreen() {
 
         {/* Сравнение периодов */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Сравнение периодов</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('advancedStats.periodComparison')}</Text>
 
           {/* Текущий месяц vs предыдущий */}
           <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий месяц vs предыдущий</Text>
+            <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentMonthVsPrev')}</Text>
             <View style={styles.comparisonRow}>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {monthComparison.period1.totalUnits.toFixed(1)} ед.
                 </Text>
@@ -173,7 +175,7 @@ export default function AdvancedStatsScreen() {
                 />
               </View>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {monthComparison.period2.totalUnits.toFixed(1)} ед.
                 </Text>
@@ -199,10 +201,10 @@ export default function AdvancedStatsScreen() {
 
           {/* Текущий год vs предыдущий (за одинаковый период: 1 янв — сегодня) */}
           <View style={[styles.comparisonCard, { backgroundColor: colors.backgroundCard }]}>
-            <Text style={[styles.comparisonTitle, { color: colors.text }]}>Текущий год vs предыдущий</Text>
+            <Text style={[styles.comparisonTitle, { color: colors.text }]}>{t('advancedStats.currentYearVsPrev')}</Text>
             <View style={styles.comparisonRow}>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Предыдущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.previous')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period1.totalUnits.toFixed(1)} ед.
                 </Text>
@@ -218,7 +220,7 @@ export default function AdvancedStatsScreen() {
                 />
               </View>
               <View style={styles.comparisonItem}>
-                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>Текущий</Text>
+                <Text style={[styles.comparisonLabel, { color: colors.textSecondary }]}>{t('advancedStats.current')}</Text>
                 <Text style={[styles.comparisonValue, { color: colors.text }]}>
                   {yearComparison.period2.totalUnits.toFixed(1)} ед.
                 </Text>

@@ -510,7 +510,7 @@ export default function SettingsScreen() {
                 {isPremium ? t('settings.premiumActive') : t('settings.premium')}
               </Text>
               {!isPremium && (
-                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>Разблокировать все функции</Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>{t('settings.unlockAllFeatures')}</Text>
               )}
             </View>
             <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
@@ -522,18 +522,18 @@ export default function SettingsScreen() {
                 if (isPremium) {
                   await disableDevPremium();
                   await checkPremiumStatus();
-                  Alert.alert('Dev Mode', 'Премиум отключен (dev mode)');
+                  Alert.alert(t('settings.devModeTitle'), t('settings.premiumDisabledDev'));
                 } else {
                   await enableDevPremium();
                   await checkPremiumStatus();
-                  Alert.alert('Dev Mode', 'Премиум включен (dev mode)');
+                  Alert.alert(t('settings.devModeTitle'), t('settings.premiumEnabledDev'));
                 }
               }}
             >
               <MaterialCommunityIcons name="bug" size={24} color={colors.textSecondary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.actionButtonText, { fontSize: 14, color: colors.text }]}>
-                  {isPremium ? 'Отключить Premium (Dev)' : 'Включить Premium (Dev)'}
+                  {isPremium ? t('settings.disablePremiumDev') : t('settings.enablePremiumDev')}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -557,7 +557,7 @@ export default function SettingsScreen() {
                   {streakGoal != null ? `${streakGoal} ${t('settings.daysShort')}` : t('settings.streakNotSet')}
                 </Text>
                 <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>
-                  Отслеживание прогресса в статистике и календаре
+                  {t('settings.streakGoalDesc')}
                 </Text>
               </View>
               <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
@@ -566,9 +566,9 @@ export default function SettingsScreen() {
             <View style={[styles.actionButton, { backgroundColor: colors.backgroundCard, opacity: 0.8 }]}>
               <MaterialCommunityIcons name="target" size={24} color={colors.textTertiary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Доступно в полной версии</Text>
+                <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>{t('settings.availableInFullVersion')}</Text>
                 <Text style={[styles.actionButtonSubtext, { color: colors.textTertiary }]}>
-                  Отслеживание прогресса в статистике и календаре
+                  {t('settings.streakGoalDesc')}
                 </Text>
               </View>
             </View>
@@ -584,7 +584,7 @@ export default function SettingsScreen() {
           >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40} style={styles.modalContentWrap}>
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.modalContent, { backgroundColor: colors.backgroundCard }]}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Цель: дней без алкоголя</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.streakGoalTitle')}</Text>
                 <TextInput
                   style={[styles.modalInput, { backgroundColor: colors.backgroundSecondary, color: colors.text, borderColor: colors.border }]}
                   value={customStreakGoalInput}
@@ -604,7 +604,7 @@ export default function SettingsScreen() {
                         confirmStreakGoalChange(null);
                       }}
                     >
-                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Сброс</Text>
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t('settings.reset')}</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
@@ -618,7 +618,7 @@ export default function SettingsScreen() {
                       }
                       const num = parseInt(trimmed, 10);
                       if (isNaN(num) || num < 1 || num > 999) {
-                        Alert.alert('Ошибка', 'Введите число от 1 до 999');
+                        Alert.alert(t('settings.errorTitle'), t('settings.enterNumberRange'));
                         return;
                       }
                       setShowStreakGoalModal(false);
@@ -626,7 +626,7 @@ export default function SettingsScreen() {
                       confirmStreakGoalChange(num);
                     }}
                   >
-                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Сохранить</Text>
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t('settings.save')}</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -637,16 +637,16 @@ export default function SettingsScreen() {
         {/* Темы оформления (только для премиум) */}
         {isPremium && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Тема оформления</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.themeTitle')}</Text>
             <View style={styles.themeContainer}>
               {(
                 [
-                  { id: 'dark' as ThemeName, label: 'Темная', bg: '#0f172a', accent: '#6366f1' },
-                  { id: 'light' as ThemeName, label: 'Светлая', bg: '#ffffff', accent: '#3b82f6' },
-                  { id: 'sepia' as ThemeName, label: 'Теплая', bg: '#1c1917', accent: '#f59e0b' },
-                  { id: 'nord' as ThemeName, label: 'Северная', bg: '#e5e9f0', accent: '#5e81ac' },
-                  { id: 'darcula' as ThemeName, label: 'Зелёный', bg: '#2b2b2b', accent: '#6a9955' },
-                  { id: 'highContrast' as ThemeName, label: 'Розовая', bg: '#fdf8f6', accent: '#db2777' },
+                  { id: 'dark' as ThemeName, label: t('settings.themeNames.dark'), bg: '#0f172a', accent: '#6366f1' },
+                  { id: 'light' as ThemeName, label: t('settings.themeNames.light'), bg: '#ffffff', accent: '#3b82f6' },
+                  { id: 'sepia' as ThemeName, label: t('settings.themeNames.sepia'), bg: '#1c1917', accent: '#f59e0b' },
+                  { id: 'nord' as ThemeName, label: t('settings.themeNames.nord'), bg: '#e5e9f0', accent: '#5e81ac' },
+                  { id: 'darcula' as ThemeName, label: t('settings.themeNames.darcula'), bg: '#2b2b2b', accent: '#6a9955' },
+                  { id: 'highContrast' as ThemeName, label: t('settings.themeNames.highContrast'), bg: '#fdf8f6', accent: '#db2777' },
                 ] as const
               ).map(({ id, label, bg, accent }) => (
                 <TouchableOpacity
