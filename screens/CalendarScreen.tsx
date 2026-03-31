@@ -714,6 +714,8 @@ export default function CalendarScreen() {
     themeName === 'sand' ||
     themeName === 'nord';
   const todayWeekdayIndex = useMemo(() => getWeekdayIndexMonFirst(new Date()), []);
+  const { language, localeTag, t } = useI18n();
+  const WEEKDAY_SHORT = language === 'ru' ? WEEKDAY_SHORT_RU : WEEKDAY_SHORT_EN;
   const { currency } = useCurrency();
   const [all, setAll] = useState<Drink[]>(startupSnapshot?.allDrinks ?? []);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -2481,7 +2483,7 @@ export default function CalendarScreen() {
                       const weekdayIndex = getWeekdayIndexMonFirst(date);
                       const weekdayShort = WEEKDAY_SHORT[weekdayIndex];
                       const dayNumber = date.getDate();
-                      const month = date.toLocaleDateString('ru-RU', { month: 'short' });
+                      const month = date.toLocaleDateString(localeTag, { month: 'short' });
                       return (
                         <Text style={[styles.modalTitle, { color: colors.text }]}>
                           {weekdayShort}, {dayNumber} {month}
