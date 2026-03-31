@@ -3,6 +3,7 @@ import { FlexWidget, TextWidget } from 'react-native-android-widget';
 import type { PresetDrink } from '../types/preset';
 import type { Drink } from '../types/drink';
 import { formatTotalVolume } from '../utils/units';
+import { detectDefaultLanguage, t } from '../i18n/i18n';
 
 const COLORS = {
   bg: '#0c1222',
@@ -38,6 +39,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetProps) {
+  const language = detectDefaultLanguage();
   const todayList = todayDrinks.slice(0, 5);
   const presetList = presets.slice(0, 5);
 
@@ -59,7 +61,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
           flexGap: 6,
         }}
       >
-        <SectionHeader title="ИЗБРАННОЕ" />
+        <SectionHeader title={t(language, 'widgets.favoritesTitle')} />
         {presetList.length === 0 ? (
           <FlexWidget
             style={{
@@ -70,7 +72,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
             }}
           >
             <TextWidget
-              text="Добавьте напитки в приложении"
+              text={t(language, 'widgets.favoritesEmpty')}
               style={{ fontSize: 12, color: COLORS.textDim }}
             />
           </FlexWidget>
@@ -97,7 +99,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
                   style={{ fontSize: 13, fontWeight: '600', color: COLORS.text }}
                 />
                 <TextWidget
-                  text={`${preset.volumeMl} мл · ${preset.abvPercent}%`}
+                  text={`${preset.volumeMl} ${t(language, 'widgets.mlShort')} · ${preset.abvPercent}%`}
                   style={{ fontSize: 11, color: COLORS.textDim }}
                 />
               </FlexWidget>
@@ -127,7 +129,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
           flexGap: 6,
         }}
       >
-        <SectionHeader title="СЕГОДНЯ" />
+        <SectionHeader title={t(language, 'widgets.todayTitle')} />
         {todayList.length === 0 ? (
           <FlexWidget
             style={{
@@ -138,7 +140,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
             }}
           >
             <TextWidget
-              text="Пока пусто"
+              text={t(language, 'widgets.todayEmpty')}
               style={{ fontSize: 12, color: COLORS.textDim }}
             />
           </FlexWidget>
@@ -161,7 +163,7 @@ export function FavoritesWidget({ presets, todayDrinks = [] }: FavoritesWidgetPr
                   style={{ fontSize: 13, fontWeight: '600', color: COLORS.text }}
                 />
                 <TextWidget
-                  text={d.quantity && d.quantity > 1 ? `${formatTotalVolume(d.volumeMl, d.quantity)} · ${d.quantity}×` : `${d.volumeMl} мл`}
+                  text={d.quantity && d.quantity > 1 ? `${formatTotalVolume(d.volumeMl, d.quantity)} · ${d.quantity}×` : `${d.volumeMl} ${t(language, 'widgets.mlShort')}`}
                   style={{ fontSize: 11, color: COLORS.textDim }}
                 />
               </FlexWidget>

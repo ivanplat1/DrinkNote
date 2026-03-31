@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
+import { detectDefaultLanguage, formatDaysCount, t } from '../i18n/i18n';
 
 const COLORS = {
   bg: '#0c1222',
@@ -16,15 +17,10 @@ export interface StreakWidgetProps {
   bestStreak?: number;
 }
 
-function dayWord(n: number): string {
-  if (n === 1) return 'день';
-  if (n >= 2 && n <= 4) return 'дня';
-  return 'дней';
-}
-
 export function StreakWidget({ currentStreak, bestStreak }: StreakWidgetProps) {
+  const language = detectDefaultLanguage();
   const bestLabel = bestStreak != null && bestStreak > 0
-    ? `Рекорд: ${bestStreak} ${dayWord(bestStreak)}`
+    ? t(language, 'widgets.record').replace('{{days}}', formatDaysCount(language, bestStreak))
     : null;
   const hasStreak = currentStreak > 0;
 
@@ -53,7 +49,7 @@ export function StreakWidget({ currentStreak, bestStreak }: StreakWidgetProps) {
       >
         <TextWidget text="🔥" style={{ fontSize: 32 }} />
         <TextWidget
-          text={currentStreak <= 0 ? '—' : `${currentStreak} ${dayWord(currentStreak)}`}
+          text={currentStreak <= 0 ? '—' : formatDaysCount(language, currentStreak)}
           style={{
             fontSize: 26,
             fontWeight: 'bold',
@@ -61,7 +57,7 @@ export function StreakWidget({ currentStreak, bestStreak }: StreakWidgetProps) {
           }}
         />
         <TextWidget
-          text="без алкоголя"
+          text={t(language, 'widgets.alcoholFree')}
           style={{ fontSize: 12, color: COLORS.textMuted }}
         />
         {bestLabel != null && (

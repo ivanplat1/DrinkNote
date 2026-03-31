@@ -297,6 +297,15 @@ export const translations = {
       daysShort: 'дней',
       ofTotalShort: 'от общего',
     },
+    widgets: {
+      favoritesTitle: 'ИЗБРАННОЕ',
+      todayTitle: 'СЕГОДНЯ',
+      favoritesEmpty: 'Добавьте напитки в приложении',
+      todayEmpty: 'Пока пусто',
+      alcoholFree: 'без алкоголя',
+      record: 'Рекорд: {{days}}',
+      mlShort: 'мл',
+    },
   },
   en: {
     tabs: {
@@ -588,6 +597,15 @@ export const translations = {
       entriesShort: 'entries',
       daysShort: 'days',
       ofTotalShort: 'of total',
+    },
+    widgets: {
+      favoritesTitle: 'FAVORITES',
+      todayTitle: 'TODAY',
+      favoritesEmpty: 'Add drinks in the app',
+      todayEmpty: 'Nothing yet',
+      alcoholFree: 'alcohol-free',
+      record: 'Best: {{days}}',
+      mlShort: 'ml',
     },
   },
 } as const satisfies Record<'ru' | 'en', Translations>;
