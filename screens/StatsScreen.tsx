@@ -179,7 +179,7 @@ export default function StatsScreen() {
           onPress={() => setActiveTab('basic')}
         >
             <Text style={[styles.parentTabText, activeTab === 'basic' && styles.parentTabTextActive, { color: activeTab === 'basic' ? colors.primary : colors.textSecondary }]}>
-            Базовая
+            {t('statsScreen.tabBasic')}
           </Text>
           {activeTab === 'basic' && <View style={[styles.parentTabIndicator, { backgroundColor: colors.primary }]} />}
         </TouchableOpacity>
@@ -195,7 +195,7 @@ export default function StatsScreen() {
         >
           <View style={styles.parentTabButtonContent}>
             <Text style={[styles.parentTabText, activeTab === 'advanced' && styles.parentTabTextActive, { color: activeTab === 'advanced' ? colors.primary : colors.textSecondary }]}>
-              Расширенная
+              {t('statsScreen.tabAdvanced')}
             </Text>
             {!isPremium && (
               <MaterialCommunityIcons name="crown" size={14} color={activeTab === 'advanced' ? colors.primary : colors.textSecondary} />
