@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { ReactNode } from 'react';
 import { detectDefaultLanguage, localeTagFor, t as translate, tf as translateFormat } from './i18n';
 import { getAppLanguage, setAppLanguage, type AppLanguage } from '../storage/language';
+import { refreshSeededPresetsLocalization } from '../storage/presets';
+import { refreshDrinkCatalogLocalization } from '../storage/drinkCatalog';
 
 interface I18nContextValue {
   language: AppLanguage;
@@ -38,6 +40,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLanguageAndPersist = useCallback(async (lang: AppLanguage) => {
     setLanguage(lang);
     await setAppLanguage(lang);
+    // Update seeded preset/catalog names immediately so UI reflects the new language without reload.
+    try {
+      await Promise.all([refreshSeededPresetsLocalization(), refreshDrinkCatalogLocalization()]);
+    } catch {
+      // no-op: language change must not crash the app
+    }
   }, []);
 
   // Keep a module-level getter so non-component code (e.g. context configs)

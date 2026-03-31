@@ -6,6 +6,32 @@ import { detectDefaultLanguage } from '../i18n/i18n';
 
 const CATALOG_KEY = 'drink_catalog_v1';
 
+// Simple event system for updating UI when catalog changes.
+type DrinkCatalogChangeListener = (catalog: PresetDrink[]) => void;
+
+class DrinkCatalogEventEmitter {
+  private listeners: Set<DrinkCatalogChangeListener> = new Set();
+
+  subscribe(listener: DrinkCatalogChangeListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  emit(catalog: PresetDrink[]): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(catalog);
+      } catch (error) {
+        console.error('[DrinkCatalogEventEmitter] Error in listener:', error);
+      }
+    });
+  }
+}
+
+export const drinkCatalogEventEmitter = new DrinkCatalogEventEmitter();
+
 function normalizeName(name: string): string {
   return (name || '').trim();
 }
@@ -56,6 +82,7 @@ export async function getDrinkCatalog(): Promise<PresetDrink[]> {
   if (!raw) {
     const seeded = await seedCatalog();
     await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
+    drinkCatalogEventEmitter.emit(seeded);
     return seeded;
   }
   try {
@@ -63,17 +90,22 @@ export async function getDrinkCatalog(): Promise<PresetDrink[]> {
     if (!Array.isArray(parsed) || parsed.length === 0) {
       const seeded = await seedCatalog();
       await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
+      drinkCatalogEventEmitter.emit(seeded);
       return seeded;
     }
     const { next, changed } = await maybeLocalizeSeededCatalog(parsed);
     if (changed) {
       await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(next));
+      drinkCatalogEventEmitter.emit(next);
       return next;
     }
+    // Even if not changed, emit so screens can refresh after language change.
+    drinkCatalogEventEmitter.emit(parsed);
     return parsed;
   } catch {
     const seeded = await seedCatalog();
     await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(seeded));
+    drinkCatalogEventEmitter.emit(seeded);
     return seeded;
   }
 }
@@ -84,6 +116,7 @@ export async function addDrinkToCatalog(preset: Omit<PresetDrink, 'id'>): Promis
   const withId: PresetDrink = { ...preset, name, id: makeId() };
   const next = [withId, ...current];
   await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(next));
+  drinkCatalogEventEmitter.emit(next);
   return next;
 }
 
@@ -92,6 +125,7 @@ export async function updateCatalogDrink(id: string, preset: Omit<PresetDrink, '
   const name = normalizeName(preset.name);
   const next = current.map((p) => (p.id === id ? { ...preset, name, id } : p));
   await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(next));
+  drinkCatalogEventEmitter.emit(next);
   return next;
 }
 
@@ -99,6 +133,11 @@ export async function removeCatalogDrink(id: string): Promise<PresetDrink[]> {
   const current = await getDrinkCatalog();
   const next = current.filter((p) => p.id !== id);
   await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(next));
+  drinkCatalogEventEmitter.emit(next);
   return next;
+}
+
+export async function refreshDrinkCatalogLocalization(): Promise<void> {
+  await getDrinkCatalog();
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,31 +12,48 @@ import {
   Keyboard,
   Alert,
   ScrollView,
-} from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../theme/ThemeContext';
-import type { Drink } from '../types/drink';
-import type { ThemeColors } from '../theme/themes';
-import { useI18n } from '../i18n/I18nContext';
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../theme/ThemeContext";
+import type { Drink } from "../types/drink";
+import type { ThemeColors } from "../theme/themes";
+import { useI18n } from "../i18n/I18nContext";
 
-const BEVERAGE_TYPES: Array<Drink['beverageType']> = ['beer', 'wine', 'spirit', 'cocktail', 'other'];
+const BEVERAGE_TYPES: Array<Drink["beverageType"]> = [
+  "beer",
+  "wine",
+  "spirit",
+  "cocktail",
+  "other",
+];
 
-function getBeverageColors(type: Drink['beverageType'], themeColors: ThemeColors) {
+function getBeverageColors(
+  type: Drink["beverageType"],
+  themeColors: ThemeColors,
+) {
   const c = themeColors[type] ?? themeColors.other;
   return { main: c.main, light: c.light, text: c.text };
 }
 
-const TYPE_LABEL_KEYS: Record<Drink['beverageType'], string> = {
-  beer: 'drinkTypes.beer',
-  wine: 'drinkTypes.wine',
-  spirit: 'drinkTypes.spirit',
-  cocktail: 'drinkTypes.cocktail',
-  other: 'drinkTypes.other',
+const TYPE_LABEL_KEYS: Record<Drink["beverageType"], string> = {
+  beer: "drinkTypes.beer",
+  wine: "drinkTypes.wine",
+  spirit: "drinkTypes.spirit",
+  cocktail: "drinkTypes.cocktail",
+  other: "drinkTypes.other",
 };
 
-const TYPE_DEFAULTS: Record<Drink['beverageType'], { volumeMl: number; abvPercent: number }> = {
+const TYPE_DEFAULTS: Record<
+  Drink["beverageType"],
+  { volumeMl: number; abvPercent: number }
+> = {
   beer: { volumeMl: 500, abvPercent: 5 },
   wine: { volumeMl: 150, abvPercent: 12 },
   spirit: { volumeMl: 50, abvPercent: 40 },
@@ -46,7 +63,7 @@ const TYPE_DEFAULTS: Record<Drink['beverageType'], { volumeMl: number; abvPercen
 
 export type OneTimeEntryData = {
   name: string;
-  beverageType: Drink['beverageType'];
+  beverageType: Drink["beverageType"];
   volumeMl: number;
   abvPercent: number;
   price?: number;
@@ -60,29 +77,35 @@ type Props = {
 };
 
 // Смещения прокрутки под клавиатуру (Android: клавиатура выше, прокручиваем сильнее)
-const SCROLL_Y_VOLUME_ABV = Platform.OS === 'android' ? 260 : 180;
-const SCROLL_Y_PRICE = Platform.OS === 'android' ? 420 : 320;
+const SCROLL_Y_VOLUME_ABV = Platform.OS === "android" ? 260 : 180;
+const SCROLL_Y_PRICE = Platform.OS === "android" ? 420 : 320;
 
-export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSave }: Props) {
+export default function AddOneTimeEntryModal({
+  visible,
+  onClose,
+  isPremium,
+  onSave,
+}: Props) {
   const { colors } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
   const scrollRef = useRef<ScrollView>(null);
 
-  const [name, setName] = useState('');
-  const [beverageType, setBeverageType] = useState<Drink['beverageType']>('cocktail');
-  const [volumeStr, setVolumeStr] = useState('300');
-  const [abvStr, setAbvStr] = useState('15');
-  const [priceStr, setPriceStr] = useState('');
+  const [name, setName] = useState("");
+  const [beverageType, setBeverageType] =
+    useState<Drink["beverageType"]>("cocktail");
+  const [volumeStr, setVolumeStr] = useState("300");
+  const [abvStr, setAbvStr] = useState("15");
+  const [priceStr, setPriceStr] = useState("");
 
   useEffect(() => {
     if (visible) {
-      setName('');
-      setBeverageType('cocktail');
-      setVolumeStr('300');
-      setAbvStr('15');
-      setPriceStr('');
+      setName("");
+      setBeverageType("cocktail");
+      setVolumeStr("300");
+      setAbvStr("15");
+      setPriceStr("");
       translateY.value = 0;
     }
   }, [visible]);
@@ -90,10 +113,10 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
   // При появлении клавиатуры прокручиваем к полям; при скрытии — возврат (на Android модалка не остаётся поднятой)
   useEffect(() => {
     if (!visible) return;
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
       scrollRef.current?.scrollTo({ y: SCROLL_Y_VOLUME_ABV, animated: true });
     });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
     return () => {
@@ -102,12 +125,12 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
     };
   }, [visible]);
 
-  const selectType = (type: Drink['beverageType']) => {
+  const selectType = (type: Drink["beverageType"]) => {
     setBeverageType(type);
-    setName('');
-    setVolumeStr('');
-    setAbvStr('');
-    if (type !== 'other') {
+    setName("");
+    setVolumeStr("");
+    setAbvStr("");
+    if (type !== "other") {
       const d = TYPE_DEFAULTS[type];
       setVolumeStr(String(d.volumeMl));
       setAbvStr(String(d.abvPercent));
@@ -116,24 +139,27 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
 
   const handleSave = () => {
     const n = name.trim() || t(TYPE_LABEL_KEYS[beverageType]);
-    const vol = parseFloat(volumeStr.replace(',', '.'));
-    const abv = parseFloat(abvStr.replace(',', '.'));
+    const vol = parseFloat(volumeStr.replace(",", "."));
+    const abv = parseFloat(abvStr.replace(",", "."));
     if (!n) {
-      Alert.alert(t('common.error'), t('oneTimeEntry.nameOrTypeError'));
+      Alert.alert(t("common.error"), t("oneTimeEntry.nameOrTypeError"));
       return;
     }
     if (isNaN(vol) || vol <= 0) {
-      Alert.alert(t('common.error'), t('oneTimeEntry.volumeError'));
+      Alert.alert(t("common.error"), t("oneTimeEntry.volumeError"));
       return;
     }
     if (isNaN(abv) || abv < 0 || abv > 100) {
-      Alert.alert(t('common.error'), t('oneTimeEntry.abvError'));
+      Alert.alert(t("common.error"), t("oneTimeEntry.abvError"));
       return;
     }
-    const priceNum = priceStr.trim() ? parseFloat(priceStr.replace(',', '.')) : undefined;
-    const price = isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0
-      ? Math.round(priceNum * 100) / 100
+    const priceNum = priceStr.trim()
+      ? parseFloat(priceStr.replace(",", "."))
       : undefined;
+    const price =
+      isPremium && priceNum != null && !isNaN(priceNum) && priceNum >= 0
+        ? Math.round(priceNum * 100) / 100
+        : undefined;
     onSave({
       name: n,
       beverageType,
@@ -153,10 +179,14 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
     })
     .onEnd((e) => {
       if (e.translationY > 50) {
-        translateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-          runOnJS(onClose)();
-          translateY.value = 0;
-        });
+        translateY.value = withSpring(
+          1000,
+          { damping: 20, stiffness: 300 },
+          () => {
+            runOnJS(onClose)();
+            translateY.value = 0;
+          },
+        );
       } else {
         translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
       }
@@ -181,120 +211,197 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
         </TouchableWithoutFeedback>
         <KeyboardAvoidingView
           style={styles.kav}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <GestureDetector gesture={panGesture}>
-                <Animated.View
-                  style={[
-                    styles.card,
-                    { backgroundColor: colors.backgroundCard },
-                    { paddingBottom: 20 + insets.bottom },
-                    animatedStyle,
-                  ]}
+              <Animated.View
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.backgroundCard },
+                  { paddingBottom: 20 + insets.bottom },
+                  animatedStyle,
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.dragHandle}
+                  onPress={onClose}
+                  activeOpacity={1}
                 >
-                  <TouchableOpacity style={styles.dragHandle} onPress={onClose} activeOpacity={1}>
-                    <View style={[styles.dragBar, { backgroundColor: colors.textTertiary }]} />
-                  </TouchableOpacity>
-                  <ScrollView
-                    ref={scrollRef}
-                    style={styles.scrollView}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 360 }}
+                  <View
+                    style={[
+                      styles.dragBar,
+                      { backgroundColor: colors.textTertiary },
+                    ]}
+                  />
+                </TouchableOpacity>
+                <ScrollView
+                  ref={scrollRef}
+                  style={styles.scrollView}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 360 }}
+                >
+                  <Text style={[styles.title, { color: colors.text }]}>
+                    {t("todayScreen.addOneTime")}
+                  </Text>
+                  <Text
+                    style={[styles.subtitle, { color: colors.textSecondary }]}
                   >
-                    <Text style={[styles.title, { color: colors.text }]}>{t('todayScreen.addOneTime')}</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                      {t('oneTimeEntry.subtitle')}
-                    </Text>
+                    {t("oneTimeEntry.subtitle")}
+                  </Text>
 
-                    <Text style={[styles.label, { color: colors.text }]}>{t('oneTimeEntry.name')}</Text>
-                    <TextInput
-                      placeholder={t('oneTimeEntry.namePlaceholder')}
-                      placeholderTextColor={colors.textTertiary}
-                      value={name}
-                      onChangeText={setName}
-                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      returnKeyType="next"
-                    />
+                  <Text style={[styles.label, { color: colors.text }]}>
+                    {t("oneTimeEntry.name")}
+                  </Text>
+                  <TextInput
+                    placeholder={t("oneTimeEntry.namePlaceholder")}
+                    placeholderTextColor={colors.textTertiary}
+                    value={name}
+                    onChangeText={setName}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                    returnKeyType="next"
+                  />
 
-                    <Text style={[styles.label, { color: colors.text }]}>{t('oneTimeEntry.type')}</Text>
-                    <View style={styles.typeRow}>
-                      {BEVERAGE_TYPES.map((t) => {
-                        const bc = getBeverageColors(t, colors as ThemeColors);
-                        const isSelected = beverageType === t;
-                        return (
-                          <TouchableOpacity
-                            key={t}
+                  <Text style={[styles.label, { color: colors.text }]}>
+                    {t("oneTimeEntry.type")}
+                  </Text>
+                  <View style={styles.typeRow}>
+                    {BEVERAGE_TYPES.map((bevType) => {
+                      const bc = getBeverageColors(
+                        bevType,
+                        colors as ThemeColors,
+                      );
+                      const isSelected = beverageType === bevType;
+                      return (
+                        <TouchableOpacity
+                          key={bevType}
+                          style={[
+                            styles.typeChip,
+                            {
+                              backgroundColor: isSelected ? bc.main : bc.light,
+                              borderColor: bc.main,
+                            },
+                          ]}
+                          onPress={() => selectType(bevType)}
+                        >
+                          <Text
                             style={[
-                              styles.typeChip,
-                              {
-                                backgroundColor: isSelected ? bc.main : bc.light,
-                                borderColor: bc.main,
-                              },
+                              styles.typeChipText,
+                              { color: isSelected ? "#fff" : bc.text },
                             ]}
-                            onPress={() => selectType(t)}
                           >
-                            <Text style={[styles.typeChipText, { color: isSelected ? '#fff' : bc.text }]}>
-                              {t(TYPE_LABEL_KEYS[t])}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                            {t(TYPE_LABEL_KEYS[bevType])}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={styles.half}>
+                      <Text style={[styles.label, { color: colors.text }]}>
+                        {t("todayScreen.volumeMlLabel")}
+                      </Text>
+                      <TextInput
+                        placeholder="300"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="numeric"
+                        value={volumeStr}
+                        onChangeText={setVolumeStr}
+                        onFocus={() =>
+                          scrollRef.current?.scrollTo({
+                            y: SCROLL_Y_VOLUME_ABV,
+                            animated: true,
+                          })
+                        }
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.backgroundSecondary,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                      />
                     </View>
-
-                    <View style={styles.row}>
-                      <View style={styles.half}>
-                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.volumeMlLabel')}</Text>
-                        <TextInput
-                          placeholder="300"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={volumeStr}
-                          onChangeText={setVolumeStr}
-                          onFocus={() => scrollRef.current?.scrollTo({ y: SCROLL_Y_VOLUME_ABV, animated: true })}
-                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                        />
-                      </View>
-                      <View style={styles.half}>
-                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.abvLabel')}</Text>
-                        <TextInput
-                          placeholder="15"
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="numeric"
-                          value={abvStr}
-                          onChangeText={setAbvStr}
-                          onFocus={() => scrollRef.current?.scrollTo({ y: SCROLL_Y_VOLUME_ABV, animated: true })}
-                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                        />
-                      </View>
+                    <View style={styles.half}>
+                      <Text style={[styles.label, { color: colors.text }]}>
+                        {t("todayScreen.abvLabel")}
+                      </Text>
+                      <TextInput
+                        placeholder="15"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="numeric"
+                        value={abvStr}
+                        onChangeText={setAbvStr}
+                        onFocus={() =>
+                          scrollRef.current?.scrollTo({
+                            y: SCROLL_Y_VOLUME_ABV,
+                            animated: true,
+                          })
+                        }
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.backgroundSecondary,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                      />
                     </View>
+                  </View>
 
-                    {isPremium && (
-                      <>
-                        <Text style={[styles.label, { color: colors.text }]}>{t('todayScreen.price')}</Text>
-                        <TextInput
-                          placeholder={t('oneTimeEntry.notSpecified')}
-                          placeholderTextColor={colors.textTertiary}
-                          keyboardType="decimal-pad"
-                          value={priceStr}
-                          onChangeText={(t) => setPriceStr(t.replace(',', '.'))}
-                          onFocus={() => scrollRef.current?.scrollTo({ y: SCROLL_Y_PRICE, animated: true })}
-                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                        />
-                      </>
-                    )}
+                  {isPremium && (
+                    <>
+                      <Text style={[styles.label, { color: colors.text }]}>
+                        {t("todayScreen.price")}
+                      </Text>
+                      <TextInput
+                        placeholder={t("oneTimeEntry.notSpecified")}
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="decimal-pad"
+                        value={priceStr}
+                        onChangeText={(t) => setPriceStr(t.replace(",", "."))}
+                        onFocus={() =>
+                          scrollRef.current?.scrollTo({
+                            y: SCROLL_Y_PRICE,
+                            animated: true,
+                          })
+                        }
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.backgroundSecondary,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                      />
+                    </>
+                  )}
 
-                    <TouchableOpacity
-                      style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-                      onPress={handleSave}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
-                    </TouchableOpacity>
-                  </ScrollView>
-                </Animated.View>
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={handleSave}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.saveBtnText}>{t("common.save")}</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </Animated.View>
             </GestureDetector>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
@@ -306,27 +413,27 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   kav: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   card: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 4,
     paddingHorizontal: 20,
-    height: '75%',
+    height: "75%",
   },
   scrollView: {
     flex: 1,
   },
   dragHandle: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
     minHeight: 28,
   },
@@ -337,7 +444,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   subtitle: {
@@ -346,7 +453,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 6,
   },
   input: {
@@ -358,8 +465,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   typeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 12,
   },
   typeChip: {
@@ -372,10 +479,10 @@ const styles = StyleSheet.create({
   },
   typeChipText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   half: {
@@ -384,12 +491,12 @@ const styles = StyleSheet.create({
   saveBtn: {
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   saveBtnText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
