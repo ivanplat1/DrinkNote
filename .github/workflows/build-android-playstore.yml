@@ -1,0 +1,56 @@
+name: Build Android Play Store (EAS AAB)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android AAB (EAS production)
+        env:
+          EAS_NO_VCS: 1
+        run: |
+          eas build --platform android --profile production --non-interactive --json > eas-build.json
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('eas-build.json','utf8'));const build=Array.isArray(j)?j[0]:j; if(!build?.id) { console.error('Missing build id in eas-build.json'); process.exit(1); } fs.writeFileSync('eas-build-id.txt', build.id); console.log('EAS build id:', build.id);"
+
+      - name: Download AAB artifact from EAS
+        run: |
+          BUILD_ID="$(cat eas-build-id.txt)"
+          eas build:download --platform android --id "$BUILD_ID" --output drinknote.aab
+          ls -la drinknote.aab
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: drinknote-playstore-aab
+          path: drinknote.aab
+          if-no-files-found: error
+          retention-days: 30
