@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { View } from 'react-native';
 import { detectDefaultLanguage, localeTagFor, t as translate, tf as translateFormat } from './i18n';
 import { getAppLanguage, setAppLanguage, type AppLanguage } from '../storage/language';
 import { refreshSeededPresetsLocalization } from '../storage/presets';
@@ -7,6 +8,7 @@ import { refreshDrinkCatalogLocalization } from '../storage/drinkCatalog';
 
 interface I18nContextValue {
   language: AppLanguage;
+  isLanguageLoaded: boolean;
   setLanguage: (language: AppLanguage) => Promise<void>;
   t: (key: string) => string;
   tf: (key: string, vars: Record<string, string | number>) => string;
@@ -16,11 +18,15 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<AppLanguage>('en');
+  const [language, setLanguage] = useState<AppLanguage>(() => detectDefaultLanguage());
+  const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
 
   useEffect(() => {
-    getAppLanguage()
-      .then(async (saved) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const saved = await getAppLanguage();
+        if (cancelled) return;
         if (saved) {
           setLanguage(saved);
           return;
@@ -29,12 +35,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         const detected = detectDefaultLanguage();
         setLanguage(detected);
         await setAppLanguage(detected);
-      })
-      .catch(async () => {
+      } catch {
+        if (cancelled) return;
         const detected = detectDefaultLanguage();
         setLanguage(detected);
-        await setAppLanguage(detected);
-      });
+        try {
+          await setAppLanguage(detected);
+        } catch {
+          // ignore
+        }
+      } finally {
+        if (!cancelled) setIsLanguageLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setLanguageAndPersist = useCallback(async (lang: AppLanguage) => {
@@ -58,13 +74,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
+      isLanguageLoaded,
       setLanguage: setLanguageAndPersist,
       t: (key: string) => translate(language, key),
       tf: (key: string, vars: Record<string, string | number>) => translateFormat(language, key, vars),
       localeTag: localeTagFor(language),
     }),
-    [language, setLanguageAndPersist]
+    [language, isLanguageLoaded, setLanguageAndPersist]
   );
+
+  if (!isLanguageLoaded) {
+    return (
+      <I18nContext.Provider value={value}>
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }} />
+      </I18nContext.Provider>
+    );
+  }
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
