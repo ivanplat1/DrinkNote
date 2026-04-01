@@ -49,3 +49,6 @@ yarn-error.*
 # downloaded APKs
 downloads/
 *.apk
+
+# local build artifacts
+*.aab

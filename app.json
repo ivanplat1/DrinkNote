@@ -3,7 +3,7 @@
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.drinknote.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
