@@ -1,102 +1,98 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getAllDrinks } from "./drinks";
-import { setAllDrinks } from "./drinks";
-import { Drink } from "../types/drink";
-import { PresetDrink } from "../types/preset";
-import { getUserPresets, setUserPresets } from "./presets";
-import {
-  getCalendarLabelRanges,
-  setCalendarLabelRanges,
-  LabelRange,
-} from "./calendarLabels";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAllDrinks } from './drinks';
+import { setAllDrinks } from './drinks';
+import { Drink } from '../types/drink';
+import { PresetDrink } from '../types/preset';
+import { getUserPresets, setUserPresets } from './presets';
+import { getCalendarLabelRanges, setCalendarLabelRanges, LabelRange } from './calendarLabels';
 
-const SETTINGS_KEY = "app_settings_v1";
-const DAILY_GOAL_KEY = "daily_goal_units";
-const USER_WEIGHT_KEY = "user_weight";
-const USER_GENDER_KEY = "user_gender";
-const USER_BIRTH_YEAR_KEY = "user_birth_year";
-const USER_BIRTH_DATE_KEY = "user_birth_date";
-const APP_START_DATE_KEY = "app_start_date";
-const CURRENCY_KEY = "app_currency_v1";
-const LANGUAGE_OVERRIDE_KEY = "app_language_override_v1";
-const FIRST_LAUNCH_DONE_KEY = "first_launch_done";
-const ONBOARDING_SEEN_KEY = "onboarding_seen";
+const SETTINGS_KEY = 'app_settings_v1';
+const DAILY_GOAL_KEY = 'daily_goal_units';
+const USER_WEIGHT_KEY = 'user_weight';
+const USER_GENDER_KEY = 'user_gender';
+const USER_BIRTH_YEAR_KEY = 'user_birth_year';
+const USER_BIRTH_DATE_KEY = 'user_birth_date';
+const APP_START_DATE_KEY = 'app_start_date';
+const CURRENCY_KEY = 'app_currency_v1';
+const LANGUAGE_OVERRIDE_KEY = 'app_language_override_v1';
+const FIRST_LAUNCH_DONE_KEY = 'first_launch_done';
+const ONBOARDING_SEEN_KEY = 'onboarding_seen';
 
 export type CurrencyCode =
-  | "RUB" // Россия
-  | "BYN" // Беларусь
-  | "KZT" // Казахстан
-  | "UZS" // Узбекистан
-  | "UAH" // Украина
-  | "AMD" // Армения
-  | "AZN" // Азербайджан
-  | "GEL" // Грузия
-  | "KGS" // Киргизия
-  | "MDL" // Молдова
-  | "TJS" // Таджикистан
-  | "TMT" // Туркменистан
-  | "EUR" // Евро
-  | "USD" // Доллар США
-  | "GBP" // Фунт стерлингов
-  | "JPY" // Японская иена
-  | "CNY" // Китайский юань
-  | "AUD" // Австралийский доллар
-  | "CAD" // Канадский доллар
-  | "CHF" // Швейцарский франк
-  | "SEK" // Шведская крона
-  | "NOK" // Норвежская крона
-  | "DKK" // Датская крона
-  | "PLN" // Польский злотый
-  | "CZK" // Чешская крона
-  | "TRY" // Турецкая лира
-  | "INR" // Индийская рупия
-  | "BRL" // Бразильский реал
-  | "MXN" // Мексиканский песо
-  | "SGD" // Сингапурский доллар
-  | "HKD" // Гонконгский доллар
-  | "KRW"; // Южнокорейская вона
+  | 'RUB'  // Россия
+  | 'BYN'  // Беларусь
+  | 'KZT'  // Казахстан
+  | 'UZS'  // Узбекистан
+  | 'UAH'  // Украина
+  | 'AMD'  // Армения
+  | 'AZN'  // Азербайджан
+  | 'GEL'  // Грузия
+  | 'KGS'  // Киргизия
+  | 'MDL'  // Молдова
+  | 'TJS'  // Таджикистан
+  | 'TMT'  // Туркменистан
+  | 'EUR'  // Евро
+  | 'USD'  // Доллар США
+  | 'GBP'  // Фунт стерлингов
+  | 'JPY'  // Японская иена
+  | 'CNY'  // Китайский юань
+  | 'AUD'  // Австралийский доллар
+  | 'CAD'  // Канадский доллар
+  | 'CHF'  // Швейцарский франк
+  | 'SEK'  // Шведская крона
+  | 'NOK'  // Норвежская крона
+  | 'DKK'  // Датская крона
+  | 'PLN'  // Польский злотый
+  | 'CZK'  // Чешская крона
+  | 'TRY'  // Турецкая лира
+  | 'INR'  // Индийская рупия
+  | 'BRL'  // Бразильский реал
+  | 'MXN'  // Мексиканский песо
+  | 'SGD'  // Сингапурский доллар
+  | 'HKD'  // Гонконгский доллар
+  | 'KRW'; // Южнокорейская вона
 
 export const VALID_CURRENCIES: CurrencyCode[] = [
   // Core
-  "USD",
-  "EUR",
-  "GBP",
+  'USD',
+  'EUR',
+  'GBP',
 
   // CIS
-  "RUB",
-  "BYN",
-  "KZT",
-  "UZS",
-  "UAH",
-  "AMD",
-  "AZN",
-  "GEL",
-  "KGS",
-  "MDL",
-  "TJS",
-  "TMT",
+  'RUB',
+  'BYN',
+  'KZT',
+  'UZS',
+  'UAH',
+  'AMD',
+  'AZN',
+  'GEL',
+  'KGS',
+  'MDL',
+  'TJS',
+  'TMT',
 
   // Other major
-  "AUD",
-  "BRL",
-  "CAD",
-  "CHF",
-  "CNY",
-  "CZK",
-  "DKK",
-  "HKD",
-  "INR",
-  "JPY",
-  "KRW",
-  "MXN",
-  "NOK",
-  "PLN",
-  "SEK",
-  "SGD",
-  "TRY",
+  'AUD',
+  'BRL',
+  'CAD',
+  'CHF',
+  'CNY',
+  'CZK',
+  'DKK',
+  'HKD',
+  'INR',
+  'JPY',
+  'KRW',
+  'MXN',
+  'NOK',
+  'PLN',
+  'SEK',
+  'SGD',
+  'TRY',
 ];
 
-export type Gender = "male" | "female" | "genderless";
+export type Gender = 'male' | 'female' | 'genderless';
 
 export interface AppSettings {
   dailyGoalUnits?: number;
@@ -133,9 +129,9 @@ export async function exportData(): Promise<string> {
   const gender = await getUserGender();
   const birthYear = await getBirthYear();
   const currency = await getCurrency();
-
+  
   const exportData = {
-    version: "1.0",
+    version: '1.0',
     exportDate: new Date().toISOString(),
     drinks,
     favorites,
@@ -148,7 +144,7 @@ export async function exportData(): Promise<string> {
       currency: currency,
     },
   };
-
+  
   return JSON.stringify(exportData, null, 2);
 }
 
@@ -167,31 +163,24 @@ export interface ImportData {
   };
 }
 
-export async function importData(
-  jsonString: string,
-  merge: boolean = false,
-): Promise<{ success: boolean; drinksCount: number; error?: string }> {
+export async function importData(jsonString: string, merge: boolean = false): Promise<{ success: boolean; drinksCount: number; error?: string }> {
   try {
     const parsed = JSON.parse(jsonString) as ImportData;
-
+    
     // Валидация структуры
-    if (!parsed || typeof parsed !== "object") {
-      return {
-        success: false,
-        drinksCount: 0,
-        error: "Неверный формат данных",
-      };
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, drinksCount: 0, error: 'Неверный формат данных' };
     }
-
+    
     // Импорт напитков
     if (parsed.drinks && Array.isArray(parsed.drinks)) {
       if (merge) {
         // Объединяем с существующими
         const existing = await getAllDrinks();
-        const existingIds = new Set(existing.map((d) => d.id));
-
+        const existingIds = new Set(existing.map(d => d.id));
+        
         // Добавляем только новые напитки (по ID)
-        const newDrinks = parsed.drinks.filter((d) => !existingIds.has(d.id));
+        const newDrinks = parsed.drinks.filter(d => !existingIds.has(d.id));
         const merged = [...existing, ...newDrinks];
         await setAllDrinks(merged);
       } else {
@@ -212,9 +201,7 @@ export async function importData(
 
         const mergedPresets = [...existingPresets];
         for (const incoming of parsed.favorites) {
-          if (
-            !mergedPresets.some((preset) => hasSamePreset(preset, incoming))
-          ) {
+          if (!mergedPresets.some((preset) => hasSamePreset(preset, incoming))) {
             mergedPresets.push(incoming);
           }
         }
@@ -232,8 +219,7 @@ export async function importData(
           left.fromISO === right.fromISO &&
           left.toISO === right.toISO &&
           left.text.trim().toLowerCase() === right.text.trim().toLowerCase() &&
-          (left.color || "").toLowerCase() ===
-            (right.color || "").toLowerCase();
+          (left.color || '').toLowerCase() === (right.color || '').toLowerCase();
 
         const mergedRanges = [...existingRanges];
         for (const incoming of parsed.labels) {
@@ -246,7 +232,7 @@ export async function importData(
         await setCalendarLabelRanges(parsed.labels);
       }
     }
-
+    
     // Импорт настроек
     if (parsed.settings) {
       if (parsed.settings.dailyGoalUnits !== undefined) {
@@ -261,22 +247,18 @@ export async function importData(
       if (parsed.settings.birthYear !== undefined) {
         await setBirthYear(parsed.settings.birthYear);
       }
-      if (
-        parsed.settings.currency !== undefined &&
-        VALID_CURRENCIES.includes(parsed.settings.currency as CurrencyCode)
-      ) {
+      if (parsed.settings.currency !== undefined && VALID_CURRENCIES.includes(parsed.settings.currency as CurrencyCode)) {
         await setCurrency(parsed.settings.currency as CurrencyCode);
       }
     }
-
+    
     const drinksCount = parsed.drinks?.length || 0;
     return { success: true, drinksCount };
   } catch (error) {
-    return {
-      success: false,
-      drinksCount: 0,
-      error:
-        error instanceof Error ? error.message : "Ошибка при импорте данных",
+    return { 
+      success: false, 
+      drinksCount: 0, 
+      error: error instanceof Error ? error.message : 'Ошибка при импорте данных' 
     };
   }
 }
@@ -302,7 +284,7 @@ export async function setUserWeight(weight: number | null): Promise<void> {
 
 export async function getUserGender(): Promise<Gender | null> {
   const raw = await AsyncStorage.getItem(USER_GENDER_KEY);
-  if (raw === "male" || raw === "female" || raw === "genderless") {
+  if (raw === 'male' || raw === 'female' || raw === 'genderless') {
     return raw;
   }
   return null;
@@ -365,25 +347,20 @@ export async function setBirthDate(dateISO: string | null): Promise<void> {
 }
 
 // Рассчитывает точный возраст на основе полной даты рождения
-export function calculateAgeFromDate(
-  birthDateISO: string | null,
-): number | null {
+export function calculateAgeFromDate(birthDateISO: string | null): number | null {
   if (!birthDateISO) return null;
-
+  
   const birthDate = new Date(birthDateISO);
   const today = new Date();
-
+  
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-
+  
   // Если день рождения еще не наступил в этом году, вычитаем 1
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-
+  
   return age;
 }
 
@@ -403,42 +380,41 @@ export async function setAppStartDate(dateISO: string | null): Promise<void> {
 
 export async function getCurrency(): Promise<CurrencyCode> {
   const raw = await AsyncStorage.getItem(CURRENCY_KEY);
-  if (raw && VALID_CURRENCIES.includes(raw as CurrencyCode))
-    return raw as CurrencyCode;
-  return "RUB";
+  if (raw && VALID_CURRENCIES.includes(raw as CurrencyCode)) return raw as CurrencyCode;
+  return 'RUB';
 }
 
 export async function setCurrency(currency: CurrencyCode): Promise<void> {
   await AsyncStorage.setItem(CURRENCY_KEY, currency);
 }
 
-export type { AppLanguage } from "./language";
-export { getAppLanguage, setAppLanguage } from "./language";
+export type { AppLanguage } from './language';
+export { getAppLanguage, setAppLanguage } from './language';
 
 /** Первый запуск: при true показываем «Сегодня», при false — открываем вкладку «Настройки» как превью возможностей */
 export async function getHasCompletedFirstLaunch(): Promise<boolean> {
   const raw = await AsyncStorage.getItem(FIRST_LAUNCH_DONE_KEY);
-  return raw === "true";
+  return raw === 'true';
 }
 
 export async function setHasCompletedFirstLaunch(): Promise<void> {
-  await AsyncStorage.setItem(FIRST_LAUNCH_DONE_KEY, "true");
+  await AsyncStorage.setItem(FIRST_LAUNCH_DONE_KEY, 'true');
 }
 
 export async function getHasSeenOnboarding(): Promise<boolean> {
   const raw = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
-  return raw === "true";
+  return raw === 'true';
 }
 
 export async function setHasSeenOnboarding(): Promise<void> {
-  await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "true");
+  await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, 'true');
 }
 
 // Рассчитывает смертельную дозу в единицах на основе веса и пола
 export function calculateLethalDose(weight: number, gender: Gender): number {
   // Для женщин и genderless: примерно 0.3 единицы на кг веса
   // Для мужчин: примерно 0.4 единицы на кг веса
-  const multiplier = gender === "male" ? 0.4 : 0.3;
+  const multiplier = gender === 'male' ? 0.4 : 0.3;
   return Math.round(weight * multiplier * 10) / 10; // Округляем до 1 знака
 }
 
@@ -446,41 +422,37 @@ export function calculateLethalDose(weight: number, gender: Gender): number {
 export async function getLethalDose(): Promise<number> {
   const weight = await getUserWeight();
   const gender = await getUserGender();
-
+  
   // Дефолт: genderless 50кг (используем показатели как у женского)
   const defaultWeight = 50;
-  const defaultGender: Gender = "genderless";
-
+  const defaultGender: Gender = 'genderless';
+  
   const finalWeight = weight || defaultWeight;
   const finalGender = gender || defaultGender;
-
+  
   return calculateLethalDose(finalWeight, finalGender);
 }
 
 // Рассчитывает рекомендованную дневную норму на основе веса, пола и возраста
-export function calculateRecommendedDailyLimit(
-  weight: number,
-  gender: Gender,
-  age: number | null,
-): number {
+export function calculateRecommendedDailyLimit(weight: number, gender: Gender, age: number | null): number {
   // Базовая безопасная норма: 20г чистого спирта = 2 стандартные единицы
   // Для мужчин можно чуть больше, для женщин меньше
   // С возрастом норма снижается
-
+  
   let baseLimit = 2.0; // стандартные единицы
-
+  
   // Корректировка по полу
-  if (gender === "male") {
+  if (gender === 'male') {
     baseLimit = 2.5; // Мужчины: 25г чистого спирта
   } else {
     baseLimit = 1.5; // Женщины и другие: 15г чистого спирта
   }
-
+  
   // Корректировка по весу (если вес сильно отличается от среднего)
-  const averageWeight = gender === "male" ? 80 : 65;
+  const averageWeight = gender === 'male' ? 80 : 65;
   const weightFactor = weight / averageWeight;
   baseLimit *= Math.max(0.7, Math.min(1.3, weightFactor)); // Ограничиваем коэффициент
-
+  
   // Корректировка по возрасту
   if (age !== null) {
     if (age < 25) {
@@ -491,7 +463,7 @@ export function calculateRecommendedDailyLimit(
       baseLimit *= 0.7; // Для очень пожилых - значительно меньше
     }
   }
-
+  
   // Округляем до 0.1
   return Math.round(baseLimit * 10) / 10;
 }
@@ -502,20 +474,20 @@ export async function getRecommendedDailyLimit(): Promise<number> {
   const gender = await getUserGender();
   const birthDate = await getBirthDate();
   const age = calculateAgeFromDate(birthDate);
-
+  
   // Дефолт: 50кг, genderless, без возраста
   const defaultWeight = 50;
-  const defaultGender: Gender = "genderless";
-
+  const defaultGender: Gender = 'genderless';
+  
   const finalWeight = weight || defaultWeight;
   const finalGender = gender || defaultGender;
-
+  
   return calculateRecommendedDailyLimit(finalWeight, finalGender, age);
 }
 
 export async function clearAllData(): Promise<void> {
-  await AsyncStorage.removeItem("drinks_entries_v1");
-  await AsyncStorage.removeItem("user_presets_v1");
+  await AsyncStorage.removeItem('drinks_entries_v1');
+  await AsyncStorage.removeItem('user_presets_v1');
   await AsyncStorage.removeItem(DAILY_GOAL_KEY);
   await AsyncStorage.removeItem(USER_WEIGHT_KEY);
   await AsyncStorage.removeItem(USER_GENDER_KEY);
@@ -524,16 +496,16 @@ export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem(ACHIEVEMENTS_KEY);
   await AsyncStorage.removeItem(APP_START_DATE_KEY);
   await AsyncStorage.removeItem(CURRENCY_KEY);
-  await AsyncStorage.removeItem("notif_milestones_sent_v1");
-  await AsyncStorage.removeItem("notif_trend_week_cooldown_v1");
-  await AsyncStorage.removeItem("notif_trend_month_cooldown_v1");
-  await AsyncStorage.removeItem("calendar_labels_v1");
-  await AsyncStorage.removeItem("calendar_labels_v2");
-  await AsyncStorage.removeItem("calendar_labels_v3");
+  await AsyncStorage.removeItem('notif_milestones_sent_v1');
+  await AsyncStorage.removeItem('notif_trend_week_cooldown_v1');
+  await AsyncStorage.removeItem('notif_trend_month_cooldown_v1');
+  await AsyncStorage.removeItem('calendar_labels_v1');
+  await AsyncStorage.removeItem('calendar_labels_v2');
+  await AsyncStorage.removeItem('calendar_labels_v3');
 }
 
 // Достижения
-const ACHIEVEMENTS_KEY = "user_achievements";
+const ACHIEVEMENTS_KEY = 'user_achievements';
 
 export interface Achievement {
   id: string;
@@ -544,51 +516,16 @@ export interface Achievement {
 }
 
 /** Достижения, которые больше не используются — вычищаем из сохранённых данных. */
-const RETIRED_ACHIEVEMENT_IDS = new Set(["first_day"]);
+const RETIRED_ACHIEVEMENT_IDS = new Set(['first_day']);
 
 export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
-  {
-    id: "three_days",
-    title: "Три дня",
-    description: "3 дня подряд без алкоголя",
-    icon: "star-half-full",
-  },
-  {
-    id: "week",
-    title: "Неделя",
-    description: "7 дней подряд без алкоголя",
-    icon: "trophy",
-  },
-  {
-    id: "two_weeks",
-    title: "Две недели",
-    description: "14 дней подряд без алкоголя",
-    icon: "trophy",
-  },
-  {
-    id: "month",
-    title: "Месяц",
-    description: "30 дней подряд без алкоголя",
-    icon: "medal",
-  },
-  {
-    id: "three_months",
-    title: "Три месяца",
-    description: "90 дней подряд без алкоголя",
-    icon: "medal",
-  },
-  {
-    id: "half_year",
-    title: "Полгода",
-    description: "180 дней подряд без алкоголя",
-    icon: "crown",
-  },
-  {
-    id: "year",
-    title: "Год",
-    description: "365 дней подряд без алкоголя",
-    icon: "crown",
-  },
+  { id: 'three_days', title: 'Три дня', description: '3 дня подряд без алкоголя', icon: 'star-half-full' },
+  { id: 'week', title: 'Неделя', description: '7 дней подряд без алкоголя', icon: 'trophy' },
+  { id: 'two_weeks', title: 'Две недели', description: '14 дней подряд без алкоголя', icon: 'trophy' },
+  { id: 'month', title: 'Месяц', description: '30 дней подряд без алкоголя', icon: 'medal' },
+  { id: 'three_months', title: 'Три месяца', description: '90 дней подряд без алкоголя', icon: 'medal' },
+  { id: 'half_year', title: 'Полгода', description: '180 дней подряд без алкоголя', icon: 'crown' },
+  { id: 'year', title: 'Год', description: '365 дней подряд без алкоголя', icon: 'crown' },
 ];
 
 export async function getAchievements(): Promise<Achievement[]> {
@@ -608,12 +545,10 @@ export async function getAchievements(): Promise<Achievement[]> {
 
 export async function unlockAchievement(achievementId: string): Promise<void> {
   const achievements = await getAchievements();
-  const exists = achievements.find((a) => a.id === achievementId);
+  const exists = achievements.find(a => a.id === achievementId);
   if (exists) return;
 
-  const definition = ACHIEVEMENT_DEFINITIONS.find(
-    (a) => a.id === achievementId,
-  );
+  const definition = ACHIEVEMENT_DEFINITIONS.find(a => a.id === achievementId);
   if (!definition) return;
 
   const newAchievement: Achievement = {
@@ -625,41 +560,36 @@ export async function unlockAchievement(achievementId: string): Promise<void> {
   await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(achievements));
 }
 
-export async function checkAndUnlockAchievements(
-  currentStreak: number,
-  hasAnyDrinks: boolean = true,
-): Promise<Achievement[]> {
+export async function checkAndUnlockAchievements(currentStreak: number, hasAnyDrinks: boolean = true): Promise<Achievement[]> {
   const newlyUnlocked: Achievement[] = [];
-
+  
   // Не выдаем достижения, если нет записей о напитках
   if (!hasAnyDrinks || currentStreak <= 0) {
     return newlyUnlocked;
   }
-
+  
   const thresholds = [
-    { days: 3, id: "three_days" },
-    { days: 7, id: "week" },
-    { days: 14, id: "two_weeks" },
-    { days: 30, id: "month" },
-    { days: 90, id: "three_months" },
-    { days: 180, id: "half_year" },
-    { days: 365, id: "year" },
+    { days: 3, id: 'three_days' },
+    { days: 7, id: 'week' },
+    { days: 14, id: 'two_weeks' },
+    { days: 30, id: 'month' },
+    { days: 90, id: 'three_months' },
+    { days: 180, id: 'half_year' },
+    { days: 365, id: 'year' },
   ];
 
   const achievements = await getAchievements();
-
+  
   for (const { days, id } of thresholds) {
-    if (currentStreak >= days && !achievements.find((a) => a.id === id)) {
+    if (currentStreak >= days && !achievements.find(a => a.id === id)) {
       await unlockAchievement(id);
-      const definition = ACHIEVEMENT_DEFINITIONS.find((a) => a.id === id);
+      const definition = ACHIEVEMENT_DEFINITIONS.find(a => a.id === id);
       if (definition) {
-        newlyUnlocked.push({
-          ...definition,
-          unlockedAt: new Date().toISOString(),
-        });
+        newlyUnlocked.push({ ...definition, unlockedAt: new Date().toISOString() });
       }
     }
   }
 
   return newlyUnlocked;
 }
+

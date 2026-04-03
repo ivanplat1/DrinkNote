@@ -1,65 +1,21 @@
-import React, { useCallback, useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  Platform,
-  Share,
-  Modal,
-  KeyboardAvoidingView,
-} from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import {
-  MaterialIcons,
-  MaterialCommunityIcons,
-  FontAwesome6,
-} from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import * as DocumentPicker from "expo-document-picker";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  useSharedValue,
-  withTiming,
-  runOnJS,
-  useAnimatedStyle,
-} from "react-native-reanimated";
-import {
-  getDailyGoal,
-  setDailyGoal,
-  exportData,
-  importData,
-  clearAllData,
-  getUserWeight,
-  setUserWeight,
-  getUserGender,
-  setUserGender,
-  Gender,
-  getLethalDose,
-  getBirthDate,
-  setBirthDate,
-  calculateAgeFromDate,
-  getRecommendedDailyLimit,
-  CurrencyCode,
-} from "../storage/settings";
-import { colors as defaultColors } from "../theme/colors";
-import { useTheme } from "../theme/ThemeContext";
-import { useCurrency } from "../theme/CurrencyContext";
-import { ThemeName } from "../theme/themes";
-import { CURRENCY_LIST, CURRENCY_SYMBOLS } from "../utils/currency";
-import {
-  isPremiumUser,
-  enableDevPremium,
-  disableDevPremium,
-} from "../storage/premium";
-import { getStreakGoal, setStreakGoal } from "../storage/streakGoal";
-import { useI18n } from "../i18n/I18nContext";
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, withTiming, runOnJS, useAnimatedStyle } from 'react-native-reanimated';
+import { getDailyGoal, setDailyGoal, exportData, importData, clearAllData, getUserWeight, setUserWeight, getUserGender, setUserGender, Gender, getLethalDose, getBirthDate, setBirthDate, calculateAgeFromDate, getRecommendedDailyLimit, CurrencyCode } from '../storage/settings';
+import { colors as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { useCurrency } from '../theme/CurrencyContext';
+import { ThemeName } from '../theme/themes';
+import { CURRENCY_LIST, CURRENCY_SYMBOLS } from '../utils/currency';
+import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
+import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
+import { useI18n } from '../i18n/I18nContext';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -67,27 +23,25 @@ export default function SettingsScreen() {
   const { themeName, setTheme, colors } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const { t, tf, language, setLanguage, localeTag } = useI18n();
-  const [dailyGoal, setDailyGoalValue] = useState<string>("");
+  const [dailyGoal, setDailyGoalValue] = useState<string>('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [recommendedLimit, setRecommendedLimit] = useState<number>(2.0);
-  const [weight, setWeightValue] = useState<string>("");
+  const [weight, setWeightValue] = useState<string>('');
   const [isEditingWeight, setIsEditingWeight] = useState(false);
   const [gender, setGenderValue] = useState<Gender | null>(null);
-  const [birthDate, setBirthDateValue] = useState<string>("");
+  const [birthDate, setBirthDateValue] = useState<string>('');
   const [age, setAge] = useState<number | null>(null);
   const [lethalDose, setLethalDose] = useState<number>(15);
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
-  const [tempBirthDate, setTempBirthDate] = useState<Date>(
-    new Date(new Date().getFullYear() - 18, 0, 1),
-  );
+  const [tempBirthDate, setTempBirthDate] = useState<Date>(new Date(new Date().getFullYear() - 18, 0, 1));
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
-  const [importText, setImportText] = useState("");
+  const [importText, setImportText] = useState('');
   const [isPremium, setIsPremium] = useState(false);
   const [streakGoal, setStreakGoalValue] = useState<number | null>(null);
   const [showStreakGoalModal, setShowStreakGoalModal] = useState(false);
-  const [customStreakGoalInput, setCustomStreakGoalInput] = useState("");
+  const [customStreakGoalInput, setCustomStreakGoalInput] = useState('');
   const importModalTranslateY = useSharedValue(0);
 
   const loadStreakGoal = useCallback(async () => {
@@ -99,47 +53,45 @@ export default function SettingsScreen() {
     (newGoal: number | null) => {
       if (newGoal === null) {
         Alert.alert(
-          t("settings.streakResetTitle"),
-          tf("settings.streakResetBody", {
-            days: `${streakGoal} ${t("settings.daysShort")}`,
-          }),
+          t('settings.streakResetTitle'),
+          tf('settings.streakResetBody', { days: `${streakGoal} ${t('settings.daysShort')}` }),
           [
-            { text: t("common.no"), style: "cancel" },
+            { text: t('common.no'), style: 'cancel' },
             {
-              text: t("settings.reset"),
-              style: "destructive",
+              text: t('settings.reset'),
+              style: 'destructive',
               onPress: async () => {
                 await setStreakGoal(null);
                 await loadStreakGoal();
               },
             },
-          ],
+          ]
         );
         return;
       }
       if (streakGoal != null) {
         Alert.alert(
-          t("settings.streakReplaceTitle"),
-          tf("settings.streakReplaceBody", {
-            current: `${streakGoal} ${t("settings.daysShort")}`,
-            next: `${newGoal} ${t("settings.daysShort")}`,
+          t('settings.streakReplaceTitle'),
+          tf('settings.streakReplaceBody', {
+            current: `${streakGoal} ${t('settings.daysShort')}`,
+            next: `${newGoal} ${t('settings.daysShort')}`,
           }),
           [
-            { text: t("common.no"), style: "cancel" },
+            { text: t('common.no'), style: 'cancel' },
             {
-              text: t("settings.replace"),
+              text: t('settings.replace'),
               onPress: async () => {
                 await setStreakGoal(newGoal);
                 await loadStreakGoal();
               },
             },
-          ],
+          ]
         );
         return;
       }
       setStreakGoal(newGoal).then(loadStreakGoal);
     },
-    [streakGoal, loadStreakGoal],
+    [streakGoal, loadStreakGoal]
   );
 
   const updateRecommendation = useCallback(async () => {
@@ -149,22 +101,22 @@ export default function SettingsScreen() {
 
   const loadSettings = useCallback(async () => {
     const goal = await getDailyGoal();
-    setDailyGoalValue(goal !== null ? goal.toString() : "");
-
+    setDailyGoalValue(goal !== null ? goal.toString() : '');
+    
     const userWeight = await getUserWeight();
-    setWeightValue(userWeight !== null ? userWeight.toString() : "");
-
+    setWeightValue(userWeight !== null ? userWeight.toString() : '');
+    
     const userGender = await getUserGender();
     setGenderValue(userGender);
-
+    
     const userBirthDate = await getBirthDate();
-    setBirthDateValue(userBirthDate || "");
+    setBirthDateValue(userBirthDate || '');
     const calculatedAge = calculateAgeFromDate(userBirthDate);
     setAge(calculatedAge);
-
+    
     const lethal = await getLethalDose();
     setLethalDose(lethal);
-
+    
     // Загружаем рекомендацию
     await updateRecommendation();
   }, [updateRecommendation]);
@@ -174,7 +126,7 @@ export default function SettingsScreen() {
       loadSettings();
       checkPremiumStatus();
       loadStreakGoal();
-    }, [loadSettings, loadStreakGoal]),
+    }, [loadSettings, loadStreakGoal])
   );
 
   const checkPremiumStatus = async () => {
@@ -183,14 +135,14 @@ export default function SettingsScreen() {
   };
 
   const handleSaveGoal = async () => {
-    const value = parseFloat(dailyGoal.replace(",", "."));
+    const value = parseFloat(dailyGoal.replace(',', '.'));
     if (isNaN(value) || value < 0) {
-      Alert.alert(t("common.error"), t("settings.saveGoalError"));
+      Alert.alert(t('common.error'), t('settings.saveGoalError'));
       return;
     }
     await setDailyGoal(value);
     setIsEditingGoal(false);
-    Alert.alert(t("settings.goalSavedTitle"), t("settings.goalSavedBody"));
+    Alert.alert(t('settings.goalSavedTitle'), t('settings.goalSavedBody'));
   };
 
   const handleSaveWeight = async () => {
@@ -204,9 +156,9 @@ export default function SettingsScreen() {
       loadSettings();
       return;
     }
-    const value = parseFloat(trimmed.replace(",", "."));
+    const value = parseFloat(trimmed.replace(',', '.'));
     if (isNaN(value) || value <= 0 || value > 300) {
-      Alert.alert(t("common.error"), t("settings.weightError"));
+      Alert.alert(t('common.error'), t('settings.weightError'));
       return;
     }
     await setUserWeight(value);
@@ -225,20 +177,21 @@ export default function SettingsScreen() {
     await updateRecommendation();
   };
 
+
   const handleExport = async () => {
     try {
       const data = await exportData();
       const fileName = `drinknote_export_${new Date().toISOString().slice(0, 10)}.json`;
-
-      if (Platform.OS === "web") {
-        const blob = new Blob([data], { type: "application/json" });
+      
+      if (Platform.OS === 'web') {
+        const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
         link.click();
         URL.revokeObjectURL(url);
-        Alert.alert(t("settings.exportTitle"), t("settings.exportDone"));
+        Alert.alert(t('settings.exportTitle'), t('settings.exportDone'));
       } else {
         await Share.share({
           message: data,
@@ -246,52 +199,49 @@ export default function SettingsScreen() {
         });
       }
     } catch (error) {
-      Alert.alert(t("common.error"), t("settings.exportError"));
+      Alert.alert(t('common.error'), t('settings.exportError'));
     }
   };
 
   const handleImport = async (merge: boolean) => {
     if (!importText.trim()) {
-      Alert.alert(t("common.error"), t("settings.importPasteError"));
+      Alert.alert(t('common.error'), t('settings.importPasteError'));
       return;
     }
 
     try {
       const result = await importData(importText, merge);
-
+      
       if (result.success) {
         Alert.alert(
-          t("settings.importDoneTitle"),
-          tf("settings.importDoneBody", { count: result.drinksCount }),
+          t('settings.importDoneTitle'),
+          tf('settings.importDoneBody', { count: result.drinksCount }),
           [
             {
-              text: t("common.ok"),
+              text: t('common.ok'),
               onPress: () => {
                 setShowImportModal(false);
-                setImportText("");
+                setImportText('');
                 loadSettings();
               },
             },
-          ],
+          ]
         );
       } else {
-        Alert.alert(
-          t("settings.importErrorTitle"),
-          result.error || t("settings.importError"),
-        );
+        Alert.alert(t('settings.importErrorTitle'), result.error || t('settings.importError'));
       }
     } catch (error) {
-      Alert.alert(t("common.error"), t("settings.importError"));
+      Alert.alert(t('common.error'), t('settings.importError'));
     }
   };
 
   const handlePickFile = async () => {
     try {
-      if (Platform.OS === "web") {
+      if (Platform.OS === 'web') {
         // Для веба используем скрытый input file
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json,.txt,application/json,text/plain";
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,.txt,application/json,text/plain';
         input.onchange = async (e) => {
           const file = (e.target as HTMLInputElement).files?.[0];
           if (file) {
@@ -304,10 +254,10 @@ export default function SettingsScreen() {
         // Для мобильных используем expo-document-picker
         const result = await DocumentPicker.getDocumentAsync({
           // Google Drive и некоторые файловые менеджеры часто отдают JSON как text/plain/.txt.
-          type: ["application/json", "text/plain", "application/octet-stream"],
+          type: ['application/json', 'text/plain', 'application/octet-stream'],
           copyToCacheDirectory: true,
         });
-
+        
         if (!result.canceled && result.assets && result.assets[0]) {
           const fileUri = result.assets[0].uri;
           try {
@@ -316,7 +266,7 @@ export default function SettingsScreen() {
             setImportText(text);
           } catch (fetchError) {
             // Если fetch не работает, попробуем прочитать через FileReader
-            Alert.alert(t("common.error"), t("settings.importReadFileError"));
+            Alert.alert(t('common.error'), t('settings.importReadFileError'));
           }
         }
       }
@@ -325,902 +275,466 @@ export default function SettingsScreen() {
         // Пользователь отменил выбор файла
         return;
       }
-      Alert.alert(t("common.error"), t("settings.pickFileError"));
+      Alert.alert(t('common.error'), t('settings.pickFileError'));
     }
   };
 
   const closeImportModal = useCallback(() => {
     setShowImportModal(false);
-    setImportText("");
+    setImportText('');
     importModalTranslateY.value = 0;
   }, []);
 
   const handleClearData = () => {
-    Alert.alert(t("settings.clearDataTitle"), t("settings.clearDataBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("common.delete"),
-        style: "destructive",
-        onPress: async () => {
-          await clearAllData();
-          setDailyGoalValue("");
-          Alert.alert(t("settings.clearedTitle"), t("settings.clearedBody"));
+    Alert.alert(
+      t('settings.clearDataTitle'),
+      t('settings.clearDataBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllData();
+            setDailyGoalValue('');
+            Alert.alert(t('settings.clearedTitle'), t('settings.clearedBody'));
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={["left", "right"]}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <Animated.ScrollView
-          keyboardShouldPersistTaps="handled"
-          style={[styles.scrollView, { backgroundColor: colors.background }]}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { backgroundColor: colors.background },
-            { paddingBottom: 280 },
-          ]}
-          removeClippedSubviews={Platform.OS === "android"}
-          directionalLockEnabled
-          scrollEventThrottle={32}
-        >
-          {/* Дневная цель */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("settings.dailyGoal")}
-            </Text>
-            <Text
-              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
-            >
-              {t("settings.dailyGoalSubtitle1")}
-            </Text>
-            <Text
-              style={[
-                styles.sectionSubtitle,
-                { color: colors.textSecondary, marginTop: 4 },
-              ]}
-            >
-              {t("settings.unitHint")}
-            </Text>
-            <View
-              style={[
-                styles.goalContainer,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-            >
-              {/* Левая часть - Своё значение */}
-              <View style={styles.goalColumn}>
-                <Text
-                  style={[
-                    styles.goalColumnLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("settings.yourValue")}
-                </Text>
-                {isEditingGoal ? (
-                  <View style={styles.goalInputRow}>
-                    <TextInput
-                      style={[
-                        styles.goalInput,
-                        {
-                          color: colors.text,
-                          backgroundColor: colors.backgroundSecondary,
-                        },
-                      ]}
-                      value={dailyGoal}
-                      onChangeText={(text) => {
-                        const normalized = text
-                          .replace(",", ".")
-                          .replace(/[^0-9.]/g, "");
-                        setDailyGoalValue(normalized);
-                      }}
-                      placeholder={`${recommendedLimit.toFixed(1)} ${t("common.unitsShort")}`}
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="decimal-pad"
-                      returnKeyType="done"
-                      onSubmitEditing={handleSaveGoal}
-                      onBlur={handleSaveGoal}
-                      autoFocus
-                    />
-                    <Text
-                      style={[styles.goalUnit, { color: colors.textSecondary }]}
-                    >
-                      {t("common.unitsShort")}
-                    </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.goalDisplayRow}
-                    onPress={() => setIsEditingGoal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.goalValue,
-                        {
-                          color: dailyGoal ? colors.text : colors.textTertiary,
-                        },
-                      ]}
-                    >
-                      {dailyGoal
-                        ? `${parseFloat(dailyGoal.replace(",", ".")).toFixed(1)} ${t("common.unitsShort")}`
-                        : `${recommendedLimit.toFixed(1)} ${t("common.unitsShort")}`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Разделитель */}
-              <View
-                style={[styles.goalDivider, { backgroundColor: colors.border }]}
-              />
-
-              {/* Правая часть - Условная норма */}
-              <View style={styles.goalColumn}>
-                <Text
-                  style={[
-                    styles.goalColumnLabel,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {t("settings.conditionalNorm")}
-                </Text>
-                <View
-                  style={[
-                    styles.goalDisplayRow,
-                    { flexDirection: "row", alignItems: "center", gap: 2 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.goalValue,
-                      styles.goalRecommended,
-                      { color: colors.primary },
-                    ]}
-                  >
-                    {recommendedLimit.toFixed(1)} {t("common.unitsShort")}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      Alert.alert(
-                        t("settings.howCalculatedTitle"),
-                        t("settings.howCalculatedBody"),
-                        [{ text: t("common.ok"), style: "default" }],
-                      );
-                    }}
-                    style={{ padding: 4 }}
-                  >
-                    <MaterialIcons
-                      name="info-outline"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Параметры профиля */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("settings.profileTitle")}
-            </Text>
-            <Text
-              style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
-            >
-              {t("settings.profileSubtitle")}
-            </Text>
-            <View
-              style={[
-                styles.profileContainer,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-            >
-              {/* Вес */}
-              <View style={styles.profileRow}>
-                <Text style={[styles.profileLabel, { color: colors.text }]}>
-                  {t("settings.weight")}:
-                </Text>
-                <View style={styles.profileInputRow}>
-                  <TouchableOpacity
-                    style={styles.profileArrowButton}
-                    onPress={async () => {
-                      const current = weight
-                        ? parseFloat(weight.replace(",", "."))
-                        : 50;
-                      const newValue = Math.max(1, current - 1);
-                      setWeightValue(newValue.toString());
-                      await setUserWeight(newValue);
-                      const lethal = await getLethalDose();
-                      setLethalDose(lethal);
-                      await updateRecommendation();
-                    }}
-                  >
-                    <MaterialIcons
-                      name="chevron-left"
-                      size={24}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <Animated.ScrollView keyboardShouldPersistTaps="handled" style={[styles.scrollView, { backgroundColor: colors.background }]} contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }, { paddingBottom: 280 }]} removeClippedSubviews={Platform.OS === 'android'} directionalLockEnabled scrollEventThrottle={32} >
+        {/* Дневная цель */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.dailyGoal')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.dailyGoalSubtitle1')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, marginTop: 4 }]}>{t('settings.unitHint')}</Text>
+          <View style={[styles.goalContainer, { backgroundColor: colors.backgroundCard }]}>
+            {/* Левая часть - Своё значение */}
+            <View style={styles.goalColumn}>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>{t('settings.yourValue')}</Text>
+              {isEditingGoal ? (
+                <View style={styles.goalInputRow}>
                   <TextInput
-                    style={[
-                      styles.profileInput,
-                      {
-                        textAlign: "right",
-                        color: colors.text,
-                        backgroundColor: colors.backgroundSecondary,
-                      },
-                    ]}
-                    value={weight}
+                    style={[styles.goalInput, { color: colors.text, backgroundColor: colors.backgroundInput }]}
+                    value={dailyGoal}
                     onChangeText={(text) => {
-                      const normalized = text
-                        .replace(",", ".")
-                        .replace(/[^0-9.]/g, "");
-                      setWeightValue(normalized);
+                      const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
+                      setDailyGoalValue(normalized);
                     }}
-                    placeholder="50"
+                    placeholder={`${recommendedLimit.toFixed(1)} ${t('common.unitsShort')}`}
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
-                    onSubmitEditing={handleSaveWeight}
-                    onBlur={handleSaveWeight}
+                    onSubmitEditing={handleSaveGoal}
+                    onBlur={handleSaveGoal}
+                    autoFocus
                   />
-                  <Text
-                    style={[
-                      styles.profileUnit,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    kg
+                  <Text style={[styles.goalUnit, { color: colors.textSecondary }]}>{t('common.unitsShort')}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.goalDisplayRow}
+                  onPress={() => setIsEditingGoal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.goalValue, { color: dailyGoal ? colors.text : colors.textTertiary }]}>
+                    {dailyGoal
+                      ? `${parseFloat(dailyGoal.replace(',', '.')).toFixed(1)} ${t('common.unitsShort')}`
+                      : `${recommendedLimit.toFixed(1)} ${t('common.unitsShort')}`}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.profileArrowButton}
-                    onPress={async () => {
-                      const current = weight
-                        ? parseFloat(weight.replace(",", "."))
-                        : 50;
-                      const newValue = Math.min(300, current + 1);
-                      setWeightValue(newValue.toString());
-                      await setUserWeight(newValue);
-                      const lethal = await getLethalDose();
-                      setLethalDose(lethal);
-                      await updateRecommendation();
-                    }}
-                  >
-                    <MaterialIcons
-                      name="chevron-right"
-                      size={24}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Пол */}
-              <View style={styles.profileRow}>
-                <Text style={[styles.profileLabel, { color: colors.text }]}>
-                  {t("settings.gender")}:
-                </Text>
-                <View style={styles.profileInputRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.profileGenderIconButton,
-                      gender === "female" && styles.profileGenderButtonActive,
-                      {
-                        backgroundColor:
-                          gender === "female"
-                            ? colors.primaryDark
-                            : colors.backgroundSecondary,
-                        borderColor:
-                          gender === "female" ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => handleSaveGender("female")}
-                  >
-                    <MaterialCommunityIcons
-                      name="gender-female"
-                      size={24}
-                      color={
-                        gender === "female" ? "#fff" : colors.textSecondary
-                      }
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.profileGenderIconButton,
-                      gender === "male" && styles.profileGenderButtonActive,
-                      {
-                        backgroundColor:
-                          gender === "male"
-                            ? colors.primaryDark
-                            : colors.backgroundSecondary,
-                        borderColor:
-                          gender === "male" ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => handleSaveGender("male")}
-                  >
-                    <MaterialCommunityIcons
-                      name="gender-male"
-                      size={24}
-                      color={gender === "male" ? "#fff" : colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.profileGenderIconButton,
-                      gender === "genderless" &&
-                        styles.profileGenderButtonActive,
-                      {
-                        backgroundColor:
-                          gender === "genderless"
-                            ? colors.primaryDark
-                            : colors.backgroundSecondary,
-                        borderColor:
-                          gender === "genderless"
-                            ? colors.primary
-                            : colors.border,
-                      },
-                    ]}
-                    onPress={() => handleSaveGender("genderless")}
-                  >
-                    <FontAwesome6
-                      name="genderless"
-                      size={24}
-                      color={
-                        gender === "genderless" ? "#fff" : colors.textSecondary
-                      }
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Дата рождения */}
-              <View style={styles.profileRow}>
-                <Text style={[styles.profileLabel, { color: colors.text }]}>
-                  {t("settings.birthDate")}:
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Разделитель */}
+            <View style={[styles.goalDivider, { backgroundColor: colors.border }]} />
+            
+            {/* Правая часть - Условная норма */}
+            <View style={styles.goalColumn}>
+              <Text style={[styles.goalColumnLabel, { color: colors.textSecondary }]}>{t('settings.conditionalNorm')}</Text>
+              <View style={[styles.goalDisplayRow, { flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
+                <Text style={[styles.goalValue, styles.goalRecommended, { color: colors.primary }]}>
+                  {recommendedLimit.toFixed(1)} {t('common.unitsShort')}
                 </Text>
                 <TouchableOpacity
-                  style={{ flex: 1, alignItems: "flex-end" }}
                   onPress={() => {
-                    setTempBirthDate(
-                      birthDate
-                        ? new Date(birthDate)
-                        : new Date(new Date().getFullYear() - 18, 0, 1),
+                    Alert.alert(
+                      t('settings.howCalculatedTitle'),
+                      t('settings.howCalculatedBody'),
+                      [{ text: t('common.ok'), style: 'default' }]
                     );
-                    setShowBirthDatePicker(true);
                   }}
+                  style={{ padding: 4 }}
                 >
-                  <Text
-                    style={[
-                      styles.profileValue,
-                      !birthDate && styles.valuePlaceholder,
-                      {
-                        color: birthDate
-                          ? colors.textSecondary
-                          : colors.textTertiary,
-                      },
-                    ]}
-                  >
-                    {birthDate
-                      ? new Date(birthDate).toLocaleDateString(localeTag, {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      : t("settings.notSet")}
-                  </Text>
+                  <MaterialIcons name="info-outline" size={18} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+        </View>
 
-          {/* Премиум */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-              onPress={() => navigation.navigate("Premium" as never)}
+        {/* Параметры профиля */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.profileTitle')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.profileSubtitle')}</Text>
+          <View style={[styles.profileContainer, { backgroundColor: colors.backgroundCard }]}>
+            {/* Вес */}
+            <View style={styles.profileRow}>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.weight')}:</Text>
+              <View style={styles.profileInputRow}>
+                <TouchableOpacity
+                  style={styles.profileArrowButton}
+                  onPress={async () => {
+                    const current = weight ? parseFloat(weight.replace(',', '.')) : 50;
+                    const newValue = Math.max(1, current - 1);
+                    setWeightValue(newValue.toString());
+                    await setUserWeight(newValue);
+                    const lethal = await getLethalDose();
+                    setLethalDose(lethal);
+                    await updateRecommendation();
+                  }}
+                >
+                  <MaterialIcons name="chevron-left" size={24} color={colors.primary} />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.profileInput, { textAlign: 'right', color: colors.text, backgroundColor: colors.backgroundInput }]}
+                  value={weight}
+                  onChangeText={(text) => {
+                    const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
+                    setWeightValue(normalized);
+                  }}
+                  placeholder="50"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveWeight}
+                  onBlur={handleSaveWeight}
+                />
+                <Text style={[styles.profileUnit, { color: colors.textSecondary }]}>kg</Text>
+                <TouchableOpacity
+                  style={styles.profileArrowButton}
+                  onPress={async () => {
+                    const current = weight ? parseFloat(weight.replace(',', '.')) : 50;
+                    const newValue = Math.min(300, current + 1);
+                    setWeightValue(newValue.toString());
+                    await setUserWeight(newValue);
+                    const lethal = await getLethalDose();
+                    setLethalDose(lethal);
+                    await updateRecommendation();
+                  }}
+                >
+                  <MaterialIcons name="chevron-right" size={24} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Пол */}
+            <View style={styles.profileRow}>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.gender')}:</Text>
+              <View style={styles.profileInputRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'female' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'female' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'female' ? colors.primary : colors.border,
+                    }
+                  ]}
+                  onPress={() => handleSaveGender('female')}
+                >
+                  <MaterialCommunityIcons name="gender-female" size={24} color={gender === 'female' ? '#fff' : colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'male' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'male' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'male' ? colors.primary : colors.border,
+                    }
+                  ]}
+                  onPress={() => handleSaveGender('male')}
+                >
+                  <MaterialCommunityIcons name="gender-male" size={24} color={gender === 'male' ? '#fff' : colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.profileGenderIconButton,
+                    gender === 'genderless' && styles.profileGenderButtonActive,
+                    {
+                      backgroundColor: gender === 'genderless' ? colors.primaryDark : colors.backgroundSecondary,
+                      borderColor: gender === 'genderless' ? colors.primary : colors.border,
+                    }
+                  ]}
+                  onPress={() => handleSaveGender('genderless')}
+                >
+                  <FontAwesome6 name="genderless" size={24} color={gender === 'genderless' ? '#fff' : colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Дата рождения */}
+            <View style={styles.profileRow}>
+              <Text style={[styles.profileLabel, { color: colors.text }]}>{t('settings.birthDate')}:</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'flex-end' }}
+                onPress={() => {
+                  setTempBirthDate(birthDate ? new Date(birthDate) : new Date(new Date().getFullYear() - 18, 0, 1));
+                  setShowBirthDatePicker(true);
+                }}
+              >
+                <Text style={[styles.profileValue, !birthDate && styles.valuePlaceholder, { color: birthDate ? colors.textSecondary : colors.textTertiary }]}>
+                  {birthDate ? new Date(birthDate).toLocaleDateString(localeTag, { year: 'numeric', month: 'long', day: 'numeric' }) : t('settings.notSet')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+
+        {/* Премиум */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} 
+            onPress={() => navigation.navigate('Premium' as never)}
+          >
+            <MaterialCommunityIcons name="crown" size={24} color={isPremium ? "#f4c430" : colors.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                {isPremium ? t('settings.premiumActive') : t('settings.premium')}
+              </Text>
+              {!isPremium && (
+                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>{t('settings.unlockAllFeatures')}</Text>
+              )}
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={[styles.actionButton, { marginTop: 8, opacity: 0.7 }]} 
+              onPress={async () => {
+                if (isPremium) {
+                  await disableDevPremium();
+                  await checkPremiumStatus();
+                  Alert.alert(t('settings.devModeTitle'), t('settings.premiumDisabledDev'));
+                } else {
+                  await enableDevPremium();
+                  await checkPremiumStatus();
+                  Alert.alert(t('settings.devModeTitle'), t('settings.premiumEnabledDev'));
+                }
+              }}
             >
-              <MaterialCommunityIcons
-                name="crown"
-                size={24}
-                color={isPremium ? "#f4c430" : colors.primary}
-              />
+              <MaterialCommunityIcons name="bug" size={24} color={colors.textSecondary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { fontSize: 14, color: colors.text }]}>
+                  {isPremium ? t('settings.disablePremiumDev') : t('settings.enablePremiumDev')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Цель по серии: премиум — активна, базовая — показать заблокированной */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.streakGoal')}</Text>
+          {isPremium ? (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+              onPress={() => {
+                setCustomStreakGoalInput(streakGoal != null ? String(streakGoal) : '');
+                setShowStreakGoalModal(true);
+              }}
+            >
+              <MaterialCommunityIcons name="target" size={24} color={colors.primary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                  {isPremium
-                    ? t("settings.premiumActive")
-                    : t("settings.premium")}
+                  {streakGoal != null ? `${streakGoal} ${t('settings.daysShort')}` : t('settings.streakNotSet')}
                 </Text>
-                {!isPremium && (
-                  <Text
-                    style={[
-                      styles.actionButtonSubtext,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("settings.unlockAllFeatures")}
-                  </Text>
-                )}
+                <Text style={[styles.actionButtonSubtext, { color: colors.textSecondary }]}>
+                  {t('settings.streakGoalDesc')}
+                </Text>
               </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={colors.textTertiary}
-              />
+              <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
             </TouchableOpacity>
-            {__DEV__ && (
-              <TouchableOpacity
-                style={[styles.actionButton, { marginTop: 8, opacity: 0.7 }]}
-                onPress={async () => {
-                  if (isPremium) {
-                    await disableDevPremium();
-                    await checkPremiumStatus();
-                    Alert.alert(
-                      t("settings.devModeTitle"),
-                      t("settings.premiumDisabledDev"),
-                    );
-                  } else {
-                    await enableDevPremium();
-                    await checkPremiumStatus();
-                    Alert.alert(
-                      t("settings.devModeTitle"),
-                      t("settings.premiumEnabledDev"),
-                    );
-                  }
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="bug"
-                  size={24}
-                  color={colors.textSecondary}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text
-                    style={[
-                      styles.actionButtonText,
-                      { fontSize: 14, color: colors.text },
-                    ]}
-                  >
-                    {isPremium
-                      ? t("settings.disablePremiumDev")
-                      : t("settings.enablePremiumDev")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Цель по серии: премиум — активна, базовая — показать заблокированной */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("settings.streakGoal")}
-            </Text>
-            {isPremium ? (
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  { backgroundColor: colors.backgroundCard },
-                ]}
-                onPress={() => {
-                  setCustomStreakGoalInput(
-                    streakGoal != null ? String(streakGoal) : "",
-                  );
-                  setShowStreakGoalModal(true);
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="target"
-                  size={24}
-                  color={colors.primary}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text
-                    style={[styles.actionButtonText, { color: colors.text }]}
-                  >
-                    {streakGoal != null
-                      ? `${streakGoal} ${t("settings.daysShort")}`
-                      : t("settings.streakNotSet")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.actionButtonSubtext,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("settings.streakGoalDesc")}
-                  </Text>
-                </View>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={24}
-                  color={colors.textTertiary}
-                />
-              </TouchableOpacity>
-            ) : (
-              <View
-                style={[
-                  styles.actionButton,
-                  { backgroundColor: colors.backgroundCard, opacity: 0.8 },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="target"
-                  size={24}
-                  color={colors.textTertiary}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text
-                    style={[
-                      styles.actionButtonText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("settings.availableInFullVersion")}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.actionButtonSubtext,
-                      { color: colors.textTertiary },
-                    ]}
-                  >
-                    {t("settings.streakGoalDesc")}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Модалка: своя цель по серии — по центру экрана */}
-          <Modal visible={showStreakGoalModal} transparent animationType="fade">
-            <TouchableOpacity
-              activeOpacity={1}
-              style={styles.modalOverlayCenter}
-              onPress={() => setShowStreakGoalModal(false)}
-            >
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "padding"}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 40}
-                style={styles.modalContentWrap}
-              >
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={(e) => e.stopPropagation()}
-                  style={[
-                    styles.modalContent,
-                    { backgroundColor: colors.backgroundCard },
-                  ]}
-                >
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>
-                    {t("settings.streakGoalTitle")}
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.modalInput,
-                      {
-                        backgroundColor: colors.backgroundSecondary,
-                        color: colors.text,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                    value={customStreakGoalInput}
-                    onChangeText={setCustomStreakGoalInput}
-                    placeholder={t("settings.enterDays")}
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="number-pad"
-                    maxLength={3}
-                  />
-                  <View
-                    style={{ flexDirection: "row", marginTop: 16, gap: 12 }}
-                  >
-                    {streakGoal != null && (
-                      <TouchableOpacity
-                        style={[
-                          styles.modalButton,
-                          { flex: 1, backgroundColor: colors.error },
-                        ]}
-                        onPress={() => {
-                          setShowStreakGoalModal(false);
-                          setCustomStreakGoalInput("");
-                          confirmStreakGoalChange(null);
-                        }}
-                      >
-                        <Text
-                          style={[styles.modalButtonText, { color: "#fff" }]}
-                        >
-                          {t("settings.reset")}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        { flex: 1, backgroundColor: colors.primary },
-                      ]}
-                      onPress={() => {
-                        const trimmed = customStreakGoalInput.trim();
-                        if (trimmed === "") {
-                          setShowStreakGoalModal(false);
-                          setCustomStreakGoalInput("");
-                          return;
-                        }
-                        const num = parseInt(trimmed, 10);
-                        if (isNaN(num) || num < 1 || num > 999) {
-                          Alert.alert(
-                            t("settings.errorTitle"),
-                            t("settings.enterNumberRange"),
-                          );
-                          return;
-                        }
-                        setShowStreakGoalModal(false);
-                        setCustomStreakGoalInput("");
-                        confirmStreakGoalChange(num);
-                      }}
-                    >
-                      <Text style={[styles.modalButtonText, { color: "#fff" }]}>
-                        {t("settings.save")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              </KeyboardAvoidingView>
-            </TouchableOpacity>
-          </Modal>
-
-          {/* Темы оформления (только для премиум) */}
-          {isPremium && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t("settings.themeTitle")}
-              </Text>
-              <View style={styles.themeContainer}>
-                {(
-                  [
-                    {
-                      id: "dark" as ThemeName,
-                      label: t("settings.themeNames.dark"),
-                      bg: "#0f172a",
-                      accent: "#6366f1",
-                    },
-                    {
-                      id: "light" as ThemeName,
-                      label: t("settings.themeNames.light"),
-                      bg: "#ffffff",
-                      accent: "#3b82f6",
-                    },
-                    {
-                      id: "sepia" as ThemeName,
-                      label: t("settings.themeNames.sepia"),
-                      bg: "#1c1917",
-                      accent: "#f59e0b",
-                    },
-                    {
-                      id: "nord" as ThemeName,
-                      label: t("settings.themeNames.nord"),
-                      bg: "#e5e9f0",
-                      accent: "#5e81ac",
-                    },
-                    {
-                      id: "darcula" as ThemeName,
-                      label: t("settings.themeNames.darcula"),
-                      bg: "#2b2b2b",
-                      accent: "#6a9955",
-                    },
-                    {
-                      id: "highContrast" as ThemeName,
-                      label: t("settings.themeNames.highContrast"),
-                      bg: "#fdf8f6",
-                      accent: "#db2777",
-                    },
-                  ] as const
-                ).map(({ id, label, bg, accent }) => (
-                  <TouchableOpacity
-                    key={id}
-                    style={[
-                      styles.themeButton,
-                      themeName === id && styles.themeButtonActive,
-                      {
-                        backgroundColor:
-                          themeName === id
-                            ? colors.backgroundCard
-                            : colors.backgroundSecondary,
-                        borderColor:
-                          themeName === id ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => setTheme(id)}
-                  >
-                    <View
-                      style={[styles.themePreview, { backgroundColor: bg }]}
-                    >
-                      <View
-                        style={[
-                          styles.themePreviewAccent,
-                          { backgroundColor: accent },
-                        ]}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.themeButtonText,
-                        themeName === id && styles.themeButtonTextActive,
-                        {
-                          color:
-                            themeName === id ? colors.primary : colors.text,
-                        },
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                    {themeName === id && (
-                      <MaterialIcons
-                        name="check"
-                        size={18}
-                        color={colors.primary}
-                        style={{ marginLeft: 6 }}
-                      />
-                    )}
-                  </TouchableOpacity>
-                ))}
+          ) : (
+            <View style={[styles.actionButton, { backgroundColor: colors.backgroundCard, opacity: 0.8 }]}>
+              <MaterialCommunityIcons name="target" size={24} color={colors.textTertiary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>{t('settings.availableInFullVersion')}</Text>
+                <Text style={[styles.actionButtonSubtext, { color: colors.textTertiary }]}>
+                  {t('settings.streakGoalDesc')}
+                </Text>
               </View>
             </View>
           )}
+        </View>
 
-          {/* Язык */}
+        {/* Модалка: своя цель по серии — по центру экрана */}
+        <Modal visible={showStreakGoalModal} transparent animationType="fade">
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalOverlayCenter}
+            onPress={() => setShowStreakGoalModal(false)}
+          >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40} style={styles.modalContentWrap}>
+              <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.modalContent, { backgroundColor: colors.backgroundCard }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.streakGoalTitle')}</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.backgroundInput, color: colors.text, borderColor: colors.border }]}
+                  value={customStreakGoalInput}
+                  onChangeText={setCustomStreakGoalInput}
+                  placeholder={t('settings.enterDays')}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
+                  {streakGoal != null && (
+                    <TouchableOpacity
+                      style={[styles.modalButton, { flex: 1, backgroundColor: colors.error }]}
+                      onPress={() => {
+                        setShowStreakGoalModal(false);
+                        setCustomStreakGoalInput('');
+                        confirmStreakGoalChange(null);
+                      }}
+                    >
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t('settings.reset')}</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.modalButton, { flex: 1, backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      const trimmed = customStreakGoalInput.trim();
+                      if (trimmed === '') {
+                        setShowStreakGoalModal(false);
+                        setCustomStreakGoalInput('');
+                        return;
+                      }
+                      const num = parseInt(trimmed, 10);
+                      if (isNaN(num) || num < 1 || num > 999) {
+                        Alert.alert(t('settings.errorTitle'), t('settings.enterNumberRange'));
+                        return;
+                      }
+                      setShowStreakGoalModal(false);
+                      setCustomStreakGoalInput('');
+                      confirmStreakGoalChange(num);
+                    }}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>{t('settings.save')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Темы оформления (только для премиум) */}
+        {isPremium && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("settings.language")}
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.themeTitle')}</Text>
+            <View style={styles.themeContainer}>
+              {(
+                [
+                  { id: 'dark' as ThemeName, label: t('settings.themeNames.dark'), bg: '#0f172a', accent: '#6366f1' },
+                  { id: 'light' as ThemeName, label: t('settings.themeNames.light'), bg: '#ffffff', accent: '#3b82f6' },
+                  { id: 'sepia' as ThemeName, label: t('settings.themeNames.sepia'), bg: '#1c1917', accent: '#f59e0b' },
+                  { id: 'nord' as ThemeName, label: t('settings.themeNames.nord'), bg: '#e5e9f0', accent: '#5e81ac' },
+                  { id: 'darcula' as ThemeName, label: t('settings.themeNames.darcula'), bg: '#2b2b2b', accent: '#6a9955' },
+                  { id: 'highContrast' as ThemeName, label: t('settings.themeNames.highContrast'), bg: '#fdf8f6', accent: '#db2777' },
+                ] as const
+              ).map(({ id, label, bg, accent }) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[
+                    styles.themeButton,
+                    themeName === id && styles.themeButtonActive,
+                    { backgroundColor: themeName === id ? colors.backgroundCard : colors.backgroundSecondary, borderColor: themeName === id ? colors.primary : colors.border }
+                  ]}
+                  onPress={() => setTheme(id)}
+                >
+                  <View style={[styles.themePreview, { backgroundColor: bg }]}>
+                    <View style={[styles.themePreviewAccent, { backgroundColor: accent }]} />
+                  </View>
+                  <Text style={[
+                    styles.themeButtonText,
+                    themeName === id && styles.themeButtonTextActive,
+                    { color: themeName === id ? colors.primary : colors.text }
+                  ]}>
+                    {label}
+                  </Text>
+                  {themeName === id && (
+                    <MaterialIcons name="check" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Язык */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.language')}</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+            onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
+              {language === 'en' ? t('settings.languageEn') : t('settings.languageRu')}
             </Text>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-              onPress={() => setShowLanguagePicker(true)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[styles.actionButtonText, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {language === "en"
-                  ? t("settings.languageEn")
-                  : t("settings.languageRu")}
-              </Text>
-              <MaterialIcons
-                name="keyboard-arrow-down"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
+            <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Валюта */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {t("settings.currency")}
+        {/* Валюта */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.currency')}</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+            onPress={() => setShowCurrencyPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionButtonText, { color: colors.text }]} numberOfLines={1}>
+              {t(`currency.${currency}`) ?? `${currency} (${CURRENCY_SYMBOLS[currency] ?? ''})`}
             </Text>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-              onPress={() => setShowCurrencyPicker(true)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[styles.actionButtonText, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {t(`currency.${currency}`) ??
-                  `${currency} (${CURRENCY_SYMBOLS[currency] ?? ""})`}
-              </Text>
-              <MaterialIcons
-                name="keyboard-arrow-down"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
+            <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Экспорт и импорт данных */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-              onPress={handleExport}
-            >
-              <MaterialIcons
-                name="file-download"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {t("settings.exportData")}
-              </Text>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-              onPress={() => setShowImportModal(true)}
-            >
-              <MaterialIcons
-                name="file-upload"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {t("settings.importData")}
-              </Text>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
+        {/* Экспорт и импорт данных */}
+        <View style={styles.section}>
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
+            <MaterialIcons name="file-download" size={24} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.exportData')}</Text>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={() => setShowImportModal(true)}>
+            <MaterialIcons name="file-upload" size={24} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.importData')}</Text>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Удаление данных */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.dangerButton,
-                {
-                  backgroundColor: colors.backgroundCard,
-                  borderColor: colors.error,
-                },
-              ]}
-              onPress={handleClearData}
-            >
-              <MaterialIcons
-                name="delete-forever"
-                size={24}
-                color={colors.error}
-              />
-              <Text
-                style={[
-                  styles.actionButtonText,
-                  styles.dangerButtonText,
-                  { color: colors.error },
-                ]}
-              >
-                {t("settings.deleteAllData")}
-              </Text>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
+        {/* Удаление данных */}
+        <View style={styles.section}>
+          <TouchableOpacity style={[styles.actionButton, styles.dangerButton, { backgroundColor: colors.backgroundCard, borderColor: colors.error }]} onPress={handleClearData}>
+            <MaterialIcons name="delete-forever" size={24} color={colors.error} />
+            <Text style={[styles.actionButtonText, styles.dangerButtonText, { color: colors.error }]}>{t('settings.deleteAllData')}</Text>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
         </Animated.ScrollView>
       </KeyboardAvoidingView>
 
       {/* DateTimePicker для даты рождения */}
-      {Platform.OS === "ios" ? (
+      {Platform.OS === 'ios' ? (
         <Modal
           visible={showBirthDatePicker}
           transparent
@@ -1233,37 +747,18 @@ export default function SettingsScreen() {
               activeOpacity={1}
               onPress={() => setShowBirthDatePicker(false)}
             />
-            <View
-              style={[
-                styles.datePickerModal,
-                { backgroundColor: colors.backgroundCard },
-              ]}
-            >
-              <View
-                style={[
-                  styles.datePickerHeader,
-                  { borderBottomColor: colors.border },
-                ]}
-              >
+            <View style={[styles.datePickerModal, { backgroundColor: colors.backgroundCard }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity
                   onPress={() => setShowBirthDatePicker(false)}
                   style={styles.datePickerButton}
                 >
-                  <Text
-                    style={[
-                      styles.datePickerCancelText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {t("common.cancel")}
-                  </Text>
+                  <Text style={[styles.datePickerCancelText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={[styles.datePickerTitle, { color: colors.text }]}>
-                  {t("settings.birthDate")}
-                </Text>
+                <Text style={[styles.datePickerTitle, { color: colors.text }]}>{t('settings.birthDate')}</Text>
                 <TouchableOpacity
                   onPress={async () => {
-                    const dateISO = tempBirthDate.toISOString().split("T")[0];
+                    const dateISO = tempBirthDate.toISOString().split('T')[0];
                     setBirthDateValue(dateISO);
                     await setBirthDate(dateISO);
                     const calculatedAge = calculateAgeFromDate(dateISO);
@@ -1275,14 +770,7 @@ export default function SettingsScreen() {
                   }}
                   style={styles.datePickerButton}
                 >
-                  <Text
-                    style={[
-                      styles.datePickerDoneText,
-                      { color: colors.primary },
-                    ]}
-                  >
-                    {t("common.done")}
-                  </Text>
+                  <Text style={[styles.datePickerDoneText, { color: colors.primary }]}>{t('common.done')}</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
@@ -1312,8 +800,8 @@ export default function SettingsScreen() {
             minimumDate={new Date(1900, 0, 1)}
             onChange={async (event, selectedDate) => {
               setShowBirthDatePicker(false);
-              if (event.type === "set" && selectedDate) {
-                const dateISO = selectedDate.toISOString().split("T")[0];
+              if (event.type === 'set' && selectedDate) {
+                const dateISO = selectedDate.toISOString().split('T')[0];
                 setBirthDateValue(dateISO);
                 await setBirthDate(dateISO);
                 const calculatedAge = calculateAgeFromDate(dateISO);
@@ -1335,7 +823,7 @@ export default function SettingsScreen() {
         animationType="slide"
         onRequestClose={() => {
           setShowImportModal(false);
-          setImportText("");
+          setImportText('');
         }}
       >
         <View style={styles.modalOverlay}>
@@ -1345,185 +833,115 @@ export default function SettingsScreen() {
             onPress={closeImportModal}
           />
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.importModalContainer}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <GestureDetector
-              gesture={Gesture.Pan()
-                .activeOffsetY([10, 100])
-                .failOffsetX([-50, 50])
-                .onUpdate((e) => {
-                  importModalTranslateY.value = e.translationY;
-                })
-                .onEnd((e) => {
-                  // Свайп вниз закрывает модальное окно
-                  if (e.translationY > 50) {
-                    importModalTranslateY.value = withTiming(
-                      1000,
-                      { duration: 200 },
-                      () => {
-                        runOnJS(closeImportModal)();
-                        importModalTranslateY.value = 0;
-                      },
-                    );
-                  } else {
-                    importModalTranslateY.value = withTiming(0, {
-                      duration: 200,
-                    });
-                  }
-                })}
-            >
-              <Animated.View
+            <GestureDetector gesture={Gesture.Pan()
+              .activeOffsetY([10, 100])
+              .failOffsetX([-50, 50])
+              .onUpdate((e) => {
+                importModalTranslateY.value = e.translationY;
+              })
+              .onEnd((e) => {
+                // Свайп вниз закрывает модальное окно
+                if (e.translationY > 50) {
+                  importModalTranslateY.value = withTiming(1000, { duration: 200 }, () => {
+                    runOnJS(closeImportModal)();
+                    importModalTranslateY.value = 0;
+                  });
+                } else {
+                  importModalTranslateY.value = withTiming(0, { duration: 200 });
+                }
+              })
+            }>
+              <Animated.View 
                 style={[
                   styles.importModal,
                   { backgroundColor: colors.backgroundCard },
                   useAnimatedStyle(() => ({
-                    transform: [{ translateY: importModalTranslateY.value }],
-                  })),
+                    transform: [{ translateY: importModalTranslateY.value }]
+                  }))
                 ]}
               >
-                <TouchableOpacity
+                <TouchableOpacity 
                   style={styles.modalDragHandle}
                   onPress={closeImportModal}
                   activeOpacity={1}
                 >
-                  <View
-                    style={[
-                      styles.modalDragBar,
-                      { backgroundColor: colors.textTertiary },
-                    ]}
-                  />
+                  <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
                 </TouchableOpacity>
-
+              
+              <View style={[styles.importHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.importTitle, { color: colors.text }]}>{t('settings.importTitle')}</Text>
+                <TouchableOpacity
+                  onPress={closeImportModal}
+                  style={styles.closeButton}
+                >
+                  <MaterialIcons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.importContentWrapper}>
+                <Animated.ScrollView
+                  style={styles.importScrollView}
+                  contentContainerStyle={styles.importScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  directionalLockEnabled
+                  scrollEventThrottle={32}
+                >
+                  <Text style={[styles.importHint, { color: colors.textSecondary }]}>{t('settings.importHint')}</Text>
+                  
+                  <TouchableOpacity
+                    style={[styles.filePickerButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+                    onPress={handlePickFile}
+                  >
+                    <MaterialIcons name="insert-drive-file" size={24} color={colors.primary} />
+                    <Text style={[styles.filePickerButtonText, { color: colors.primary }]}>{t('settings.pickFile')}</Text>
+                  </TouchableOpacity>
+                  
+                  <TextInput
+                    style={[styles.importTextInput, { backgroundColor: colors.backgroundInput, color: colors.text }]}
+                    value={importText}
+                    onChangeText={setImportText}
+                    placeholder={t('settings.importPastePlaceholder')}
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </Animated.ScrollView>
+                
                 <View
                   style={[
-                    styles.importHeader,
-                    { borderBottomColor: colors.border },
+                    styles.importButtonsContainer,
+                    {
+                      backgroundColor: colors.backgroundCard,
+                      borderTopColor: colors.border,
+                      paddingBottom: Math.max(
+                        Platform.OS === 'ios' ? 34 : 20,
+                        insets.bottom + (Platform.OS === 'android' ? 12 : 0)
+                      ),
+                    },
                   ]}
                 >
-                  <Text style={[styles.importTitle, { color: colors.text }]}>
-                    {t("settings.importTitle")}
-                  </Text>
                   <TouchableOpacity
-                    onPress={closeImportModal}
-                    style={styles.closeButton}
+                    style={[styles.importButton, styles.importButtonReplace, { backgroundColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
+                    onPress={() => handleImport(false)}
+                    disabled={!importText.trim()}
                   >
-                    <MaterialIcons name="close" size={24} color={colors.text} />
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>{t('settings.importReplaceAll')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.importButton, styles.importButtonMerge, { backgroundColor: colors.primaryDark, borderColor: colors.primary }, !importText.trim() && styles.importButtonDisabled]}
+                    onPress={() => handleImport(true)}
+                    disabled={!importText.trim()}
+                  >
+                    <Text style={[styles.importButtonText, { color: '#fff' }]}>{t('settings.importAdd')}</Text>
                   </TouchableOpacity>
                 </View>
-
-                <View style={styles.importContentWrapper}>
-                  <Animated.ScrollView
-                    style={styles.importScrollView}
-                    contentContainerStyle={styles.importScrollContent}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                    directionalLockEnabled
-                    scrollEventThrottle={32}
-                  >
-                    <Text
-                      style={[
-                        styles.importHint,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t("settings.importHint")}
-                    </Text>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.filePickerButton,
-                        {
-                          backgroundColor: colors.backgroundSecondary,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                      onPress={handlePickFile}
-                    >
-                      <MaterialIcons
-                        name="insert-drive-file"
-                        size={24}
-                        color={colors.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.filePickerButtonText,
-                          { color: colors.primary },
-                        ]}
-                      >
-                        {t("settings.pickFile")}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TextInput
-                      style={[
-                        styles.importTextInput,
-                        {
-                          backgroundColor: colors.backgroundSecondary,
-                          color: colors.text,
-                        },
-                      ]}
-                      value={importText}
-                      onChangeText={setImportText}
-                      placeholder={t("settings.importPastePlaceholder")}
-                      placeholderTextColor={colors.textTertiary}
-                      multiline
-                      textAlignVertical="top"
-                    />
-                  </Animated.ScrollView>
-
-                  <View
-                    style={[
-                      styles.importButtonsContainer,
-                      {
-                        backgroundColor: colors.backgroundCard,
-                        borderTopColor: colors.border,
-                        paddingBottom: Math.max(
-                          Platform.OS === "ios" ? 34 : 20,
-                          insets.bottom + (Platform.OS === "android" ? 12 : 0),
-                        ),
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={[
-                        styles.importButton,
-                        styles.importButtonReplace,
-                        { backgroundColor: colors.primary },
-                        !importText.trim() && styles.importButtonDisabled,
-                      ]}
-                      onPress={() => handleImport(false)}
-                      disabled={!importText.trim()}
-                    >
-                      <Text
-                        style={[styles.importButtonText, { color: "#fff" }]}
-                      >
-                        {t("settings.importReplaceAll")}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.importButton,
-                        styles.importButtonMerge,
-                        {
-                          backgroundColor: colors.primaryDark,
-                          borderColor: colors.primary,
-                        },
-                        !importText.trim() && styles.importButtonDisabled,
-                      ]}
-                      onPress={() => handleImport(true)}
-                      disabled={!importText.trim()}
-                    >
-                      <Text
-                        style={[styles.importButtonText, { color: "#fff" }]}
-                      >
-                        {t("settings.importAdd")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+              </View>
               </Animated.View>
             </GestureDetector>
           </KeyboardAvoidingView>
@@ -1543,38 +961,11 @@ export default function SettingsScreen() {
             activeOpacity={1}
             onPress={() => setShowCurrencyPicker(false)}
           />
-          <View
-            style={[
-              styles.currencyPickerModal,
-              {
-                backgroundColor: colors.backgroundCard,
-                paddingBottom: Math.max(
-                  Platform.OS === "ios" ? 34 : 20,
-                  insets.bottom,
-                ),
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.currencyPickerHeader,
-                { borderBottomColor: colors.border },
-              ]}
-            >
-              <Text
-                style={[styles.currencyPickerTitle, { color: colors.text }]}
-              >
-                {t("settings.chooseCurrency")}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowCurrencyPicker(false)}
-                style={styles.currencyPickerClose}
-              >
-                <MaterialIcons
-                  name="close"
-                  size={24}
-                  color={colors.textSecondary}
-                />
+          <View style={[styles.currencyPickerModal, { backgroundColor: colors.backgroundCard, paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom) }]}>
+            <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>{t('settings.chooseCurrency')}</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} style={styles.currencyPickerClose}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <Animated.ScrollView
@@ -1591,12 +982,8 @@ export default function SettingsScreen() {
                   style={[
                     styles.currencyPickerItem,
                     { borderBottomColor: colors.border },
-                    index === CURRENCY_LIST.length - 1 && {
-                      borderBottomWidth: 0,
-                    },
-                    currency === code && {
-                      backgroundColor: colors.backgroundSecondary,
-                    },
+                    index === CURRENCY_LIST.length - 1 && { borderBottomWidth: 0 },
+                    currency === code && { backgroundColor: colors.backgroundSecondary },
                   ]}
                   onPress={() => {
                     setCurrency(code);
@@ -1604,21 +991,11 @@ export default function SettingsScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.currencyPickerItemText,
-                      { color: colors.text },
-                    ]}
-                    numberOfLines={1}
-                  >
+                  <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
                     {t(`currency.${code}`)}
                   </Text>
                   {currency === code && (
-                    <MaterialIcons
-                      name="check"
-                      size={22}
-                      color={colors.primary}
-                    />
+                    <MaterialIcons name="check" size={22} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -1645,33 +1022,14 @@ export default function SettingsScreen() {
               styles.currencyPickerModal,
               {
                 backgroundColor: colors.backgroundCard,
-                paddingBottom: Math.max(
-                  Platform.OS === "ios" ? 34 : 20,
-                  insets.bottom,
-                ),
+                paddingBottom: Math.max(Platform.OS === 'ios' ? 34 : 20, insets.bottom),
               },
             ]}
           >
-            <View
-              style={[
-                styles.currencyPickerHeader,
-                { borderBottomColor: colors.border },
-              ]}
-            >
-              <Text
-                style={[styles.currencyPickerTitle, { color: colors.text }]}
-              >
-                {t("settings.chooseLanguage")}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowLanguagePicker(false)}
-                style={styles.currencyPickerClose}
-              >
-                <MaterialIcons
-                  name="close"
-                  size={24}
-                  color={colors.textSecondary}
-                />
+            <View style={[styles.currencyPickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.currencyPickerTitle, { color: colors.text }]}>{t('settings.chooseLanguage')}</Text>
+              <TouchableOpacity onPress={() => setShowLanguagePicker(false)} style={styles.currencyPickerClose}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <Animated.ScrollView
@@ -1682,27 +1040,17 @@ export default function SettingsScreen() {
               directionalLockEnabled
               scrollEventThrottle={32}
             >
-              {[
-                {
-                  id: "en" as const,
-                  label: t("settings.languageEn"),
-                  flag: "🇬🇧",
-                },
-                {
-                  id: "ru" as const,
-                  label: t("settings.languageRu"),
-                  flag: "🇷🇺",
-                },
-              ].map(({ id, label, flag }, index, arr) => (
+              {([
+                { id: 'en' as const, label: t('settings.languageEn'), flag: '🇬🇧' },
+                { id: 'ru' as const, label: t('settings.languageRu'), flag: '🇷🇺' },
+              ]).map(({ id, label, flag }, index, arr) => (
                 <TouchableOpacity
                   key={id}
                   style={[
                     styles.currencyPickerItem,
                     { borderBottomColor: colors.border },
                     index === arr.length - 1 && { borderBottomWidth: 0 },
-                    language === id && {
-                      backgroundColor: colors.backgroundSecondary,
-                    },
+                    language === id && { backgroundColor: colors.backgroundSecondary },
                   ]}
                   onPress={async () => {
                     await setLanguage(id);
@@ -1710,32 +1058,13 @@ export default function SettingsScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flex: 1,
-                      gap: 10,
-                    }}
-                  >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
                     <Text style={{ fontSize: 18 }}>{flag}</Text>
-                    <Text
-                      style={[
-                        styles.currencyPickerItemText,
-                        { color: colors.text },
-                      ]}
-                      numberOfLines={1}
-                    >
+                    <Text style={[styles.currencyPickerItemText, { color: colors.text }]} numberOfLines={1}>
                       {label}
                     </Text>
                   </View>
-                  {language === id && (
-                    <MaterialIcons
-                      name="check"
-                      size={22}
-                      color={colors.primary}
-                    />
-                  )}
+                  {language === id && <MaterialIcons name="check" size={22} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </Animated.ScrollView>
@@ -1760,7 +1089,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: '700',
     marginTop: 8,
     marginBottom: 16,
     marginHorizontal: 16,
@@ -1772,7 +1101,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
     marginBottom: 12,
   },
@@ -1785,11 +1114,11 @@ const styles = StyleSheet.create({
     backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
-    flexDirection: "row",
-    alignItems: "stretch",
+    flexDirection: 'row',
+    alignItems: 'stretch',
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -1806,25 +1135,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: defaultColors.textSecondary,
     marginBottom: 8,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   goalDivider: {
     width: 1,
     backgroundColor: defaultColors.border,
     marginHorizontal: 16,
-    alignSelf: "stretch",
+    alignSelf: 'stretch',
   },
   goalInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   goalInput: {
     flex: 1,
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
-    backgroundColor: defaultColors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundInput,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1841,20 +1170,20 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: defaultColors.text,
-    fontWeight: "600",
+    fontWeight: '600',
     fontSize: 14,
   },
   cancelButton: {
     padding: 4,
   },
   goalDisplayRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   goalValue: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
   },
   goalRecommended: {
@@ -1864,15 +1193,15 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: defaultColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
     gap: 12,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -1889,12 +1218,12 @@ const styles = StyleSheet.create({
   actionButtonText: {
     flex: 1,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
   },
   actionButtonSubtext: {
     fontSize: 12,
-    fontWeight: "400",
+    fontWeight: '400',
     color: defaultColors.textSecondary,
     marginTop: 2,
   },
@@ -1902,8 +1231,8 @@ const styles = StyleSheet.create({
     color: defaultColors.error,
   },
   genderRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   genderButton: {
@@ -1913,7 +1242,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: defaultColors.border,
-    alignItems: "center",
+    alignItems: 'center',
     backgroundColor: defaultColors.backgroundSecondary,
   },
   genderButtonActive: {
@@ -1922,7 +1251,7 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.textSecondary,
   },
   genderButtonTextActive: {
@@ -1933,9 +1262,9 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   lethalDoseLabel: {
     fontSize: 14,
@@ -1943,7 +1272,7 @@ const styles = StyleSheet.create({
   },
   lethalDoseValue: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: '700',
     color: defaultColors.error,
   },
   ageText: {
@@ -1958,7 +1287,7 @@ const styles = StyleSheet.create({
     gap: 16,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -1969,34 +1298,34 @@ const styles = StyleSheet.create({
     }),
   },
   profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     minHeight: 32,
   },
   profileLabel: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
     minWidth: 120,
   },
   profileValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
     gap: 8,
   },
   profileValue: {
     fontSize: 15,
     color: defaultColors.textSecondary,
-    textAlign: "right",
+    textAlign: 'right',
   },
   profileInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
     gap: 4,
   },
   profileArrowButton: {
@@ -2006,7 +1335,7 @@ const styles = StyleSheet.create({
   profileInput: {
     fontSize: 15,
     color: defaultColors.text,
-    backgroundColor: defaultColors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundInput,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -2036,8 +1365,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: defaultColors.border,
     backgroundColor: defaultColors.backgroundSecondary,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileGenderButtonActive: {
     backgroundColor: defaultColors.primaryDark,
@@ -2047,11 +1376,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: defaultColors.textTertiary,
     marginTop: 2,
-    textAlign: "right",
+    textAlign: 'right',
   },
   profileLethalValue: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: '700',
     color: defaultColors.error,
   },
   valuePlaceholder: {
@@ -2060,29 +1389,29 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalOverlayCenter: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContentWrap: {
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    width: "100%",
+    width: '100%',
     maxWidth: 320,
     padding: 20,
     borderRadius: 16,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 12,
   },
   modalInput: {
@@ -2095,11 +1424,11 @@ const styles = StyleSheet.create({
   modalButton: {
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: "center",
+    alignItems: 'center',
   },
   modalButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   modalBackdrop: {
     flex: 1,
@@ -2111,9 +1440,9 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.select({ ios: 34, android: 20 }),
   },
   datePickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
@@ -2121,10 +1450,10 @@ const styles = StyleSheet.create({
   },
   datePickerTitle: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
     flex: 1,
-    textAlign: "center",
+    textAlign: 'center',
   },
   datePickerButton: {
     padding: 4,
@@ -2136,27 +1465,27 @@ const styles = StyleSheet.create({
   },
   datePickerDoneText: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.primary,
-    textAlign: "right",
+    textAlign: 'right',
   },
   currencyPickerModal: {
-    maxHeight: "70%",
+    maxHeight: '70%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: Platform.select({ ios: 34, android: 20 }),
   },
   currencyPickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
   currencyPickerTitle: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   currencyPickerClose: {
     padding: 4,
@@ -2165,26 +1494,26 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   currencyPickerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   currencyPickerItemText: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: '500',
     flex: 1,
     marginRight: 12,
   },
   importModalContainer: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    top: "15%",
-    width: "100%",
+    top: '15%',
+    width: '100%',
   },
   importModal: {
     backgroundColor: defaultColors.backgroundCard,
@@ -2193,9 +1522,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalDragHandle: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingTop: 8,
     paddingBottom: 4,
     minHeight: 24,
@@ -2205,11 +1534,11 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     backgroundColor: defaultColors.textTertiary,
-    alignSelf: "center",
+    alignSelf: 'center',
   },
   importContentWrapper: {
     flex: 1,
-    flexDirection: "column",
+    flexDirection: 'column',
   },
   importScrollView: {
     flex: 1,
@@ -2220,9 +1549,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   filePickerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: defaultColors.backgroundSecondary,
     borderRadius: 12,
     paddingVertical: 14,
@@ -2231,18 +1560,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1.5,
     borderColor: defaultColors.border,
-    borderStyle: "dashed",
+    borderStyle: 'dashed',
   },
   filePickerButtonText: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.primary,
     marginLeft: 8,
   },
   importHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
@@ -2251,7 +1580,7 @@ const styles = StyleSheet.create({
   },
   importTitle: {
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: '600',
     color: defaultColors.text,
     flex: 1,
   },
@@ -2266,7 +1595,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   importTextInput: {
-    backgroundColor: defaultColors.backgroundSecondary,
+    backgroundColor: defaultColors.backgroundInput,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 20,
@@ -2275,10 +1604,10 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     fontSize: 14,
     color: defaultColors.text,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
   },
   importButtonsContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: Platform.select({ ios: 34, android: 20 }),
@@ -2291,7 +1620,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     paddingVertical: 12,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 0,
   },
   importButtonReplace: {
@@ -2307,19 +1636,19 @@ const styles = StyleSheet.create({
   },
   importButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   themeContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 8,
   },
   themeButton: {
     flex: 1,
-    minWidth: "45%",
-    flexDirection: "row",
-    alignItems: "center",
+    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 10,
@@ -2336,8 +1665,8 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 6,
     marginRight: 10,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1.5,
     borderColor: defaultColors.border,
   },
@@ -2349,29 +1678,29 @@ const styles = StyleSheet.create({
   themeButtonText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: '500',
     color: defaultColors.text,
   },
   themeButtonTextActive: {
     color: defaultColors.primary,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   currencyListCard: {
     borderRadius: 12,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginTop: 8,
   },
   currencyListItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   currencyListLabel: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: '500',
     flex: 1,
     marginRight: 12,
   },
@@ -2382,3 +1711,4 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 });
+

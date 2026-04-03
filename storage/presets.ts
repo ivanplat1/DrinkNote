@@ -1,11 +1,11 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { PresetDrink } from "../types/preset";
-import type { AppLanguage } from "./language";
-import { getAppLanguage } from "./language";
-import { t as translate } from "../i18n/i18n";
-import { detectDefaultLanguage } from "../i18n/i18n";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PresetDrink } from '../types/preset';
+import type { AppLanguage } from './language';
+import { getAppLanguage } from './language';
+import { t as translate } from '../i18n/i18n';
+import { detectDefaultLanguage } from '../i18n/i18n';
 
-const PRESETS_KEY = "user_presets_v1";
+const PRESETS_KEY = 'user_presets_v1';
 
 // Простая система событий для синхронизации пресетов между экранами
 type PresetsChangeListener = (presets: PresetDrink[]) => void;
@@ -26,7 +26,7 @@ class PresetsEventEmitter {
       try {
         listener(presets);
       } catch (error) {
-        console.error("[PresetsEventEmitter] Error in listener:", error);
+        console.error('[PresetsEventEmitter] Error in listener:', error);
       }
     });
   }
@@ -35,233 +35,47 @@ class PresetsEventEmitter {
 export const presetsEventEmitter = new PresetsEventEmitter();
 
 // Предопределенные напитки для предложения при добавлении
-type SuggestedPresetSeed = Omit<PresetDrink, "name"> & { nameKey: string };
+type SuggestedPresetSeed = Omit<PresetDrink, 'name'> & { nameKey: string };
 
 const SUGGESTED_PRESET_SEEDS: SuggestedPresetSeed[] = [
   // Пиво и сидр
-  {
-    id: "beer_500_5",
-    nameKey: "presetNames.beer",
-    beverageType: "beer",
-    volumeMl: 500,
-    abvPercent: 5,
-  },
-  {
-    id: "beer_330_5",
-    nameKey: "presetNames.beer",
-    beverageType: "beer",
-    volumeMl: 330,
-    abvPercent: 5,
-  },
-  {
-    id: "cider_500_5",
-    nameKey: "presetNames.cider",
-    beverageType: "beer",
-    volumeMl: 500,
-    abvPercent: 5,
-  },
-
+  { id: 'beer_500_5', nameKey: 'presetNames.beer', beverageType: 'beer', volumeMl: 500, abvPercent: 5 },
+  { id: 'beer_330_5', nameKey: 'presetNames.beer', beverageType: 'beer', volumeMl: 330, abvPercent: 5 },
+  { id: 'cider_500_5', nameKey: 'presetNames.cider', beverageType: 'beer', volumeMl: 500, abvPercent: 5 },
+  
   // Вино и шампанское
-  {
-    id: "wine_150_12",
-    nameKey: "presetNames.wine",
-    beverageType: "wine",
-    volumeMl: 150,
-    abvPercent: 12,
-  },
-  {
-    id: "wine_200_12",
-    nameKey: "presetNames.wine",
-    beverageType: "wine",
-    volumeMl: 200,
-    abvPercent: 12,
-  },
-  {
-    id: "champagne_150_12",
-    nameKey: "presetNames.champagne",
-    beverageType: "wine",
-    volumeMl: 150,
-    abvPercent: 12,
-  },
-  {
-    id: "prosecco_150_11",
-    nameKey: "presetNames.prosecco",
-    beverageType: "wine",
-    volumeMl: 150,
-    abvPercent: 11,
-  },
-
+  { id: 'wine_150_12', nameKey: 'presetNames.wine', beverageType: 'wine', volumeMl: 150, abvPercent: 12 },
+  { id: 'wine_200_12', nameKey: 'presetNames.wine', beverageType: 'wine', volumeMl: 200, abvPercent: 12 },
+  { id: 'champagne_150_12', nameKey: 'presetNames.champagne', beverageType: 'wine', volumeMl: 150, abvPercent: 12 },
+  { id: 'prosecco_150_11', nameKey: 'presetNames.prosecco', beverageType: 'wine', volumeMl: 150, abvPercent: 11 },
+  
   // Крепкие напитки
-  {
-    id: "shot_50_40",
-    nameKey: "presetNames.shot",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "whiskey_50_40",
-    nameKey: "presetNames.whiskey",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "cognac_50_40",
-    nameKey: "presetNames.cognac",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "vodka_50_40",
-    nameKey: "presetNames.vodka",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "gin_50_40",
-    nameKey: "presetNames.gin",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "rum_50_40",
-    nameKey: "presetNames.rum",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-  {
-    id: "tequila_50_40",
-    nameKey: "presetNames.tequila",
-    beverageType: "spirit",
-    volumeMl: 50,
-    abvPercent: 40,
-  },
-
+  { id: 'shot_50_40', nameKey: 'presetNames.shot', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'whiskey_50_40', nameKey: 'presetNames.whiskey', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'cognac_50_40', nameKey: 'presetNames.cognac', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'vodka_50_40', nameKey: 'presetNames.vodka', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'gin_50_40', nameKey: 'presetNames.gin', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'rum_50_40', nameKey: 'presetNames.rum', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  { id: 'tequila_50_40', nameKey: 'presetNames.tequila', beverageType: 'spirit', volumeMl: 50, abvPercent: 40 },
+  
   // Коктейли
-  {
-    id: "mojito_250_12",
-    nameKey: "presetNames.mojito",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 12,
-  },
-  {
-    id: "bloody_mary_200_15",
-    nameKey: "presetNames.bloodyMary",
-    beverageType: "cocktail",
-    volumeMl: 200,
-    abvPercent: 15,
-  },
-  {
-    id: "margarita_150_20",
-    nameKey: "presetNames.margarita",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 20,
-  },
-  {
-    id: "long_island_250_22",
-    nameKey: "presetNames.longIsland",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 22,
-  },
-  {
-    id: "cosmopolitan_150_18",
-    nameKey: "presetNames.cosmopolitan",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 18,
-  },
-  {
-    id: "daiquiri_150_18",
-    nameKey: "presetNames.daiquiri",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 18,
-  },
-  {
-    id: "pina_colada_250_12",
-    nameKey: "presetNames.pinaColada",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 12,
-  },
-  {
-    id: "negroni_150_24",
-    nameKey: "presetNames.negroni",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 24,
-  },
-  {
-    id: "old_fashioned_150_32",
-    nameKey: "presetNames.oldFashioned",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 32,
-  },
-  {
-    id: "whiskey_sour_150_18",
-    nameKey: "presetNames.whiskeySour",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 18,
-  },
-  {
-    id: "gin_tonic_250_11",
-    nameKey: "presetNames.ginTonic",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 11,
-  },
-  {
-    id: "aperol_spritz_200_11",
-    nameKey: "presetNames.aperolSpritz",
-    beverageType: "cocktail",
-    volumeMl: 200,
-    abvPercent: 11,
-  },
-  {
-    id: "bellini_150_11",
-    nameKey: "presetNames.bellini",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 11,
-  },
-  {
-    id: "sex_on_beach_250_13",
-    nameKey: "presetNames.sexOnTheBeach",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 13,
-  },
-  {
-    id: "manhattan_150_28",
-    nameKey: "presetNames.manhattan",
-    beverageType: "cocktail",
-    volumeMl: 150,
-    abvPercent: 28,
-  },
-  {
-    id: "whiskey_cola_250_16",
-    nameKey: "presetNames.whiskeyCola",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 16,
-  },
-  {
-    id: "rum_cola_250_16",
-    nameKey: "presetNames.rumCola",
-    beverageType: "cocktail",
-    volumeMl: 250,
-    abvPercent: 16,
-  },
+  { id: 'mojito_250_12', nameKey: 'presetNames.mojito', beverageType: 'cocktail', volumeMl: 250, abvPercent: 12 },
+  { id: 'bloody_mary_200_15', nameKey: 'presetNames.bloodyMary', beverageType: 'cocktail', volumeMl: 200, abvPercent: 15 },
+  { id: 'margarita_150_20', nameKey: 'presetNames.margarita', beverageType: 'cocktail', volumeMl: 150, abvPercent: 20 },
+  { id: 'long_island_250_22', nameKey: 'presetNames.longIsland', beverageType: 'cocktail', volumeMl: 250, abvPercent: 22 },
+  { id: 'cosmopolitan_150_18', nameKey: 'presetNames.cosmopolitan', beverageType: 'cocktail', volumeMl: 150, abvPercent: 18 },
+  { id: 'daiquiri_150_18', nameKey: 'presetNames.daiquiri', beverageType: 'cocktail', volumeMl: 150, abvPercent: 18 },
+  { id: 'pina_colada_250_12', nameKey: 'presetNames.pinaColada', beverageType: 'cocktail', volumeMl: 250, abvPercent: 12 },
+  { id: 'negroni_150_24', nameKey: 'presetNames.negroni', beverageType: 'cocktail', volumeMl: 150, abvPercent: 24 },
+  { id: 'old_fashioned_150_32', nameKey: 'presetNames.oldFashioned', beverageType: 'cocktail', volumeMl: 150, abvPercent: 32 },
+  { id: 'whiskey_sour_150_18', nameKey: 'presetNames.whiskeySour', beverageType: 'cocktail', volumeMl: 150, abvPercent: 18 },
+  { id: 'gin_tonic_250_11', nameKey: 'presetNames.ginTonic', beverageType: 'cocktail', volumeMl: 250, abvPercent: 11 },
+  { id: 'aperol_spritz_200_11', nameKey: 'presetNames.aperolSpritz', beverageType: 'cocktail', volumeMl: 200, abvPercent: 11 },
+  { id: 'bellini_150_11', nameKey: 'presetNames.bellini', beverageType: 'cocktail', volumeMl: 150, abvPercent: 11 },
+  { id: 'sex_on_beach_250_13', nameKey: 'presetNames.sexOnTheBeach', beverageType: 'cocktail', volumeMl: 250, abvPercent: 13 },
+  { id: 'manhattan_150_28', nameKey: 'presetNames.manhattan', beverageType: 'cocktail', volumeMl: 150, abvPercent: 28 },
+  { id: 'whiskey_cola_250_16', nameKey: 'presetNames.whiskeyCola', beverageType: 'cocktail', volumeMl: 250, abvPercent: 16 },
+  { id: 'rum_cola_250_16', nameKey: 'presetNames.rumCola', beverageType: 'cocktail', volumeMl: 250, abvPercent: 16 },
 ];
 
 export function getSuggestedPresets(language: AppLanguage): PresetDrink[] {
@@ -279,10 +93,7 @@ async function resolveLanguage(): Promise<AppLanguage> {
   return saved ?? detectDefaultLanguage();
 }
 
-function maybeLocalizeSeededPresets(
-  list: PresetDrink[],
-  language: AppLanguage,
-): { next: PresetDrink[]; changed: boolean } {
+function maybeLocalizeSeededPresets(list: PresetDrink[], language: AppLanguage): { next: PresetDrink[]; changed: boolean } {
   // Update seeded items:
   // 1) Stable seeded IDs: preset_<seedId>
   // 2) Also migrate timestamp presets that clearly match a seed (name+type+volume+abv),
@@ -291,15 +102,15 @@ function maybeLocalizeSeededPresets(
   const existingIds = new Set(list.map((p) => p.id));
   let changed = false;
   const next = list.map((p) => {
-    if (!p.id.startsWith("preset_")) return p;
-    const seedId = p.id.slice("preset_".length);
+    if (!p.id.startsWith('preset_')) return p;
+    const seedId = p.id.slice('preset_'.length);
     const seed = seedById.get(seedId);
     const migrateFromSeed = (seedToUse: SuggestedPresetSeed) => {
       const localized = translate(language, seedToUse.nameKey);
       const targetId = `preset_${seedToUse.id}`;
       // Only rewrite if it still matches *some* seeded language (RU/EN), otherwise treat as user-edited.
-      const ru = translate("ru", seedToUse.nameKey);
-      const en = translate("en", seedToUse.nameKey);
+      const ru = translate('ru', seedToUse.nameKey);
+      const en = translate('en', seedToUse.nameKey);
       if (p.name !== ru && p.name !== en) return p;
       if (targetId !== p.id && existingIds.has(targetId)) return p;
       changed = true;
@@ -318,8 +129,8 @@ function maybeLocalizeSeededPresets(
       if (s.beverageType !== p.beverageType) return false;
       if (s.volumeMl !== p.volumeMl) return false;
       if (s.abvPercent !== p.abvPercent) return false;
-      const ru = translate("ru", s.nameKey);
-      const en = translate("en", s.nameKey);
+      const ru = translate('ru', s.nameKey);
+      const en = translate('en', s.nameKey);
       return p.name === ru || p.name === en;
     });
     if (!inferred) return p;
@@ -331,14 +142,9 @@ function maybeLocalizeSeededPresets(
 function getDefaultUserPresets(): PresetDrink[] {
   // Default Favorites: pre-seeded so first launch doesn't "build" them in UI.
   // These are normal user presets and can be edited/removed.
-  const ids = [
-    "beer_500_5",
-    "wine_150_12",
-    "cognac_50_40",
-    "whiskey_cola_250_16",
-  ];
+  const ids = ['beer_500_5', 'wine_150_12', 'cognac_50_40', 'whiskey_cola_250_16'];
   // Language is resolved by caller.
-  const byId = new Map(getSuggestedPresets("ru").map((p) => [p.id, p]));
+  const byId = new Map(getSuggestedPresets('ru').map((p) => [p.id, p]));
   return ids
     .map((id) => byId.get(id))
     .filter(Boolean)
@@ -350,7 +156,7 @@ export async function getUserPresets(): Promise<PresetDrink[]> {
   const raw = await AsyncStorage.getItem(PRESETS_KEY);
   if (!raw) {
     const seeded = getDefaultUserPresets().map((p) => {
-      const seedId = p.id.slice("preset_".length);
+      const seedId = p.id.slice('preset_'.length);
       const seed = SUGGESTED_PRESET_SEEDS.find((s) => s.id === seedId);
       if (!seed) return p;
       return { ...p, name: translate(language, seed.nameKey) };
@@ -391,29 +197,26 @@ export async function refreshSeededPresetsLocalization(): Promise<void> {
 
 // Извлекает чистое название напитка без объема и крепости
 function extractCleanName(name: string): string {
-  if (!name || typeof name !== "string") {
-    return name || "";
+  if (!name || typeof name !== 'string') {
+    return name || '';
   }
   // Удаляем паттерны типа "500 мл (5%)" или "500мл(5%)" и т.д.
   // Ищем числа, затем "мл", затем опционально пробелы, затем число в скобках
-  const cleaned = name.replace(/\s*\d+\s*мл\s*\(?\d+%?\)?\s*/gi, "").trim();
+  const cleaned = name.replace(/\s*\d+\s*мл\s*\(?\d+%?\)?\s*/gi, '').trim();
   return cleaned || name; // Если ничего не осталось, возвращаем оригинал
 }
 
-export async function addPreset(
-  preset: Omit<PresetDrink, "id">,
-): Promise<PresetDrink[]> {
+export async function addPreset(preset: Omit<PresetDrink, 'id'>): Promise<PresetDrink[]> {
   const current = await getUserPresets();
   const language = await resolveLanguage();
   // Извлекаем чистое название без объема и крепости
   const cleanName = extractCleanName(preset.name);
   // Дубликат только если совпадают название, объём, крепость и тип (разные названия — разные пресеты)
-  const isDuplicate = current.some(
-    (p) =>
-      extractCleanName(p.name) === cleanName &&
-      p.volumeMl === preset.volumeMl &&
-      p.abvPercent === preset.abvPercent &&
-      p.beverageType === preset.beverageType,
+  const isDuplicate = current.some((p) =>
+    extractCleanName(p.name) === cleanName &&
+    p.volumeMl === preset.volumeMl &&
+    p.abvPercent === preset.abvPercent &&
+    p.beverageType === preset.beverageType
   );
   if (isDuplicate) {
     return current;
@@ -423,8 +226,8 @@ export async function addPreset(
     if (s.beverageType !== preset.beverageType) return false;
     if (s.volumeMl !== preset.volumeMl) return false;
     if (s.abvPercent !== preset.abvPercent) return false;
-    const ru = translate("ru", s.nameKey);
-    const en = translate("en", s.nameKey);
+    const ru = translate('ru', s.nameKey);
+    const en = translate('en', s.nameKey);
     const localized = translate(language, s.nameKey);
     return cleanName === ru || cleanName === en || cleanName === localized;
   });
@@ -449,13 +252,10 @@ export async function removePreset(id: string): Promise<PresetDrink[]> {
   return next;
 }
 
-export async function updatePreset(
-  id: string,
-  preset: Omit<PresetDrink, "id">,
-): Promise<PresetDrink[]> {
+export async function updatePreset(id: string, preset: Omit<PresetDrink, 'id'>): Promise<PresetDrink[]> {
   const current = await getUserPresets();
-  const next = current.map((p) =>
-    p.id === id ? { ...preset, name: (preset.name || "").trim(), id } : p,
+  const next = current.map((p) => 
+    p.id === id ? { ...preset, name: (preset.name || '').trim(), id } : p
   );
   await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next));
   // Эмитим событие об изменении списка
@@ -468,3 +268,5 @@ export async function setUserPresets(presets: PresetDrink[]): Promise<void> {
   await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
   presetsEventEmitter.emit(presets);
 }
+
+

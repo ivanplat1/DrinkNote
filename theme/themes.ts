@@ -13,6 +13,10 @@ export interface ThemeColors {
   backgroundSecondary: string;
   backgroundTertiary: string;
   backgroundCard: string;
+  /** Фон полей ввода / поиска (светлее secondary на светлых темах) */
+  backgroundInput: string;
+  /** Фон строки «запись о выпитом» в модалке дня календаря (светлая тема — вместо серого tertiary) */
+  backgroundDrinkEntryRow?: string;
   
   // Текст
   text: string;
@@ -114,29 +118,28 @@ export const darkTheme: ThemeColors = {
   },
 };
 
-// Светлая тема — оттенки в духе iOS (Light): grouped background + белые «ячейки», системный синий
-// Ориентиры: systemGroupedBackground ~#F2F2F7, secondarySystemGroupedBackground #FFFFFF,
-// label / secondaryLabel, separator ~#C6C6C8, systemBlue #007AFF
+// Светлая тема — iOS-подобная иерархия, но с более глубоким фоном и контрастом (меньше «бледности»)
 export const lightTheme: ThemeColors = {
-  primary: '#007AFF',
-  primaryLight: '#5AC8FA',
-  primaryDark: '#0051D5',
-  secondary: '#0A84FF',
+  primary: '#0066DD',
+  primaryLight: '#2B8CFF',
+  primaryDark: '#004BB3',
+  secondary: '#0077ED',
   
-  // Фон экрана — тёплый серо-лазурный как у iOS (не холодный #e8eaed и не сплошной белый)
-  background: '#F2F2F7',
-  backgroundSecondary: '#E5E5EA',
-  backgroundTertiary: '#D1D1D6',
-  // Карточки / «инсет»-поверхности — чистый белый только локально на сером поле (как ячейки в списке)
-  backgroundCard: '#FFFFFF',
+  // Фон темнее, чем #F2F2F7: белые карточки читаются заметнее, экран не «выцветший»
+  background: '#E2E2EA',
+  backgroundSecondary: '#D4D4DF',
+  backgroundTertiary: '#C6C6D4',
+  // Слегка тёплый «бумажный» белый вместо чистого #FFF — меньше ощущения плоской палитры
+  backgroundCard: '#FAFAFC',
+  backgroundInput: '#FFFFFF',
+  backgroundDrinkEntryRow: '#DCEBFA',
   
-  // Текст — мягче чистого #000 (как iOS label / secondaryLabel)
-  text: '#1C1C1E',
-  textSecondary: '#636366',
-  textTertiary: '#8E8E93',
+  text: '#0C0C0F',
+  textSecondary: '#404048',
+  textTertiary: '#6B6B76',
   
-  border: '#C6C6C8',
-  borderLight: '#E5E5EA',
+  border: '#A7A7B2',
+  borderLight: '#C8C8D2',
   
   // Состояния
   success: '#10b981', // Зеленый
@@ -185,6 +188,7 @@ export const sepiaTheme: ThemeColors = {
   backgroundSecondary: '#292524', // Светлее (stone-800)
   backgroundTertiary: '#44403c', // Еще светлее (stone-700)
   backgroundCard: '#292524', // Для карточек
+  backgroundInput: '#292524',
   
   // Текст - светлый на темном
   text: '#fafaf9', // Почти белый (stone-50)
@@ -240,6 +244,7 @@ export const highContrastTheme: ThemeColors = {
   backgroundSecondary: '#fbcfe8', // pink-200
   backgroundTertiary: '#f9a8d4',  // pink-300
   backgroundCard: '#fdf2f8',       // pink-50, без чистого белого
+  backgroundInput: '#ffffff',
   
   text: '#4c0519', // Тёмно-розово-коричневый (rose-950)
   textSecondary: '#831843', // Розово-серый (rose-800)
@@ -290,6 +295,7 @@ export const violetTheme: ThemeColors = {
   backgroundSecondary: '#ddd6fe',   // violet-200
   backgroundTertiary: '#c4b5fd',   // violet-300
   backgroundCard: '#f5f3ff',       // violet-50, без чистого белого
+  backgroundInput: '#ffffff',
   text: '#0f172a',       // slate-900, нейтральный для читаемости
   textSecondary: '#475569',
   textTertiary: '#64748b',
@@ -316,6 +322,7 @@ export const sandTheme: ThemeColors = {
   backgroundSecondary: '#e7e5e4',
   backgroundTertiary: '#d6d3d1',
   backgroundCard: '#fafaf9',
+  backgroundInput: '#ffffff',
   text: '#171717',
   textSecondary: '#525252',
   textTertiary: '#737373',
@@ -342,6 +349,7 @@ export const nordTheme: ThemeColors = {
   backgroundSecondary: '#e5e9f0',   // nord5
   backgroundTertiary: '#eceff4',    // nord6
   backgroundCard: '#e5e9f0',
+  backgroundInput: '#ffffff',
   text: '#2e3440',       // nord0
   textSecondary: '#3b4252', // nord1
   textTertiary: '#4c566a',  // nord3
@@ -369,6 +377,7 @@ export const darculaTheme: ThemeColors = {
   backgroundSecondary: '#3c3f41',
   backgroundTertiary: '#45494a',
   backgroundCard: '#3c3f41',
+  backgroundInput: '#3c3f41',
   text: '#bbbbbb',
   textSecondary: '#999999',
   textTertiary: '#808080',
@@ -400,4 +409,11 @@ export const themes: Record<ThemeName, ThemeColors> = {
 // Получить тему по имени
 export function getTheme(themeName: ThemeName): ThemeColors {
   return themes[themeName];
+}
+
+const LIGHT_UI_THEME_NAMES = new Set<ThemeName>(['light', 'highContrast', 'violet', 'sand', 'nord']);
+
+/** Светлые темы: у кнопок «+» вторичный фон даёт лишний круг/ореол — его убираем через прозрачный фон и без рамки */
+export function isLightUiTheme(themeName: ThemeName): boolean {
+  return LIGHT_UI_THEME_NAMES.has(themeName);
 }
