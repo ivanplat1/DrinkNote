@@ -110,24 +110,23 @@ export default function AddOneTimeEntryModal({
     }
   }, [visible]);
 
-  // При появлении клавиатуры прокручиваем к полям; при скрытии — возврат (на Android модалка не остаётся поднятой)
+  // Не скроллим при keyboardDidShow глобально: это уводило поле «Название» вверх за край.
+  // Прокрутка только в onFocus отдельных полей; при скрытии клавиатуры сбрасываем offset.
   useEffect(() => {
     if (!visible) return;
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
-      scrollRef.current?.scrollTo({ y: SCROLL_Y_VOLUME_ABV, animated: true });
-    });
     const hideSub = Keyboard.addListener("keyboardDidHide", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
     return () => {
-      showSub.remove();
       hideSub.remove();
     };
   }, [visible]);
 
   const selectType = (type: Drink["beverageType"]) => {
     setBeverageType(type);
-    setName("");
+    if (!name.trim()) {
+      setName(t(TYPE_LABEL_KEYS[type]));
+    }
     setVolumeStr("");
     setAbvStr("");
     if (type !== "other") {
@@ -212,7 +211,7 @@ export default function AddOneTimeEntryModal({
         <KeyboardAvoidingView
           style={styles.kav}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <GestureDetector gesture={panGesture}>
@@ -260,6 +259,9 @@ export default function AddOneTimeEntryModal({
                     placeholderTextColor={colors.textTertiary}
                     value={name}
                     onChangeText={setName}
+                    onFocus={() =>
+                      scrollRef.current?.scrollTo({ y: 0, animated: true })
+                    }
                     style={[
                       styles.input,
                       {
