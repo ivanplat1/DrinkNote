@@ -16,6 +16,7 @@ import { CURRENCY_LIST, CURRENCY_SYMBOLS } from '../utils/currency';
 import { isPremiumUser, enableDevPremium, disableDevPremium } from '../storage/premium';
 import { getStreakGoal, setStreakGoal } from '../storage/streakGoal';
 import { useI18n } from '../i18n/I18nContext';
+import { useModalDragHandleGesture } from '../hooks/useModalDragHandleGesture';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -284,6 +285,12 @@ export default function SettingsScreen() {
     setImportText('');
     importModalTranslateY.value = 0;
   }, []);
+
+  const importModalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: importModalTranslateY.value }],
+  }));
+
+  const importModalHandleGesture = useModalDragHandleGesture(importModalTranslateY, closeImportModal);
 
   const handleClearData = () => {
     Alert.alert(
@@ -709,16 +716,18 @@ export default function SettingsScreen() {
 
         {/* Экспорт и импорт данных */}
         <View style={styles.section}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
-            <MaterialIcons name="file-download" size={24} color={colors.primary} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.exportData')}</Text>
-            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={() => setShowImportModal(true)}>
-            <MaterialIcons name="file-upload" size={24} color={colors.primary} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.importData')}</Text>
-            <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
-          </TouchableOpacity>
+          <View style={styles.exportImportButtonStack}>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={handleExport}>
+              <MaterialIcons name="file-download" size={24} color={colors.primary} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.exportData')}</Text>
+              <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]} onPress={() => setShowImportModal(true)}>
+              <MaterialIcons name="file-upload" size={24} color={colors.primary} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('settings.importData')}</Text>
+              <MaterialIcons name="chevron-right" size={24} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Удаление данных */}
@@ -859,18 +868,14 @@ export default function SettingsScreen() {
                 style={[
                   styles.importModal,
                   { backgroundColor: colors.backgroundCard },
-                  useAnimatedStyle(() => ({
-                    transform: [{ translateY: importModalTranslateY.value }]
-                  }))
+                  importModalAnimatedStyle,
                 ]}
               >
-                <TouchableOpacity 
-                  style={styles.modalDragHandle}
-                  onPress={closeImportModal}
-                  activeOpacity={1}
-                >
-                  <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                </TouchableOpacity>
+                <GestureDetector gesture={importModalHandleGesture}>
+                  <View style={styles.modalDragHandle}>
+                    <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
+                  </View>
+                </GestureDetector>
               
               <View style={[styles.importHeader, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.importTitle, { color: colors.text }]}>{t('settings.importTitle')}</Text>
@@ -1098,6 +1103,9 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+  },
+  exportImportButtonStack: {
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 16,
@@ -1525,9 +1533,9 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 8,
-    paddingBottom: 4,
-    minHeight: 24,
+    paddingTop: 6,
+    paddingBottom: 10,
+    minHeight: 36,
   },
   modalDragBar: {
     width: 40,

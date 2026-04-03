@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Modal, TextInput, TouchableOpacity, Alert, FlatList, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Keyboard, Dimensions, AppState } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { MaterialIcons, Ionicons, Entypo, FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import PresetButton from '../components/PresetButton';
@@ -23,6 +23,7 @@ import { runNotificationChecks } from '../services/notifications';
 import { useOnboarding } from '../context/OnboardingContext';
 import AddOneTimeEntryModal, { type OneTimeEntryData } from '../components/AddOneTimeEntryModal';
 import { useI18n } from '../i18n/I18nContext';
+import { useModalDragHandleGesture } from '../hooks/useModalDragHandleGesture';
 
 const getBeverageColor = (type: PresetDrink['beverageType'], themeColors: any) => {
   return themeColors[type] || themeColors.other;
@@ -423,16 +424,16 @@ export default function TodayScreen() {
   };
 
   const openAddModal = () => setAddModalVisible(true);
-  const closeAddModal = () => {
+  const closeAddModal = useCallback(() => {
     setAddModalVisible(false);
     setSearchQuery(''); // Очищаем поисковый запрос при закрытии
-  };
+  }, []);
 
   const openAddEntryModal = () => setAddEntryModalVisible(true);
-  const closeAddEntryModal = () => {
+  const closeAddEntryModal = useCallback(() => {
     setAddEntryModalVisible(false);
     setEntrySearchQuery('');
-  };
+  }, []);
 
   const addEntryFromPreset = async (preset: PresetDrink) => {
     await handleQuickAdd(preset);
@@ -443,7 +444,7 @@ export default function TodayScreen() {
     setSearchQuery(''); // Очищаем поисковый запрос при закрытии
     setCustomModalVisible(true);
   };
-  const closeCustomModal = () => {
+  const closeCustomModal = useCallback(() => {
     Keyboard.dismiss();
     setIsCustomKeyboardVisible(false);
     setCustomModalVisible(false);
@@ -453,7 +454,7 @@ export default function TodayScreen() {
     setNewVolume('500');
     setNewAbv('5');
     setNewPriceVal('');
-  };
+  }, []);
 
   const addSuggestedPreset = async (preset: PresetDrink) => {
     const updated = await addPreset({
@@ -683,12 +684,12 @@ export default function TodayScreen() {
     setEditModalVisible(true);
   };
 
-  const closeEditModal = () => {
+  const closeEditModal = useCallback(() => {
     setEditModalVisible(false);
     setEditingDrink(null);
     setNewQuantity('1');
     setEditPriceVal('');
-  };
+  }, []);
 
   const saveEditedDrink = async () => {
     if (!editingDrink) return;
@@ -727,7 +728,7 @@ export default function TodayScreen() {
     setDeletingPresetId(null);
   };
 
-  const closeEditPresetModal = () => {
+  const closeEditPresetModal = useCallback(() => {
     setEditPresetModalVisible(false);
     setEditingPreset(null);
     setPresetName('');
@@ -735,7 +736,7 @@ export default function TodayScreen() {
     setPresetVolume('500');
     setPresetAbv('5');
     setPresetPrice('');
-  };
+  }, []);
 
   const saveEditedPreset = async () => {
     if (!editingPreset) return;
@@ -812,6 +813,17 @@ export default function TodayScreen() {
   const datePickerModalAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: Math.max(0, datePickerModalTranslateY.value) }],
   }));
+
+  const closeDatePickerModal = useCallback(() => {
+    setDatePickerVisible(false);
+  }, []);
+
+  const addModalHandleGesture = useModalDragHandleGesture(addModalTranslateY, closeAddModal);
+  const addEntryModalHandleGesture = useModalDragHandleGesture(addEntryModalTranslateY, closeAddEntryModal);
+  const customModalHandleGesture = useModalDragHandleGesture(customModalTranslateY, closeCustomModal);
+  const editModalHandleGesture = useModalDragHandleGesture(editModalTranslateY, closeEditModal);
+  const editPresetModalHandleGesture = useModalDragHandleGesture(editPresetModalTranslateY, closeEditPresetModal);
+  const datePickerHandleGesture = useModalDragHandleGesture(datePickerModalTranslateY, closeDatePickerModal);
 
   const navigation = useNavigation();
   const { interactiveStep, registerTarget } = useOnboarding();
@@ -1225,30 +1237,10 @@ export default function TodayScreen() {
                   addModalAnimatedStyle,
                 ]}
               >
-                    <GestureDetector
-                      gesture={Gesture.Pan()
-                        .minDistance(5)
-                        .activeOffsetY([5, 100])
-                        .failOffsetX([-30, 30])
-                        .onUpdate((e) => {
-                          if (e.translationY > 0) {
-                            addModalTranslateY.value = e.translationY;
-                          }
-                        })
-                        .onEnd((e) => {
-                          if (e.translationY > 50) {
-                            addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                              runOnJS(closeAddModal)();
-                              addModalTranslateY.value = 0;
-                            });
-                          } else {
-                            addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                          }
-                        })}
-                    >
-                      <TouchableOpacity style={styles.modalDragHandle} onPress={closeAddModal} activeOpacity={1}>
+                    <GestureDetector gesture={addModalHandleGesture}>
+                      <View style={styles.modalDragHandle}>
                         <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                      </TouchableOpacity>
+                      </View>
                     </GestureDetector>
                     <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
@@ -1357,34 +1349,10 @@ export default function TodayScreen() {
                 addEntryModalAnimatedStyle,
               ]}
             >
-                  <GestureDetector
-                    gesture={Gesture.Pan()
-                      .minDistance(5)
-                      .activeOffsetY([5, 100])
-                      .failOffsetX([-30, 30])
-                      .onUpdate((e) => {
-                        if (e.translationY > 0) {
-                          addEntryModalTranslateY.value = e.translationY;
-                        }
-                      })
-                      .onEnd((e) => {
-                        if (e.translationY > 50) {
-                          addEntryModalTranslateY.value = withSpring(
-                            1000,
-                            { damping: 20, stiffness: 300 },
-                            () => {
-                              runOnJS(closeAddEntryModal)();
-                              addEntryModalTranslateY.value = 0;
-                            }
-                          );
-                        } else {
-                          addEntryModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                        }
-                      })}
-                  >
-                    <TouchableOpacity style={styles.modalDragHandle} onPress={closeAddEntryModal} activeOpacity={1}>
+                  <GestureDetector gesture={addEntryModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
 
                   <View style={entrySearchQuery && entrySearchQuery.trim() ? { flex: 1 } : {}}>
@@ -1540,34 +1508,10 @@ export default function TodayScreen() {
             >
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, customModalAnimatedStyle]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        customModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      // Свайп вниз закрывает модальное окно
-                      if (e.translationY > 50) {
-                        customModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                          runOnJS(closeCustomModal)();
-                          customModalTranslateY.value = 0;
-                        });
-                      } else {
-                        customModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                      }
-                    })
-                  }>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeCustomModal}
-                      activeOpacity={1}
-                    >
+                  <GestureDetector gesture={customModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
                   <ScrollView
                     ref={editDrinkScrollRef}
@@ -1696,33 +1640,10 @@ export default function TodayScreen() {
             >
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, editModalAnimatedStyle]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        editModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      if (e.translationY > 50) {
-                        editModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                          runOnJS(closeEditModal)();
-                          editModalTranslateY.value = 0;
-                        });
-                      } else {
-                        editModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                      }
-                    })
-                  }>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeEditModal}
-                      activeOpacity={1}
-                    >
+                  <GestureDetector gesture={editModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
                   <ScrollView
                     keyboardShouldPersistTaps="handled"
@@ -1822,33 +1743,10 @@ export default function TodayScreen() {
             >
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, editPresetModalAnimatedStyle]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        editPresetModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      if (e.translationY > 50) {
-                        editPresetModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                          runOnJS(closeEditPresetModal)();
-                          editPresetModalTranslateY.value = 0;
-                        });
-                      } else {
-                        editPresetModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                      }
-                    })
-                  }>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeEditPresetModal}
-                      activeOpacity={1}
-                    >
+                  <GestureDetector gesture={editPresetModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
                   <ScrollView
                     ref={editPresetScrollRef}
@@ -1979,33 +1877,10 @@ export default function TodayScreen() {
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <Animated.View style={[styles.datePickerCard, { backgroundColor: colors.backgroundCard }, datePickerModalAnimatedStyle]}>
-                <GestureDetector gesture={Gesture.Pan()
-                  .minDistance(5)
-                  .activeOffsetY([5, 100])
-                  .failOffsetX([-30, 30])
-                  .onUpdate((e) => {
-                    if (e.translationY > 0) {
-                      datePickerModalTranslateY.value = e.translationY;
-                    }
-                  })
-                  .onEnd((e) => {
-                    if (e.translationY > 50) {
-                      datePickerModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                        runOnJS(setDatePickerVisible)(false);
-                        datePickerModalTranslateY.value = 0;
-                      });
-                    } else {
-                      datePickerModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                    }
-                  })
-                }>
-                  <TouchableOpacity 
-                    style={styles.modalDragHandle}
-                    onPress={() => setDatePickerVisible(false)}
-                    activeOpacity={1}
-                  >
+                <GestureDetector gesture={datePickerHandleGesture}>
+                  <View style={styles.modalDragHandle}>
                     <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                  </TouchableOpacity>
+                  </View>
                 </GestureDetector>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.chooseDate')}</Text>
                 <View style={styles.datePickerWeekRow}>
@@ -2327,9 +2202,9 @@ shadowOpacity: 0.5,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
-    paddingBottom: 8,
-    minHeight: 28,
+    paddingTop: 6,
+    paddingBottom: 10,
+    minHeight: 36,
   },
   modalDragBar: {
     width: 40,

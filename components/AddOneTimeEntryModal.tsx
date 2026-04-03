@@ -13,13 +13,14 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import type { Drink } from '../types/drink';
 import type { ThemeColors } from '../theme/themes';
 import { useI18n } from '../i18n/I18nContext';
+import { useModalDragHandleGesture } from '../hooks/useModalDragHandleGesture';
 
 const BEVERAGE_TYPES: Array<Drink['beverageType']> = ['beer', 'wine', 'spirit', 'cocktail', 'other'];
 
@@ -143,23 +144,7 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
     onClose();
   };
 
-  const panGesture = Gesture.Pan()
-    .minDistance(5)
-    .activeOffsetY([5, 100])
-    .failOffsetX([-30, 30])
-    .onUpdate((e) => {
-      if (e.translationY > 0) translateY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      if (e.translationY > 50) {
-        translateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-          runOnJS(onClose)();
-          translateY.value = 0;
-        });
-      } else {
-        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-      }
-    });
+  const dragHandleGesture = useModalDragHandleGesture(translateY, onClose);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: Math.max(0, translateY.value) }],
@@ -184,7 +169,6 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : 0}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <GestureDetector gesture={panGesture}>
                 <Animated.View
                   style={[
                     styles.card,
@@ -193,9 +177,11 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                     animatedStyle,
                   ]}
                 >
-                  <TouchableOpacity style={styles.dragHandle} onPress={onClose} activeOpacity={1}>
-                    <View style={[styles.dragBar, { backgroundColor: colors.textTertiary }]} />
-                  </TouchableOpacity>
+                  <GestureDetector gesture={dragHandleGesture}>
+                    <View style={styles.dragHandle}>
+                      <View style={[styles.dragBar, { backgroundColor: colors.textTertiary }]} />
+                    </View>
+                  </GestureDetector>
                   <ScrollView
                     ref={scrollRef}
                     style={styles.scrollView}
@@ -295,7 +281,6 @@ export default function AddOneTimeEntryModal({ visible, onClose, isPremium, onSa
                     </TouchableOpacity>
                   </ScrollView>
                 </Animated.View>
-            </GestureDetector>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
@@ -327,8 +312,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    minHeight: 28,
+    paddingVertical: 10,
+    minHeight: 36,
   },
   dragBar: {
     width: 40,

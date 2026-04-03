@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, useAnimatedReaction, withRepeat, withSequence, Easing } from 'react-native-reanimated';
 import { MaterialIcons, FontAwesome6, FontAwesome, MaterialCommunityIcons, Entypo } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
@@ -14,6 +14,7 @@ import { addDrinkToCatalog, drinkCatalogEventEmitter, getDrinkCatalog, removeCat
 import { getCalendarLabels, setCalendarLabel, setCalendarLabelRange, getCalendarLabelRanges, deleteCalendarLabelRange, updateCalendarLabelRange, DEFAULT_LABEL_COLOR, type LabelRange } from '../storage/calendarLabels';
 import { WEEKDAY_SHORT_RU, WEEKDAY_SHORT_EN, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 import { useI18n } from '../i18n/I18nContext';
+import { useModalDragHandleGesture } from '../hooks/useModalDragHandleGesture';
 import { formatDaysCount } from '../i18n/i18n';
 
 function addDaysISO(iso: string, delta: number): string {
@@ -1403,7 +1404,7 @@ export default function CalendarScreen() {
   const openAddModal = () => {    if (!selectedDate) {      return;
     }    setAddModalVisible(true);
   };
-  const closeAddModal = () => {
+  const closeAddModal = useCallback(() => {
     setAddModalVisible(false);
     setSearchQuery(''); // Очищаем поисковый запрос при закрытии
     // Обновляем список записей дня из текущего состояния all
@@ -1413,7 +1414,7 @@ export default function CalendarScreen() {
     }
     // Обновляем календарь после закрытия модалки
     loadAll();
-  };
+  }, [selectedDate, all, loadAll]);
   const openCustomModal = () => {    try {
       setAddModalVisible(false);
       setSearchQuery(''); // Очищаем поисковый запрос при закрытии
@@ -1421,7 +1422,7 @@ export default function CalendarScreen() {
       console.error('[CalendarScreen] Error in openCustomModal:', error);
     }
   };
-  const closeCustomModal = () => {
+  const closeCustomModal = useCallback(() => {
     setNewPriceVal('');
     setCustomModalVisible(false);
     setEditingCatalogItem(null);
@@ -1434,7 +1435,12 @@ export default function CalendarScreen() {
       const list = all.filter((d) => d.dateISO === selectedDate);
       setDayList(list);
     }
-  };
+  }, [selectedDate, all]);
+
+  const closeDayModal = useCallback(() => {
+    setSelectedDate(null);
+    loadAll();
+  }, [loadAll]);
 
   // Управление каталогом (редактирование/удаление) делаем в отдельной модалке избранного,
   // в модалке добавления записи оставляем только выбор напитка.
@@ -2234,6 +2240,10 @@ export default function CalendarScreen() {
     transform: [{ translateY: Math.max(0, customModalTranslateY.value) }],
   }));
 
+  const dayModalHandleGesture = useModalDragHandleGesture(dayModalTranslateY, closeDayModal);
+  const addModalHandleGesture = useModalDragHandleGesture(addModalTranslateY, closeAddModal);
+  const customModalHandleGesture = useModalDragHandleGesture(customModalTranslateY, closeCustomModal);
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Переключатель режима календаря */}
@@ -2445,46 +2455,15 @@ export default function CalendarScreen() {
       })()}
 
       <Modal visible={!!selectedDate && !addModalVisible && !customModalVisible} animationType="slide" transparent>
-        <TouchableWithoutFeedback onPress={() => {
-          setSelectedDate(null);
-          loadAll();
-        }}>
+        <TouchableWithoutFeedback onPress={closeDayModal}>
           <View style={styles.modalBackdrop}>
             <View style={styles.modalSpacer} />
             <TouchableWithoutFeedback onPress={() => {}}>
               <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, dayModalAnimatedStyle]}>
-                <GestureDetector gesture={Gesture.Pan()
-                  .minDistance(5)
-                  .activeOffsetY([5, 100])
-                  .failOffsetX([-30, 30])
-                  .onUpdate((e) => {
-                    if (e.translationY > 0) {
-                      dayModalTranslateY.value = e.translationY;
-                    }
-                  })
-                  .onEnd((e) => {
-                    if (e.translationY > 50) {
-                      dayModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                        runOnJS(setSelectedDate)(null);
-                        runOnJS(loadAll)();
-                        dayModalTranslateY.value = 0;
-                      });
-                    } else {
-                      dayModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                    }
-                  })
-                }>
-                  <TouchableOpacity 
-                    style={styles.modalDragHandle}
-                    onPress={() => {
-                      setSelectedDate(null);
-                      // Обновляем календарь после закрытия модалки дня
-                      loadAll();
-                    }}
-                    activeOpacity={1}
-                  >
+                <GestureDetector gesture={dayModalHandleGesture}>
+                  <View style={styles.modalDragHandle}>
                     <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                  </TouchableOpacity>
+                  </View>
                 </GestureDetector>
                 <View style={[styles.modalHeader, { marginTop: 4 }]}>
                   <View style={{ flex: 1 }}>
@@ -2613,33 +2592,10 @@ export default function CalendarScreen() {
                   searchQuery && searchQuery.trim() && [styles.modalCardFullScreen, { paddingTop: 4 + insets.top }],
                   addModalAnimatedStyle
                 ]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        addModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      if (e.translationY > 50) {
-                        addModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                          runOnJS(closeAddModal)();
-                          addModalTranslateY.value = 0;
-                        });
-                      } else {
-                        addModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                      }
-                    })
-                  }>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeAddModal}
-                      activeOpacity={1}
-                    >
+                  <GestureDetector gesture={addModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
                   <View style={searchQuery && searchQuery.trim() ? { flex: 1 } : {}}>
                     <View style={styles.modalHeaderRow}>
@@ -2784,33 +2740,10 @@ export default function CalendarScreen() {
             >
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View style={[styles.modalCard, { backgroundColor: colors.backgroundCard }, customModalAnimatedStyle]}>
-                  <GestureDetector gesture={Gesture.Pan()
-                    .minDistance(5)
-                    .activeOffsetY([5, 100])
-                    .failOffsetX([-30, 30])
-                    .onUpdate((e) => {
-                      if (e.translationY > 0) {
-                        customModalTranslateY.value = e.translationY;
-                      }
-                    })
-                    .onEnd((e) => {
-                      if (e.translationY > 50) {
-                        customModalTranslateY.value = withSpring(1000, { damping: 20, stiffness: 300 }, () => {
-                          runOnJS(closeCustomModal)();
-                          customModalTranslateY.value = 0;
-                        });
-                      } else {
-                        customModalTranslateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-                      }
-                    })
-                  }>
-                    <TouchableOpacity 
-                      style={styles.modalDragHandle}
-                      onPress={closeCustomModal}
-                      activeOpacity={1}
-                    >
+                  <GestureDetector gesture={customModalHandleGesture}>
+                    <View style={styles.modalDragHandle}>
                       <View style={[styles.modalDragBar, { backgroundColor: colors.textTertiary }]} />
-                    </TouchableOpacity>
+                    </View>
                   </GestureDetector>
                   <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                     <Text style={[styles.modalTitle, { color: colors.text }]}>{t('todayScreen.newDrinkTitle')}</Text>
@@ -3466,9 +3399,9 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
-    paddingBottom: 8,
-    minHeight: 28,
+    paddingTop: 6,
+    paddingBottom: 10,
+    minHeight: 36,
   },
   modalDragBar: {
     width: 40,
