@@ -114,28 +114,29 @@ export const darkTheme: ThemeColors = {
   },
 };
 
-// Светлая тема (в духе Facebook / VK: серый фон, белые карточки, синий акцент)
+// Светлая тема — оттенки в духе iOS (Light): grouped background + белые «ячейки», системный синий
+// Ориентиры: systemGroupedBackground ~#F2F2F7, secondarySystemGroupedBackground #FFFFFF,
+// label / secondaryLabel, separator ~#C6C6C8, systemBlue #007AFF
 export const lightTheme: ThemeColors = {
-  // Основные цвета — синий как в Facebook (#1877f2) / VK (#2787f5)
-  primary: '#1877f2',
-  primaryLight: '#42a1f4',
-  primaryDark: '#166fe5',
-  secondary: '#2787f5',
+  primary: '#007AFF',
+  primaryLight: '#5AC8FA',
+  primaryDark: '#0051D5',
+  secondary: '#0A84FF',
   
-  // Фон — светло-серый экран, карточки с лёгким серым тоном (меньше белого)
-  background: '#e8eaed',
-  backgroundSecondary: '#dadce0',
-  backgroundTertiary: '#e8eaed',
-  backgroundCard: '#f5f6f8',
+  // Фон экрана — тёплый серо-лазурный как у iOS (не холодный #e8eaed и не сплошной белый)
+  background: '#F2F2F7',
+  backgroundSecondary: '#E5E5EA',
+  backgroundTertiary: '#D1D1D6',
+  // Карточки / «инсет»-поверхности — чистый белый только локально на сером поле (как ячейки в списке)
+  backgroundCard: '#FFFFFF',
   
-  // Текст — контрастный тёмный
-  text: '#050505',
-  textSecondary: '#65676b',
-  textTertiary: '#8a8d91',
+  // Текст — мягче чистого #000 (как iOS label / secondaryLabel)
+  text: '#1C1C1E',
+  textSecondary: '#636366',
+  textTertiary: '#8E8E93',
   
-  // Границы — мягкие
-  border: '#e4e6eb',
-  borderLight: '#ced0d4',
+  border: '#C6C6C8',
+  borderLight: '#E5E5EA',
   
   // Состояния
   success: '#10b981', // Зеленый
