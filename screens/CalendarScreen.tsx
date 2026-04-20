@@ -792,6 +792,7 @@ export default function CalendarScreen() {
   }, []);
 
   const [forceUpdate, setForceUpdate] = useState(0);
+  const suppressAchievementAlertsUntilRef = useRef(0);
   
   const loadDailyGoal = useCallback(async () => {
     console.log('[LOAD DATA] loadDailyGoal started');
@@ -816,6 +817,9 @@ export default function CalendarScreen() {
   // При завершении онбординга сразу сбрасываем демо-данные и грузим реальные, чтобы не мелькали при открытии календаря
   useEffect(() => {
     if (wasOnboardingRef.current === true && isOnboardingActive === false) {
+      // После завершения онбординга один рендер может ещё содержать демо-данные.
+      // Подавляем алерты достижений на короткое время, пока подтягиваются реальные записи.
+      suppressAchievementAlertsUntilRef.current = Date.now() + 5000;
       setAll([]);
       setDayList([]);
       loadAll();
@@ -974,6 +978,7 @@ export default function CalendarScreen() {
   useEffect(() => {
     const checkAchievements = async () => {
       if (isOnboardingActive) return;
+      if (Date.now() < suppressAchievementAlertsUntilRef.current) return;
       // Проверяем достижения только если есть записи о напитках
       const hasAnyDrinks = calendarData.length > 0;
       if (sobrietyStats.currentStreak > 0 && hasAnyDrinks) {
