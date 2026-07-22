@@ -9,7 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getAllDrinks, getDrinksByDate, removeDrink, addOrMergeDrink, updateDrink } from '../storage/drinks';
 import { Drink } from '../types/drink';
 import { PresetDrink } from '../types/preset';
-import { getUserPresets, suggestedPresets, addPreset, presetsEventEmitter } from '../storage/presets';
+import { getUserPresets, addPreset, presetsEventEmitter } from '../storage/presets';
+import { addDrinkToCatalog, getDrinkCatalog, removeCatalogDrink, updateCatalogDrink } from '../storage/drinkCatalog';
 import { getCalendarLabels, setCalendarLabel, setCalendarLabelRange, getCalendarLabelRanges, deleteCalendarLabelRange, updateCalendarLabelRange, DEFAULT_LABEL_COLOR, type LabelRange } from '../storage/calendarLabels';
 import { WEEKDAY_SHORT_RU, buildMonthMatrix, formatISO, getWeekdayIndexMonFirst, endOfMonth } from '../utils/date';
 
@@ -1266,7 +1267,7 @@ export default function CalendarScreen() {
     };
   });
 
-  // initialScrollIndex делает начальный скролл, не нужен useEffect
+  // Начальный скролл делаем вручную (см. эффект ниже), чтобы избежать плавающего offset на некоторых устройствах.
 
   const onMomentumEndHorizontal = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -1344,6 +1345,8 @@ export default function CalendarScreen() {
   const [customModalVisible, setCustomModalVisible] = useState(false);
   const [oneTimeModalVisible, setOneTimeModalVisible] = useState(false);
   const [userPresets, setUserPresets] = useState<PresetDrink[]>([]);
+  const [catalog, setCatalog] = useState<PresetDrink[]>([]);
+  const [editingCatalogItem, setEditingCatalogItem] = useState<PresetDrink | null>(null);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<PresetDrink['beverageType']>('beer');
   const [newVolume, setNewVolume] = useState('500');
@@ -1357,6 +1360,8 @@ export default function CalendarScreen() {
       try {
         const presets = await getUserPresets();
         setUserPresets(presets);
+        const cat = await getDrinkCatalog();
+        setCatalog(cat);
       } catch (error) {
         console.error('[CalendarScreen] Error loading presets:', error);
       }
@@ -1420,6 +1425,7 @@ export default function CalendarScreen() {
   const closeCustomModal = () => {
     setNewPriceVal('');
     setCustomModalVisible(false);
+    setEditingCatalogItem(null);
     setNewName('');
     setNewType('beer');
     setNewVolume('500');
@@ -1430,6 +1436,9 @@ export default function CalendarScreen() {
       setDayList(list);
     }
   };
+
+  // Управление каталогом (редактирование/удаление) делаем в отдельной модалке избранного,
+  // в модалке добавления записи оставляем только выбор напитка.
 
   // Добавление напитка сразу с количеством 1
   const addDrinkFromPreset = async (preset: PresetDrink) => {
@@ -1589,16 +1598,17 @@ export default function CalendarScreen() {
     return filtered;
   }, [userPresets, searchQuery]);
 
-  // Фильтруем предложенные напитки - исключаем те, что уже в избранном
-  // Проверяем точное совпадение по объему, крепости и типу
+  // Фильтруем каталог напитков - исключаем те, что уже в избранном
   // Также фильтруем по поисковому запросу
-  const availableSuggestedPresets = useMemo(() => {
+  const availableCatalogItems = useMemo(() => {
     const startTime = performance.now();
-    const filtered = suggestedPresets.filter((suggested) => {
-      return !userPresets.some((userPreset) => 
-        userPreset.volumeMl === suggested.volumeMl &&
-        userPreset.abvPercent === suggested.abvPercent &&
-        userPreset.beverageType === suggested.beverageType
+    const filtered = catalog.filter((candidate) => {
+      return !userPresets.some(
+        (userPreset) =>
+          userPreset.volumeMl === candidate.volumeMl &&
+          userPreset.abvPercent === candidate.abvPercent &&
+          userPreset.beverageType === candidate.beverageType &&
+          userPreset.name === candidate.name
       );
     });
     
@@ -1612,12 +1622,12 @@ export default function CalendarScreen() {
     }
     const endTime = performance.now();
     if (endTime - startTime > 1) {
-      console.log(`[PERF] availableSuggestedPresets computed in ${(endTime - startTime).toFixed(2)}ms, result: ${result.length}/${suggestedPresets.length}`);
+      console.log(`[PERF] availableCatalogItems computed in ${(endTime - startTime).toFixed(2)}ms, result: ${result.length}/${catalog.length}`);
     }
     return result;
-  }, [userPresets, searchQuery]);
+  }, [catalog, userPresets, searchQuery]);
 
-  // Сохранение кастомного напитка
+  // Сохранение кастомного напитка (добавляем в каталог и сразу добавляем запись на выбранный день)
   const saveCustomPreset = async () => {
     if (!selectedDate) return;
     const volume = parseFloat(newVolume);
@@ -1642,6 +1652,18 @@ export default function CalendarScreen() {
     };
     
     closeCustomModal();
+
+    const payload = {
+      name: newName,
+      beverageType: newType,
+      volumeMl: volume,
+      abvPercent: abv,
+      ...(price != null && { defaultPrice: price }),
+    };
+    const updatedCatalog = editingCatalogItem
+      ? await updateCatalogDrink(editingCatalogItem.id, payload)
+      : await addDrinkToCatalog(payload);
+    setCatalog(updatedCatalog);
     
     const updated = await addOrMergeDrink(entry);
     
@@ -1705,17 +1727,23 @@ export default function CalendarScreen() {
 
   const scrollToCurrentMonth = useCallback(() => {
     if (listRef.current && listHeight && listHeight > 0) {
+      // На некоторых устройствах initialScrollIndex/scrollToIndex может давать дробный offset
+      // и в итоге "фокус" оказывается ниже. Ставим точный offset по сетке.
       try {
-        listRef.current.scrollToIndex({
-          index: initialMonthFocusIndex,
-          animated: true,
+        listRef.current.scrollToOffset({
+          offset: initialMonthFocusIndex * cellHeight,
+          animated: false,
         });
       } catch (error) {
         if (listRef.current) {
-          listRef.current.scrollToOffset({
-            offset: initialMonthFocusIndex * cellHeight,
-            animated: true,
-          });
+          try {
+            listRef.current.scrollToIndex({
+              index: initialMonthFocusIndex,
+              animated: false,
+            });
+          } catch {
+            // ignore
+          }
         }
       }
     }
@@ -2120,7 +2148,7 @@ export default function CalendarScreen() {
             };
           }}
           keyExtractor={(item, index) => `week-${formatISO(item)}-${index}`}
-          initialScrollIndex={initialMonthFocusIndex}
+          initialScrollIndex={0}
           removeClippedSubviews={Platform.OS === 'android'}
           windowSize={3}
           maxToRenderPerBatch={2}
@@ -2650,29 +2678,38 @@ export default function CalendarScreen() {
                     </>
                   )}
                   
-                  {availableSuggestedPresets.length > 0 && (
+                  {availableCatalogItems.length > 0 && (
                     <>
-                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Предложенные</Text>
-                      {availableSuggestedPresets.map((preset) => (
-                        <Pressable
+                      <Text style={{ marginTop: 16, marginBottom: 8, color: colors.textSecondary, fontWeight: '600' }}>Каталог</Text>
+                      {availableCatalogItems.map((preset) => (
+                        <View
                           key={preset.id}
-                          style={({ pressed }) => [
+                          style={[
                             styles.suggestedItem,
-                            { backgroundColor: colors.backgroundCard, borderBottomColor: colors.border },
-                            pressed && { opacity: 0.7 }
+                            {
+                              backgroundColor: colors.backgroundCard,
+                              borderBottomColor: colors.border,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            },
                           ]}
-                          onPressIn={() => {
-                            Keyboard.dismiss();
-                          }}
-                          onPress={() => {
-                            addSuggestedPreset(preset);
-                          }}
                         >
+                          <Pressable
+                            style={({ pressed }) => [{ flex: 1, paddingVertical: 12, paddingRight: 12 }, pressed && { opacity: 0.7 }]}
+                            onPressIn={() => {
+                              Keyboard.dismiss();
+                            }}
+                            onPress={() => {
+                              addSuggestedPreset(preset);
+                            }}
+                          >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Text style={[styles.suggestedText, { color: colors.text }]}>{preset.name}</Text>
                             <Text style={[styles.suggestedDetails, { color: colors.textSecondary }]}>{preset.volumeMl} мл · {preset.abvPercent}%</Text>
                           </View>
-                        </Pressable>
+                          </Pressable>
+                        </View>
                       ))}
                     </>
                   )}

@@ -11,28 +11,78 @@ export const PREMIUM_PRODUCT_ID = Platform.select({
 
 let isInitialized = false;
 let purchasesAvailable = false;
+let purchaseUpdateSub: { remove: () => void } | null = null;
+let purchaseErrorSub: { remove: () => void } | null = null;
 
-// Lazy load the module to avoid errors if it's not available
-let InAppPurchases: typeof import('expo-in-app-purchases') | null = null;
+type ExpoIapModule = typeof import('expo-iap');
 
-async function loadPurchasesModule() {
-  if (InAppPurchases) {
-    return InAppPurchases;
+// Lazy load the module to avoid errors if it's not available (e.g. web)
+let IAP: ExpoIapModule | null = null;
+
+type PurchaseWaiter = {
+  resolve: (purchase: import('expo-iap').Purchase) => void;
+  reject: (error: Error) => void;
+};
+
+let pendingPurchase: PurchaseWaiter | null = null;
+
+async function loadPurchasesModule(): Promise<ExpoIapModule | null> {
+  if (IAP) {
+    return IAP;
   }
-  
+
   try {
-    // Only load in non-web environments
     if (Platform.OS !== 'web') {
-      InAppPurchases = await import('expo-in-app-purchases');
+      IAP = await import('expo-iap');
       purchasesAvailable = true;
-      return InAppPurchases;
+      return IAP;
     }
   } catch (error) {
     console.warn('In-app purchases module not available:', error);
     purchasesAvailable = false;
   }
-  
+
   return null;
+}
+
+function isPremiumProduct(productId: string | null | undefined): boolean {
+  return productId === PREMIUM_PRODUCT_ID;
+}
+
+async function grantPremiumAndFinish(
+  module: ExpoIapModule,
+  purchase: import('expo-iap').Purchase
+): Promise<void> {
+  await setPremiumStatus(true);
+  // Lifetime premium must NOT be consumed — Billing Library 8+ cannot restore consumed one-time products.
+  await module.finishTransaction({ purchase, isConsumable: false });
+}
+
+function attachPurchaseListeners(module: ExpoIapModule) {
+  purchaseUpdateSub?.remove();
+  purchaseErrorSub?.remove();
+
+  purchaseUpdateSub = module.purchaseUpdatedListener(async (purchase) => {
+    try {
+      if (isPremiumProduct(purchase.productId)) {
+        await grantPremiumAndFinish(module, purchase);
+      }
+      pendingPurchase?.resolve(purchase);
+    } catch (error) {
+      pendingPurchase?.reject(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      pendingPurchase = null;
+    }
+  });
+
+  purchaseErrorSub = module.purchaseErrorListener((error) => {
+    const message =
+      error.code === module.ErrorCode.UserCancelled
+        ? 'Purchase canceled'
+        : error.message || `Purchase failed (${error.code})`;
+    pendingPurchase?.reject(Object.assign(new Error(message), { code: error.code }));
+    pendingPurchase = null;
+  });
 }
 
 /**
@@ -50,42 +100,15 @@ export async function initPurchases(): Promise<boolean> {
       return false;
     }
 
-    // Connect to store
-    const { responseCode, results } = await module.connectAsync();
-    
-    if (responseCode === module.IAPResponseCode.OK) {
-      isInitialized = true;
-      purchasesAvailable = true;
-      console.log(`In-app purchases initialized successfully. Product ID: ${PREMIUM_PRODUCT_ID}`);
-      
-      // Set purchase listener
-      module.setPurchaseListener(({ responseCode, results, errorCode }) => {
-        if (responseCode === module.IAPResponseCode.OK) {
-          results?.forEach(async (purchase) => {
-            if (!purchase.acknowledged) {
-              // Verify purchase and grant premium
-              if (purchase.productId === PREMIUM_PRODUCT_ID) {
-                await setPremiumStatus(true);
-                // Acknowledge purchase
-                await module.finishTransactionAsync(purchase, true);
-              }
-            }
-          });
-        } else if (responseCode === module.IAPResponseCode.USER_CANCELED) {
-          console.log('User canceled the purchase');
-        } else {
-          console.error('Purchase error:', errorCode);
-        }
-      });
-      
-      return true;
-    } else {
-      console.error(`Failed to initialize purchases. Response code: ${responseCode}. Make sure the app is published in at least internal testing track.`);
-      return false;
-    }
+    await module.initConnection();
+    attachPurchaseListeners(module);
+    isInitialized = true;
+    purchasesAvailable = true;
+    console.log(`In-app purchases initialized successfully. Product ID: ${PREMIUM_PRODUCT_ID}`);
+    return true;
   } catch (error) {
-    console.warn('Error initializing purchases (module may not be available):', error);
     purchasesAvailable = false;
+    console.warn('Error initializing purchases (module may not be available):', error);
     return false;
   }
 }
@@ -103,32 +126,61 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
     if (!isInitialized) {
       const initialized = await initPurchases();
       if (!initialized) {
-        return { success: false, error: 'Failed to initialize purchases' };
+        return {
+          success: false,
+          error:
+            Platform.OS === 'android'
+              ? 'Покупки недоступны. Обычно нужно установить приложение из Google Play (достаточно internal testing) и настроить продукт в Play Console.'
+              : 'Failed to initialize purchases',
+        };
       }
     }
 
-    // Purchase the product
-    const { responseCode, results } = await module.purchaseItemAsync(PREMIUM_PRODUCT_ID);
+    // Warm product cache (optional but helps surface missing SKU early)
+    try {
+      await module.fetchProducts({ skus: [PREMIUM_PRODUCT_ID], type: 'in-app' });
+    } catch (error) {
+      console.warn('fetchProducts failed (continuing with purchase):', error);
+    }
 
-    if (responseCode === module.IAPResponseCode.OK && results) {
-      // Purchase successful - status will be set by purchase listener
-      // But we can also set it here for immediate feedback
-      await setPremiumStatus(true);
-      return { success: true };
-    } else if (responseCode === module.IAPResponseCode.USER_CANCELED) {
-      return { success: false, error: 'Purchase canceled' };
-    } else {
-      // More detailed error messages for debugging
-      let errorMessage = 'Purchase failed';
-      if (responseCode === module.IAPResponseCode.ERROR) {
-        errorMessage = 'Purchase error: Product may not be configured in Play Console';
-      } else if (responseCode === module.IAPResponseCode.DEFERRED) {
-        errorMessage = 'Purchase is pending approval';
-      } else {
-        errorMessage = `Purchase failed (code: ${responseCode})`;
+    const purchasePromise = new Promise<import('expo-iap').Purchase>((resolve, reject) => {
+      pendingPurchase = { resolve, reject };
+    });
+
+    try {
+      await module.requestPurchase({
+        request: {
+          apple: { sku: PREMIUM_PRODUCT_ID },
+          google: { skus: [PREMIUM_PRODUCT_ID] },
+        },
+        type: 'in-app',
+      });
+    } catch (error) {
+      pendingPurchase = null;
+      throw error;
+    }
+
+    try {
+      const purchase = await purchasePromise;
+      if (isPremiumProduct(purchase.productId)) {
+        await setPremiumStatus(true);
+        return { success: true };
       }
-      console.error(`Purchase failed: responseCode=${responseCode}, productId=${PREMIUM_PRODUCT_ID}`);
-      return { success: false, error: errorMessage };
+      return { success: false, error: 'Purchase completed for unexpected product' };
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      if (code === module.ErrorCode.UserCancelled || message === 'Purchase canceled') {
+        return { success: false, error: 'Purchase canceled' };
+      }
+      if (code === module.ErrorCode.AlreadyOwned) {
+        await setPremiumStatus(true);
+        return { success: true };
+      }
+
+      console.error(`Purchase failed: ${message}, productId=${PREMIUM_PRODUCT_ID}`);
+      return { success: false, error: message };
     }
   } catch (error) {
     console.error('Error purchasing premium:', error);
@@ -136,27 +188,41 @@ export async function purchasePremium(): Promise<{ success: boolean; error?: str
   }
 }
 
-/** Restore: get history, if premium was bought — turn premium on. */
-export async function restorePurchases(): Promise<{ success: boolean; restored: boolean; error?: string }> {
+/** Restore: get owned purchases, if premium was bought — turn premium on. */
+export async function restorePurchases(): Promise<{
+  success: boolean;
+  restored: boolean;
+  error?: string;
+}> {
   try {
     const module = await loadPurchasesModule();
     if (!module || !(isInitialized || (await initPurchases()))) {
       return { success: false, restored: false, error: 'In-app purchases not available' };
     }
-    const { responseCode, results } = await module.getPurchaseHistoryAsync();
-    if (responseCode !== module.IAPResponseCode.OK) {
-      return { success: false, restored: false, error: 'Failed to restore purchases' };
+
+    // iOS: sync first so historical non-consumables surface
+    if (Platform.OS === 'ios' && typeof module.restorePurchases === 'function') {
+      try {
+        await module.restorePurchases();
+      } catch (error) {
+        console.warn('restorePurchases sync failed:', error);
+      }
     }
-    const premium = results?.find((p) => p.productId === PREMIUM_PRODUCT_ID);
+
+    const purchases = await module.getAvailablePurchases();
+    const premium = purchases.find((p) => isPremiumProduct(p.productId));
     if (premium) {
-      await setPremiumStatus(true);
-      if (!premium.acknowledged) await module.finishTransactionAsync(premium, true);
+      await grantPremiumAndFinish(module, premium);
       return { success: true, restored: true };
     }
     return { success: true, restored: false };
   } catch (error) {
     console.error('Error restoring purchases:', error);
-    return { success: false, restored: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    return {
+      success: false,
+      restored: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }
 
@@ -168,7 +234,12 @@ export async function disconnectPurchases(): Promise<void> {
     try {
       const module = await loadPurchasesModule();
       if (module) {
-        await module.disconnectAsync();
+        purchaseUpdateSub?.remove();
+        purchaseErrorSub?.remove();
+        purchaseUpdateSub = null;
+        purchaseErrorSub = null;
+        pendingPurchase = null;
+        await module.endConnection();
         isInitialized = false;
       }
     } catch (error) {

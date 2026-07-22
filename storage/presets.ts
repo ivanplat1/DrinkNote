@@ -72,12 +72,40 @@ export const suggestedPresets: PresetDrink[] = [
   { id: 'rum_cola_250_16', name: 'Ром Кола', beverageType: 'cocktail', volumeMl: 250, abvPercent: 16 },
 ];
 
+function getDefaultUserPresets(): PresetDrink[] {
+  // Default Favorites: pre-seeded so first launch doesn't "build" them in UI.
+  // These are normal user presets and can be edited/removed.
+  const ids = ['beer_500_5', 'wine_150_12', 'cognac_50_40', 'whiskey_cola_250_16'];
+  const byId = new Map(suggestedPresets.map((p) => [p.id, p]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .map((p) => ({ ...p!, id: `preset_${p!.id}` }));
+}
+
 export async function getUserPresets(): Promise<PresetDrink[]> {
   const raw = await AsyncStorage.getItem(PRESETS_KEY);
-  if (!raw) return [];
+  if (!raw) {
+    const seeded = getDefaultUserPresets();
+    if (seeded.length) {
+      await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(seeded));
+      presetsEventEmitter.emit(seeded);
+      return seeded;
+    }
+    return [];
+  }
   try {
     const parsed = JSON.parse(raw) as PresetDrink[];
-    return Array.isArray(parsed) ? parsed : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    if (list.length === 0) {
+      const seeded = getDefaultUserPresets();
+      if (seeded.length) {
+        await AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(seeded));
+        presetsEventEmitter.emit(seeded);
+        return seeded;
+      }
+    }
+    return list;
   } catch {
     return [];
   }

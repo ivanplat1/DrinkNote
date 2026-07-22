@@ -27,7 +27,7 @@ const INTERACTIVE_STEPS: InteractiveStepConfig[] = [
   },
   {
     key: 'oneTimeEntry',
-    tooltip: 'Используйте «+» для единичного добавления — без лишних шагов и сохранения.',
+    tooltip: 'Для единичного добавления используйте «Добавить разовую запись» — без лишних шагов и сохранения в избранное.',
   },
   {
     key: 'calendar',
@@ -87,10 +87,18 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [targets, setTargets] = useState<Record<string, SpotLayout>>({});
 
   useEffect(() => {
-    // Для отладки: всегда показываем онбординг при запуске (и на эмуляторе, и на девайсе).
-    setOnboardingSeen(false);
-    setTargets({});
-    setInteractiveStep(0);
+    let cancelled = false;
+    getHasSeenOnboarding().then((seen) => {
+      if (cancelled) return;
+      setOnboardingSeen(seen);
+      if (!seen) {
+        setTargets({});
+        setInteractiveStep(0);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const registerTarget = useCallback((name: string, layout: SpotLayout) => {

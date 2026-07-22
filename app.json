@@ -3,7 +3,7 @@
     "name": "DrinkNote",
     "slug": "DrinkNote",
     "scheme": "drinknote",
-    "version": "1.0.1",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.drinknote.app",
-      "versionCode": 2,
+      "versionCode": 13,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -82,6 +82,17 @@
               "updatePeriodMillis": 1800000
             }
           ]
+        }
+      ],
+      "expo-iap",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
         }
       ]
     ],
