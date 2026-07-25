@@ -763,7 +763,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <View style={[styles.infoCard, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.infoTitle, { color: colors.text }]}>DrinkNote</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.13</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.14</Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
           </View>
     </View>
