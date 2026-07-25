@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Share, Modal, KeyboardAvoidingView, Linking } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
@@ -743,11 +743,27 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Политика конфиденциальности (обязательна для Google Play) */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.backgroundCard }]}
+            onPress={() => {
+              Linking.openURL('https://ivanplat1.github.io/DrinkNote/privacy.html').catch(() => {
+                Alert.alert('Ошибка', 'Не удалось открыть политику конфиденциальности');
+              });
+            }}
+          >
+            <MaterialIcons name="privacy-tip" size={24} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>Политика конфиденциальности</Text>
+            <MaterialIcons name="open-in-new" size={22} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Информация о приложении */}
         <View style={styles.section}>
           <View style={[styles.infoCard, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.infoTitle, { color: colors.text }]}>DrinkNote</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.0</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>Версия 1.0.13</Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>Трекер потребления алкоголя</Text>
           </View>
     </View>
